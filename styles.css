@@ -11,3 +11,15 @@
   border: 1px solid var(--background-modifier-border);
   border-radius: 4px;
 }
+.vtasks-node.selected {
+  outline: 2px solid var(--color-accent);
+}
+
+.vtasks-edges {
+  pointer-events: none;
+}
+
+.vtasks-edge {
+  stroke: var(--text-muted);
+  stroke-width: 1.5px;
+}
