@@ -1,3 +1,8 @@
+import { Plugin } from 'obsidian';
+import { BoardView, VIEW_TYPE_BOARD } from './view';
+import { BoardData, loadBoard, saveBoard, getBoardFile } from './boardStore';
+import { scanFiles, parseDependencies } from './parser';
+
 export default class VisualTasksPlugin extends Plugin {
   private board: BoardData | null = null;
 

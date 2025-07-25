@@ -4,7 +4,7 @@
   "description": "Obsidian plugin to visualize tasks on a board",
   "main": "dist/main.js",
   "scripts": {
-    "build": "rollup -c",
+    "build": "rollup -c && cp manifest.json styles.css dist/",
     "dev": "rollup -c -w",
     "test": "echo \"No tests\""
   },
