@@ -1,0 +1,10 @@
+{
+  "id": "visual-tasks-board",
+  "name": "Visual Tasks Board",
+  "version": "0.0.1",
+  "minAppVersion": "1.0.0",
+  "description": "Visualize and manage tasks on an interactive board",
+  "author": "Obsidian MindTask",
+  "authorUrl": "",
+  "isDesktopOnly": false
+}

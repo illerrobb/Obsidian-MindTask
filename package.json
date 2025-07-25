@@ -1,0 +1,27 @@
+{
+  "name": "visual-tasks-board",
+  "version": "0.0.1",
+  "description": "Obsidian plugin to visualize tasks on a board",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "rollup -c",
+    "dev": "rollup -c -w",
+    "test": "echo \"No tests\""
+  },
+  "keywords": [
+    "obsidian-plugin"
+  ],
+  "author": "Obsidian MindTask",
+  "license": "MIT",
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.0",
+    "@rollup/plugin-node-resolve": "^15.0.1",
+    "@rollup/plugin-typescript": "^11.1.2",
+    "@types/node": "^24.1.0",
+    "obsidian": "1.8.7",
+    "rollup": "^4.45.1",
+    "tslib": "^2.8.1",
+    "typescript": "^5.3.3"
+  },
+  "type": "module"
+}
