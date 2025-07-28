@@ -29,3 +29,7 @@ Load `manifest.json`, `main.js`, and `styles.css` from the `dist` folder into Ob
 - `src/main.ts` – plugin entry point
 
 This is an early prototype and not feature complete.
+
+## License
+
+Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
