@@ -4,6 +4,10 @@ export interface NodeData {
   x: number;
   y: number;
   color?: string;
+  type?: 'group';
+  name?: string;
+  members?: string[];
+  group?: string;
 }
 
 export interface BoardData {

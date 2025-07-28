@@ -11,7 +11,7 @@ export class BoardView extends ItemView {
   private alignVLine!: HTMLElement;
   private alignHLine!: HTMLElement;
   private readonly gridSize = 20;
-  private selectedId: string | null = null;
+  private selectedIds: Set<string> = new Set();
   private draggingId: string | null = null;
   private dragOffsetX = 0;
   private dragOffsetY = 0;
@@ -19,6 +19,10 @@ export class BoardView extends ItemView {
   private tempEdge: SVGPathElement | null = null;
   private edgeX = 0;
   private edgeY = 0;
+  private selectionRect: HTMLElement | null = null;
+  private selStartX = 0;
+  private selStartY = 0;
+  private groupId: string | null = null;
   private filters: { tags: string[]; folders: string[] };
   private onFilterChange: (tags: string[], folders: string[]) => void;
 
@@ -87,6 +91,11 @@ export class BoardView extends ItemView {
       this.onFilterChange(this.filters.tags, this.filters.folders);
     };
 
+    if (this.groupId) {
+      const backBtn = controls.createEl('button', { text: 'Back' });
+      backBtn.onclick = () => this.openGroup(this.board.nodes[this.groupId!].group || null);
+    }
+
     this.boardEl = this.containerEl.createDiv('vtasks-board');
     this.boardEl.tabIndex = 0;
     this.alignVLine = this.boardEl.createDiv('vtasks-align-line vtasks-align-v');
@@ -100,7 +109,10 @@ export class BoardView extends ItemView {
     this.svgEl.style.width = '100%';
     this.svgEl.style.height = '100%';
     for (const id in this.board.nodes) {
-      this.createNodeElement(id);
+      const n = this.board.nodes[id];
+      if ((n.group || null) === this.groupId) {
+        this.createNodeElement(id);
+      }
     }
     this.drawEdges();
     this.registerEvents();
@@ -116,14 +128,30 @@ export class BoardView extends ItemView {
 
     const inHandle = nodeEl.createDiv('vtasks-handle vtasks-handle-in');
     const textEl = nodeEl.createDiv('vtasks-text');
-    textEl.textContent = this.tasks.get(id)?.text ?? id;
+    if (pos.type === 'group') {
+      nodeEl.addClass('vtasks-group');
+      textEl.textContent = pos.name || 'Group';
+      const count = pos.members?.length || 0;
+      const preview = nodeEl.createDiv('vtasks-group-preview');
+      for (let i = 0; i < Math.min(4, count); i++) {
+        preview.createDiv('vtasks-group-box');
+      }
+      const num = nodeEl.createDiv('vtasks-group-count');
+      num.textContent = String(count);
+    } else {
+      textEl.textContent = this.tasks.get(id)?.text ?? id;
+    }
     const outHandle = nodeEl.createDiv('vtasks-handle vtasks-handle-out');
 
     new ResizeObserver(() => this.drawEdges()).observe(nodeEl);
 
     nodeEl.addEventListener('dblclick', (e) => {
       e.stopPropagation();
-      this.controller.openTask(id);
+      if (pos.type === 'group') {
+        this.openGroup(id);
+      } else {
+        this.controller.openTask(id);
+      }
     });
   }
 
@@ -151,6 +179,12 @@ export class BoardView extends ItemView {
         const rect = node.getBoundingClientRect();
         this.dragOffsetX = (e as PointerEvent).clientX - rect.left;
         this.dragOffsetY = (e as PointerEvent).clientY - rect.top;
+      } else {
+        this.selStartX = (e as PointerEvent).offsetX;
+        this.selStartY = (e as PointerEvent).offsetY;
+        this.selectionRect = this.boardEl.createDiv('vtasks-selection');
+        this.selectionRect.style.left = this.selStartX + 'px';
+        this.selectionRect.style.top = this.selStartY + 'px';
       }
     };
 
@@ -204,6 +238,17 @@ export class BoardView extends ItemView {
         const y2 = (e as PointerEvent).clientY - boardRect.top;
         const dx = Math.abs(x2 - this.edgeX);
         this.tempEdge.setAttr('d', `M${this.edgeX} ${this.edgeY} C ${this.edgeX + dx / 2} ${this.edgeY}, ${x2 - dx / 2} ${y2}, ${x2} ${y2}`);
+      } else if (this.selectionRect) {
+        const x = (e as PointerEvent).offsetX;
+        const y = (e as PointerEvent).offsetY;
+        const left = Math.min(this.selStartX, x);
+        const top = Math.min(this.selStartY, y);
+        const width = Math.abs(x - this.selStartX);
+        const height = Math.abs(y - this.selStartY);
+        this.selectionRect.style.left = left + 'px';
+        this.selectionRect.style.top = top + 'px';
+        this.selectionRect.style.width = width + 'px';
+        this.selectionRect.style.height = height + 'px';
       }
     };
 
@@ -230,6 +275,18 @@ export class BoardView extends ItemView {
           this.tempEdge = null;
         }
         this.drawEdges();
+      } else if (this.selectionRect) {
+        const rect = this.selectionRect.getBoundingClientRect();
+        this.clearSelection();
+        this.boardEl.querySelectorAll('.vtasks-node').forEach((n) => {
+          const r = n.getBoundingClientRect();
+          if (r.left >= rect.left && r.right <= rect.right && r.top >= rect.top && r.bottom <= rect.bottom) {
+            const id = n.getAttribute('data-id')!;
+            this.selectNode(n as HTMLElement, id, true);
+          }
+        });
+        this.selectionRect.remove();
+        this.selectionRect = null;
       }
     };
 
@@ -242,7 +299,7 @@ export class BoardView extends ItemView {
       const target = (e.target as HTMLElement).closest('.vtasks-node') as HTMLElement | null;
       if (target) {
         const id = target.getAttribute('data-id')!;
-        this.selectNode(target, id);
+        this.selectNode(target, id, (e as MouseEvent).shiftKey || (e as MouseEvent).metaKey);
       } else {
         this.clearSelection();
       }
@@ -254,6 +311,23 @@ export class BoardView extends ItemView {
       e.preventDefault();
       const id = target.getAttribute('data-id')!;
       const menu = new Menu();
+      const selected = Array.from(this.selectedIds);
+      if (selected.length > 1) {
+        menu.addItem((item) =>
+          item.setTitle('Group selected').onClick(async () => {
+            const name = await new Promise<string>((resolve) => {
+              const n = prompt('Group name', 'Group') || 'Group';
+              resolve(n);
+            });
+            this.controller.groupNodes(selected, name).then(() => this.render());
+          })
+        );
+      }
+      if (this.board.nodes[id].type === 'group') {
+        menu.addItem((item) =>
+          item.setTitle('Ungroup').onClick(() => this.controller.ungroupNode(id).then(() => this.render()))
+        );
+      }
       const colors = ['red', 'green', 'blue', 'yellow', ''];
       colors.forEach((c) => {
         const title = c ? `Outline ${c}` : 'Default outline';
@@ -274,10 +348,11 @@ export class BoardView extends ItemView {
     });
 
     this.boardEl.addEventListener('keydown', (e) => {
-      if (!this.selectedId) return;
+      const first = Array.from(this.selectedIds)[0];
+      if (!first) return;
       if (e.key === ' ') {
         e.preventDefault();
-        this.controller.toggleCheck(this.selectedId).then(() => this.render());
+        this.controller.toggleCheck(first).then(() => this.render());
       }
     });
 
@@ -290,24 +365,27 @@ export class BoardView extends ItemView {
     });
   }
 
-  private selectNode(el: HTMLElement, id: string) {
-    this.clearSelection();
-    this.selectedId = id;
+  private selectNode(el: HTMLElement, id: string, additive = false) {
+    if (!additive) this.clearSelection();
+    this.selectedIds.add(id);
     el.classList.add('selected');
     this.boardEl.focus();
   }
 
   private clearSelection() {
-    if (this.selectedId) {
-      const el = this.boardEl.querySelector(`.vtasks-node[data-id="${this.selectedId}"]`) as HTMLElement | null;
+    this.selectedIds.forEach((sid) => {
+      const el = this.boardEl.querySelector(`.vtasks-node[data-id="${sid}"]`) as HTMLElement | null;
       if (el) el.classList.remove('selected');
-    }
-    this.selectedId = null;
+    });
+    this.selectedIds.clear();
   }
 
   private drawEdges() {
     this.svgEl.empty();
     this.board.edges.forEach((edge, idx) => {
+      const fromNode = this.board.nodes[edge.from];
+      const toNode = this.board.nodes[edge.to];
+      if ((fromNode.group || null) !== this.groupId || (toNode.group || null) !== this.groupId) return;
       const fromEl = this.boardEl.querySelector(`.vtasks-node[data-id="${edge.from}"] .vtasks-handle-out`) as HTMLElement | null;
       const toEl = this.boardEl.querySelector(`.vtasks-node[data-id="${edge.to}"] .vtasks-handle-in`) as HTMLElement | null;
       if (!fromEl || !toEl) return;
@@ -325,5 +403,11 @@ export class BoardView extends ItemView {
       path.setAttr('data-index', String(idx));
       this.svgEl.appendChild(path);
     });
+  }
+
+  private openGroup(id: string | null) {
+    this.groupId = id;
+    this.clearSelection();
+    this.render();
   }
 }

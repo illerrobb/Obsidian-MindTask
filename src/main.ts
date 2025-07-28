@@ -109,11 +109,14 @@ export default class VisualTasksPlugin extends Plugin {
     }
 
     for (const id of Object.keys(this.board.nodes)) {
-      if (!this.tasks.has(id)) delete this.board.nodes[id];
+      const n = this.board.nodes[id] as any;
+      if (!this.tasks.has(id) && n.type !== 'group') delete this.board.nodes[id];
     }
 
     this.board.edges = this.board.edges.filter(
-      (e) => this.tasks.has(e.from) && this.tasks.has(e.to)
+      (e) =>
+        (this.tasks.has(e.from) || this.board.nodes[e.from]?.type === 'group') &&
+        (this.tasks.has(e.to) || this.board.nodes[e.to]?.type === 'group')
     );
 
     for (const dep of deps) {
