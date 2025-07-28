@@ -44,6 +44,8 @@ export class BoardView extends ItemView {
   private resizeStartHeight = 0;
   private resizeStartX = 0;
   private resizeStartY = 0;
+  private resizeStartNodeX = 0;
+  private resizeStartNodeY = 0;
   private groupId: string | null = null;
   private filters: { tags: string[]; folders: string[] };
   private onFilterChange: (tags: string[], folders: string[]) => void;
@@ -233,6 +235,8 @@ export class BoardView extends ItemView {
         this.resizingId = id;
         const cls = Array.from(resizeEl.classList).find((c) => c.startsWith('vtasks-resize-'))!;
         this.resizeDir = cls.replace('vtasks-resize-', '');
+        this.resizeStartNodeX = this.board.nodes[id].x;
+        this.resizeStartNodeY = this.board.nodes[id].y;
         const rect = node.getBoundingClientRect();
         this.resizeStartWidth = rect.width / this.zoom;
         this.resizeStartHeight = rect.height / this.zoom;
@@ -296,17 +300,17 @@ export class BoardView extends ItemView {
         const dy = ((e as PointerEvent).clientY - this.resizeStartY) / this.zoom;
         let width = this.resizeStartWidth;
         let height = this.resizeStartHeight;
-        let x = this.board.nodes[id].x;
-        let y = this.board.nodes[id].y;
+        let x = this.resizeStartNodeX;
+        let y = this.resizeStartNodeY;
         if (this.resizeDir.includes('e')) width = this.resizeStartWidth + dx;
         if (this.resizeDir.includes('s')) height = this.resizeStartHeight + dy;
         if (this.resizeDir.includes('w')) {
           width = this.resizeStartWidth - dx;
-          x = this.board.nodes[id].x + dx;
+          x = this.resizeStartNodeX + dx;
         }
         if (this.resizeDir.includes('n')) {
           height = this.resizeStartHeight - dy;
-          y = this.board.nodes[id].y + dy;
+          y = this.resizeStartNodeY + dy;
         }
         width = Math.max(120, width);
         height = Math.max(20, height);
