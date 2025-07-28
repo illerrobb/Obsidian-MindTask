@@ -502,12 +502,20 @@ export class BoardView extends ItemView {
       const y1 = fr.top - boardRect.top + fr.height / 2;
       const x2 = tr.left - boardRect.left + tr.width / 2;
       const y2 = tr.top - boardRect.top + tr.height / 2;
-      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
       const dx = Math.abs(x2 - x1);
-      path.setAttr('d', `M${x1} ${y1} C ${x1 + dx / 2} ${y1}, ${x2 - dx / 2} ${y2}, ${x2} ${y2}`);
-      path.classList.add('vtasks-edge', `vtasks-edge-${edge.type}`);
-      path.setAttr('data-index', String(idx));
-      this.svgEl.appendChild(path);
+      const d = `M${x1} ${y1} C ${x1 + dx / 2} ${y1}, ${x2 - dx / 2} ${y2}, ${x2} ${y2}`;
+
+      const hit = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      hit.setAttr('d', d);
+      hit.classList.add('vtasks-edge');
+      hit.setAttr('data-index', String(idx));
+      this.svgEl.appendChild(hit);
+
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      line.setAttr('d', d);
+      line.classList.add('vtasks-edge-line', `vtasks-edge-${edge.type}`);
+      line.setAttr('data-index', String(idx));
+      this.svgEl.appendChild(line);
     });
   }
 

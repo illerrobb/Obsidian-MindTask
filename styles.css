@@ -54,23 +54,30 @@
 }
 
 .vtasks-edge {
-  stroke: var(--text-muted);
-  stroke-width: 1.5px;
+  stroke: transparent;
+  stroke-width: 10px;
   fill: none;
   cursor: pointer;
   pointer-events: stroke;
 }
 
-.vtasks-edge-depends {
+.vtasks-edge-line {
+  stroke: var(--text-muted);
+  stroke-width: 1.5px;
+  fill: none;
+  pointer-events: none;
+}
+
+.vtasks-edge-line.vtasks-edge-depends {
   stroke: var(--color-accent);
 }
 
-.vtasks-edge-subtask {
+.vtasks-edge-line.vtasks-edge-subtask {
   stroke: var(--color-yellow);
   stroke-dasharray: 4 2;
 }
 
-.vtasks-edge-sequence {
+.vtasks-edge-line.vtasks-edge-sequence {
   stroke: var(--color-green);
   stroke-dasharray: 2 2;
 }
