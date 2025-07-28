@@ -139,6 +139,7 @@ export class BoardView extends ItemView {
         this.createNodeElement(id);
       }
     }
+    this.updateBoardSize();
     this.drawEdges();
     this.minimapEl = this.containerEl.createDiv('vtasks-minimap');
     this.minimapSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -320,6 +321,7 @@ export class BoardView extends ItemView {
         nodeEl.style.top = y + 'px';
         this.board.nodes[id] = { ...this.board.nodes[id], x, y, width, height };
         this.updateOverflow(nodeEl);
+        this.updateBoardSize();
         this.drawEdges();
         this.drawMinimap();
       } else if (this.draggingId) {
@@ -340,6 +342,7 @@ export class BoardView extends ItemView {
           nodeEl.style.top = y + 'px';
         this.board.nodes[id] = { ...this.board.nodes[id], x, y };
       });
+      this.updateBoardSize();
       this.drawEdges();
       this.drawMinimap();
       } else if (this.isBoardDragging) {
@@ -375,6 +378,7 @@ export class BoardView extends ItemView {
         const pos = this.board.nodes[id];
         this.controller.moveNode(id, pos.x, pos.y);
         this.controller.resizeNode(id, pos.width ?? 0, pos.height ?? 0);
+        this.updateBoardSize();
         this.drawMinimap();
       } else if (this.draggingId) {
         this.draggingId = null;
@@ -384,6 +388,7 @@ export class BoardView extends ItemView {
           const pos = this.board.nodes[id];
           this.controller.moveNode(id, pos.x, pos.y);
         });
+        this.updateBoardSize();
         this.drawMinimap();
       } else if (this.isBoardDragging) {
         this.isBoardDragging = false;
@@ -646,6 +651,22 @@ export class BoardView extends ItemView {
     } else {
       textEl.classList.remove('vtasks-fade');
     }
+  }
+
+  private updateBoardSize() {
+    if (!this.boardEl) return;
+    let maxX = 0;
+    let maxY = 0;
+    for (const id in this.board.nodes) {
+      const n = this.board.nodes[id];
+      if ((n.group || null) !== this.groupId) continue;
+      const w = n.width ?? 120;
+      const h = n.height ?? (n.type === 'group' ? 80 : 40);
+      maxX = Math.max(maxX, n.x + w);
+      maxY = Math.max(maxY, n.y + h);
+    }
+    this.boardEl.style.width = maxX + 'px';
+    this.boardEl.style.height = maxY + 'px';
   }
 
   private openGroup(id: string | null) {
