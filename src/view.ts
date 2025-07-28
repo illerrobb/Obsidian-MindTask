@@ -16,14 +16,20 @@ export class BoardView extends ItemView {
   private tempEdge: SVGPathElement | null = null;
   private edgeX = 0;
   private edgeY = 0;
+  private filters: { tags: string[]; folders: string[] };
+  private onFilterChange: (tags: string[], folders: string[]) => void;
 
   constructor(
     leaf: WorkspaceLeaf,
     private controller: Controller,
     private board: BoardData,
-    private tasks: Map<string, ParsedTask>
+    private tasks: Map<string, ParsedTask>,
+    filters: { tags: string[]; folders: string[] },
+    onFilterChange: (tags: string[], folders: string[]) => void
   ) {
     super(leaf);
+    this.filters = filters;
+    this.onFilterChange = onFilterChange;
   }
 
   getViewType() {
@@ -38,14 +44,46 @@ export class BoardView extends ItemView {
     this.render();
   }
 
-  updateData(board: BoardData, tasks: Map<string, ParsedTask>) {
+  updateData(
+    board: BoardData,
+    tasks: Map<string, ParsedTask>,
+    filters: { tags: string[]; folders: string[] }
+  ) {
     this.board = board;
     this.tasks = tasks;
+    this.filters = filters;
     this.render();
   }
 
   private render() {
     this.containerEl.empty();
+    const controls = this.containerEl.createDiv('vtasks-filter-bar');
+    const tagInput = controls.createEl('input', {
+      type: 'text',
+      placeholder: 'tags'
+    });
+    tagInput.value = this.filters.tags.join(', ');
+    tagInput.onchange = () => {
+      this.filters.tags = tagInput.value
+        .split(',')
+        .map((t) => t.trim().replace(/^#/, ''))
+        .filter((t) => t.length > 0);
+      this.onFilterChange(this.filters.tags, this.filters.folders);
+    };
+
+    const folderInput = controls.createEl('input', {
+      type: 'text',
+      placeholder: 'folders'
+    });
+    folderInput.value = this.filters.folders.join(', ');
+    folderInput.onchange = () => {
+      this.filters.folders = folderInput.value
+        .split(',')
+        .map((f) => f.trim())
+        .filter((f) => f.length > 0);
+      this.onFilterChange(this.filters.tags, this.filters.folders);
+    };
+
     this.boardEl = this.containerEl.createDiv('vtasks-board');
     this.boardEl.tabIndex = 0;
     this.svgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');

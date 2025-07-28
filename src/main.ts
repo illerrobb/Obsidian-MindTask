@@ -1,7 +1,7 @@
 import { Plugin, TFile } from 'obsidian';
 import { BoardView, VIEW_TYPE_BOARD } from './view';
 import { BoardData, loadBoard, saveBoard, getBoardFile } from './boardStore';
-import { scanFiles, parseDependencies, ParsedTask } from './parser';
+import { scanFiles, parseDependencies, ParsedTask, ScanOptions } from './parser';
 import Controller from './controller';
 import { PluginSettings, DEFAULT_SETTINGS, SettingsTab } from './settings';
 
@@ -19,7 +19,14 @@ export default class VisualTasksPlugin extends Plugin {
       if (!this.board || !this.controller) {
         throw new Error('Board not loaded');
       }
-      return new BoardView(leaf, this.controller!, this.board!, this.tasks);
+      return new BoardView(
+        leaf,
+        this.controller!,
+        this.board!,
+        this.tasks,
+        { tags: this.settings.tagFilters, folders: this.settings.folderPaths },
+        (tags, folders) => this.updateFilters(tags, folders)
+      );
     });
 
     this.registerEvent(
@@ -41,7 +48,10 @@ export default class VisualTasksPlugin extends Plugin {
 
   async openBoard() {
     const files = this.app.vault.getMarkdownFiles();
-    const parsed = await scanFiles(this.app, files);
+    const parsed = await scanFiles(this.app, files, {
+      tags: this.settings.tagFilters,
+      folders: this.settings.folderPaths,
+    });
     this.tasks = new Map(parsed.map((t) => [t.blockId, t]));
     const deps = parseDependencies(parsed);
 
@@ -73,11 +83,21 @@ export default class VisualTasksPlugin extends Plugin {
     await leaf.setViewState({ type: VIEW_TYPE_BOARD, active: true });
   }
 
+  async updateFilters(tags: string[], folders: string[]) {
+    this.settings.tagFilters = tags;
+    this.settings.folderPaths = folders;
+    await this.saveData(this.settings);
+    await this.refreshFromVault();
+  }
+
   private async refreshFromVault() {
     if (!this.board || !this.boardFile) return;
 
     const files = this.app.vault.getMarkdownFiles();
-    const parsed = await scanFiles(this.app, files);
+    const parsed = await scanFiles(this.app, files, {
+      tags: this.settings.tagFilters,
+      folders: this.settings.folderPaths,
+    });
     const deps = parseDependencies(parsed);
 
     this.tasks.clear();
@@ -110,7 +130,10 @@ export default class VisualTasksPlugin extends Plugin {
 
     const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_BOARD)[0];
     if (leaf) {
-      (leaf.view as BoardView).updateData(this.board, this.tasks);
+      (leaf.view as BoardView).updateData(this.board, this.tasks, {
+        tags: this.settings.tagFilters,
+        folders: this.settings.folderPaths,
+      });
     }
   }
 }
