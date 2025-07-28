@@ -38,7 +38,18 @@ export async function getBoardFile(app: App, path: string): Promise<TFile> {
   const normalized = normalizePath(path);
   let file = app.vault.getAbstractFileByPath(normalized) as TFile;
   if (!file) {
-    await app.vault.create(normalized, JSON.stringify({ version: CURRENT_VERSION, nodes: {}, edges: [] }, null, 2));
+    try {
+      await app.vault.create(
+        normalized,
+        JSON.stringify({ version: CURRENT_VERSION, nodes: {}, edges: [] }, null, 2)
+      );
+    } catch (err: any) {
+      if (err?.message?.includes('already exists')) {
+        console.warn(`Board file ${normalized} already exists, loading it`);
+      } else {
+        throw err;
+      }
+    }
     file = app.vault.getAbstractFileByPath(normalized) as TFile;
   }
   return file;
