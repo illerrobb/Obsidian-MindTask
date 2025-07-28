@@ -32,12 +32,16 @@
   border: 1px solid var(--background-modifier-border);
   border-radius: 4px;
   overflow: visible;
-  max-width: 260px;
+  min-width: 120px;
 }
 
 .vtasks-text {
   pointer-events: none;
   overflow: hidden;
+  max-height: 100%;
+}
+
+.vtasks-text.vtasks-fade {
   -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 calc(100% - 1.2em), transparent 100%);
           mask-image: linear-gradient(180deg, #000 0%, #000 calc(100% - 1.2em), transparent 100%);
 }
@@ -77,6 +81,13 @@
   height: 10px;
   border-radius: 50%;
   background: var(--color-accent);
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.vtasks-node:hover .vtasks-handle,
+.vtasks-board.show-handles .vtasks-handle {
+  opacity: 1;
 }
 
 .vtasks-handle-in {
@@ -176,4 +187,28 @@
 .vtasks-group-count {
   font-size: 0.8em;
   text-align: right;
+}
+
+.vtasks-tags,
+.vtasks-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  font-size: 0.75em;
+  margin-top: 4px;
+}
+
+.vtasks-meta {
+  margin-bottom: 4px;
+}
+
+.vtasks-tag,
+.vtasks-meta span {
+  padding: 2px 4px;
+  border-radius: 4px;
+  background: var(--background-modifier-border);
+}
+
+.vtasks-node.done {
+  outline: 2px solid var(--color-green);
 }
