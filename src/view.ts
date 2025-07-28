@@ -22,6 +22,8 @@ export class BoardView extends ItemView {
   private tempEdge: SVGPathElement | null = null;
   private edgeX = 0;
   private edgeY = 0;
+  private edgeEls: Map<number, { hit: SVGPathElement; line: SVGPathElement }> =
+    new Map();
   private selectionRect: HTMLElement | null = null;
   private selStartX = 0;
   private selStartY = 0;
@@ -130,6 +132,8 @@ export class BoardView extends ItemView {
     this.svgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     this.svgEl.addClass('vtasks-edges');
     this.boardEl.appendChild(this.svgEl);
+    this.edgeEls = new Map();
+    this.svgEl.empty();
     this.svgEl.style.position = 'absolute';
     this.svgEl.style.width = '100%';
     this.svgEl.style.height = '100%';
@@ -606,14 +610,32 @@ export class BoardView extends ItemView {
   }
 
   private drawEdges() {
-    this.svgEl.empty();
+    const toRemove = new Set(this.edgeEls.keys());
     this.board.edges.forEach((edge, idx) => {
       const fromNode = this.board.nodes[edge.from];
       const toNode = this.board.nodes[edge.to];
-      if ((fromNode.group || null) !== this.groupId || (toNode.group || null) !== this.groupId) return;
+      const els = this.edgeEls.get(idx);
+      if (
+        (fromNode.group || null) !== this.groupId ||
+        (toNode.group || null) !== this.groupId
+      ) {
+        if (els) {
+          els.hit.remove();
+          els.line.remove();
+          this.edgeEls.delete(idx);
+        }
+        return;
+      }
       const fromEl = this.boardEl.querySelector(`.vtasks-node[data-id="${edge.from}"] .vtasks-handle-out`) as HTMLElement | null;
       const toEl = this.boardEl.querySelector(`.vtasks-node[data-id="${edge.to}"] .vtasks-handle-in`) as HTMLElement | null;
-      if (!fromEl || !toEl) return;
+      if (!fromEl || !toEl) {
+        if (els) {
+          els.hit.remove();
+          els.line.remove();
+          this.edgeEls.delete(idx);
+        }
+        return;
+      }
       const boardRect = this.boardEl.getBoundingClientRect();
       const fr = fromEl.getBoundingClientRect();
       const tr = toEl.getBoundingClientRect();
@@ -623,18 +645,35 @@ export class BoardView extends ItemView {
       const y2 = (tr.top - boardRect.top + tr.height / 2) / this.zoom;
       const dx = Math.abs(x2 - x1);
       const d = `M${x1} ${y1} C ${x1 + dx / 2} ${y1}, ${x2 - dx / 2} ${y2}, ${x2} ${y2}`;
-
-      const hit = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      hit.setAttr('d', d);
-      hit.classList.add('vtasks-edge');
-      hit.setAttr('data-index', String(idx));
-      this.svgEl.appendChild(hit);
-
-      const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      line.setAttr('d', d);
-      line.classList.add('vtasks-edge-line', `vtasks-edge-${edge.type}`);
-      line.setAttr('data-index', String(idx));
-      this.svgEl.appendChild(line);
+      toRemove.delete(idx);
+      let current = els;
+      if (!current) {
+        const hit = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        hit.classList.add('vtasks-edge');
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        line.classList.add('vtasks-edge-line');
+        this.svgEl.appendChild(hit);
+        this.svgEl.appendChild(line);
+        current = { hit, line };
+        this.edgeEls.set(idx, current);
+      }
+      current.hit.setAttr('d', d);
+      current.hit.setAttr('data-index', String(idx));
+      current.line.setAttr('d', d);
+      current.line.setAttr('data-index', String(idx));
+      current.line.classList.remove(
+        'vtasks-edge-depends',
+        'vtasks-edge-subtask',
+        'vtasks-edge-sequence'
+      );
+      current.line.classList.add(`vtasks-edge-${edge.type}`);
+    });
+    toRemove.forEach((idx) => {
+      const els = this.edgeEls.get(idx);
+      if (!els) return;
+      els.hit.remove();
+      els.line.remove();
+      this.edgeEls.delete(idx);
     });
   }
 
