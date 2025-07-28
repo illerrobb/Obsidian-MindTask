@@ -19,6 +19,16 @@ export default class Controller {
     await saveBoard(this.app, this.boardFile, this.board);
   }
 
+  async resizeNode(id: string, width: number, height: number) {
+    if (!this.board.nodes[id]) return;
+    this.board.nodes[id] = {
+      ...this.board.nodes[id],
+      width,
+      height,
+    } as NodeData;
+    await saveBoard(this.app, this.boardFile, this.board);
+  }
+
   async createTask(
     text: string,
     x: number,

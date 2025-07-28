@@ -31,15 +31,15 @@
   background: var(--background-secondary-alt);
   border: 1px solid var(--background-modifier-border);
   border-radius: 4px;
-  resize: both;
-  overflow: hidden;
+  overflow: visible;
   max-width: 260px;
-  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 calc(100% - 1.2em), transparent 100%);
-          mask-image: linear-gradient(180deg, #000 0%, #000 calc(100% - 1.2em), transparent 100%);
 }
 
 .vtasks-text {
   pointer-events: none;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 calc(100% - 1.2em), transparent 100%);
+          mask-image: linear-gradient(180deg, #000 0%, #000 calc(100% - 1.2em), transparent 100%);
 }
 .vtasks-node.selected {
   outline: 2px solid var(--color-accent);
@@ -89,6 +89,63 @@
   right: -5px;
   top: 50%;
   transform: translate(50%, -50%);
+}
+
+.vtasks-resize {
+  position: absolute;
+}
+.vtasks-resize-n,
+.vtasks-resize-s {
+  left: 0;
+  width: 100%;
+  height: 4px;
+  cursor: ns-resize;
+}
+.vtasks-resize-n {
+  top: -2px;
+}
+.vtasks-resize-s {
+  bottom: -2px;
+}
+.vtasks-resize-e,
+.vtasks-resize-w {
+  top: 0;
+  height: 100%;
+  width: 4px;
+  cursor: ew-resize;
+}
+.vtasks-resize-e {
+  right: -2px;
+}
+.vtasks-resize-w {
+  left: -2px;
+}
+.vtasks-resize-ne,
+.vtasks-resize-nw,
+.vtasks-resize-se,
+.vtasks-resize-sw {
+  width: 8px;
+  height: 8px;
+}
+.vtasks-resize-ne {
+  top: -4px;
+  right: -4px;
+  cursor: nesw-resize;
+}
+.vtasks-resize-nw {
+  top: -4px;
+  left: -4px;
+  cursor: nwse-resize;
+}
+.vtasks-resize-se {
+  bottom: -4px;
+  right: -4px;
+  cursor: nwse-resize;
+}
+.vtasks-resize-sw {
+  bottom: -4px;
+  left: -4px;
+  cursor: nesw-resize;
 }
 
 .vtasks-selection {

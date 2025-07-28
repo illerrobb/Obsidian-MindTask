@@ -3,6 +3,8 @@ import { App, normalizePath, TFile } from 'obsidian';
 export interface NodeData {
   x: number;
   y: number;
+  width?: number;
+  height?: number;
   color?: string;
   type?: 'group';
   name?: string;

@@ -22,6 +22,12 @@ export class BoardView extends ItemView {
   private selectionRect: HTMLElement | null = null;
   private selStartX = 0;
   private selStartY = 0;
+  private resizingId: string | null = null;
+  private resizeDir = '';
+  private resizeStartWidth = 0;
+  private resizeStartHeight = 0;
+  private resizeStartX = 0;
+  private resizeStartY = 0;
   private groupId: string | null = null;
   private filters: { tags: string[]; folders: string[] };
   private onFilterChange: (tags: string[], folders: string[]) => void;
@@ -124,6 +130,8 @@ export class BoardView extends ItemView {
     nodeEl.setAttr('data-id', id);
     nodeEl.style.left = pos.x + 'px';
     nodeEl.style.top = pos.y + 'px';
+    if (pos.width) nodeEl.style.width = pos.width + 'px';
+    if (pos.height) nodeEl.style.height = pos.height + 'px';
     if (pos.color) nodeEl.style.borderColor = pos.color;
 
     const inHandle = nodeEl.createDiv('vtasks-handle vtasks-handle-in');
@@ -143,6 +151,9 @@ export class BoardView extends ItemView {
     }
     const outHandle = nodeEl.createDiv('vtasks-handle vtasks-handle-out');
 
+    const dirs = ['n', 'e', 's', 'w', 'ne', 'nw', 'se', 'sw'];
+    dirs.forEach((d) => nodeEl.createDiv(`vtasks-resize vtasks-resize-${d}`));
+
     new ResizeObserver(() => this.drawEdges()).observe(nodeEl);
 
     nodeEl.addEventListener('dblclick', (e) => {
@@ -157,10 +168,22 @@ export class BoardView extends ItemView {
 
   private registerEvents() {
     this.boardEl.onpointerdown = (e) => {
+      const resizeEl = (e.target as HTMLElement).closest('.vtasks-resize') as HTMLElement | null;
       const outHandle = (e.target as HTMLElement).closest('.vtasks-handle-out') as HTMLElement | null;
       const inHandle = (e.target as HTMLElement).closest('.vtasks-handle-in') as HTMLElement | null;
       const node = (e.target as HTMLElement).closest('.vtasks-node') as HTMLElement | null;
-      if (outHandle && node) {
+      if (resizeEl && node) {
+        const id = node.getAttribute('data-id')!;
+        this.resizingId = id;
+        const cls = Array.from(resizeEl.classList).find((c) => c.startsWith('vtasks-resize-'))!;
+        this.resizeDir = cls.replace('vtasks-resize-', '');
+        const rect = node.getBoundingClientRect();
+        this.resizeStartWidth = rect.width;
+        this.resizeStartHeight = rect.height;
+        this.resizeStartX = (e as PointerEvent).clientX;
+        this.resizeStartY = (e as PointerEvent).clientY;
+        this.board.nodes[id] = { ...this.board.nodes[id], width: rect.width, height: rect.height };
+      } else if (outHandle && node) {
         const id = node.getAttribute('data-id')!;
         this.edgeStart = id;
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -189,7 +212,34 @@ export class BoardView extends ItemView {
     };
 
     this.boardEl.onpointermove = (e) => {
-      if (this.draggingId) {
+      if (this.resizingId) {
+        const id = this.resizingId;
+        const nodeEl = this.boardEl.querySelector(`.vtasks-node[data-id="${id}"]`) as HTMLElement;
+        const dx = (e as PointerEvent).clientX - this.resizeStartX;
+        const dy = (e as PointerEvent).clientY - this.resizeStartY;
+        let width = this.resizeStartWidth;
+        let height = this.resizeStartHeight;
+        let x = this.board.nodes[id].x;
+        let y = this.board.nodes[id].y;
+        if (this.resizeDir.includes('e')) width = this.resizeStartWidth + dx;
+        if (this.resizeDir.includes('s')) height = this.resizeStartHeight + dy;
+        if (this.resizeDir.includes('w')) {
+          width = this.resizeStartWidth - dx;
+          x = this.board.nodes[id].x + dx;
+        }
+        if (this.resizeDir.includes('n')) {
+          height = this.resizeStartHeight - dy;
+          y = this.board.nodes[id].y + dy;
+        }
+        width = Math.max(40, width);
+        height = Math.max(20, height);
+        nodeEl.style.width = width + 'px';
+        nodeEl.style.height = height + 'px';
+        nodeEl.style.left = x + 'px';
+        nodeEl.style.top = y + 'px';
+        this.board.nodes[id] = { ...this.board.nodes[id], x, y, width, height };
+        this.drawEdges();
+      } else if (this.draggingId) {
         const id = this.draggingId;
         const nodeEl = this.boardEl.querySelector(`.vtasks-node[data-id="${id}"]`) as HTMLElement;
         const boardRect = this.boardEl.getBoundingClientRect();
@@ -253,7 +303,13 @@ export class BoardView extends ItemView {
     };
 
     this.boardEl.onpointerup = (e) => {
-      if (this.draggingId) {
+      if (this.resizingId) {
+        const id = this.resizingId;
+        this.resizingId = null;
+        const pos = this.board.nodes[id];
+        this.controller.moveNode(id, pos.x, pos.y);
+        this.controller.resizeNode(id, pos.width ?? 0, pos.height ?? 0);
+      } else if (this.draggingId) {
         const id = this.draggingId;
         this.draggingId = null;
         this.alignVLine.style.display = 'none';
