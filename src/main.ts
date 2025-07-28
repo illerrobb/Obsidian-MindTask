@@ -22,6 +22,16 @@ export default class VisualTasksPlugin extends Plugin {
       return new BoardView(leaf, this.controller!, this.board!, this.tasks);
     });
 
+    this.registerEvent(
+      this.app.vault.on('create', () => this.refreshFromVault())
+    );
+    this.registerEvent(
+      this.app.vault.on('modify', () => this.refreshFromVault())
+    );
+    this.registerEvent(
+      this.app.vault.on('delete', () => this.refreshFromVault())
+    );
+
     this.addCommand({
       id: 'open-board',
       name: 'Open Tasks Board',
@@ -61,5 +71,46 @@ export default class VisualTasksPlugin extends Plugin {
 
     const leaf = this.app.workspace.getLeaf(true);
     await leaf.setViewState({ type: VIEW_TYPE_BOARD, active: true });
+  }
+
+  private async refreshFromVault() {
+    if (!this.board || !this.boardFile) return;
+
+    const files = this.app.vault.getMarkdownFiles();
+    const parsed = await scanFiles(this.app, files);
+    const deps = parseDependencies(parsed);
+
+    this.tasks.clear();
+    for (const task of parsed) {
+      this.tasks.set(task.blockId, task);
+      if (!this.board.nodes[task.blockId]) {
+        this.board.nodes[task.blockId] = { x: 20, y: 20 };
+      }
+    }
+
+    for (const id of Object.keys(this.board.nodes)) {
+      if (!this.tasks.has(id)) delete this.board.nodes[id];
+    }
+
+    this.board.edges = this.board.edges.filter(
+      (e) => this.tasks.has(e.from) && this.tasks.has(e.to)
+    );
+
+    for (const dep of deps) {
+      if (
+        !this.board.edges.find(
+          (e) => e.from === dep.from && e.to === dep.to && e.type === dep.type
+        )
+      ) {
+        this.board.edges.push(dep);
+      }
+    }
+
+    await saveBoard(this.app, this.boardFile, this.board);
+
+    const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_BOARD)[0];
+    if (leaf) {
+      (leaf.view as BoardView).updateData(this.board, this.tasks);
+    }
   }
 }
