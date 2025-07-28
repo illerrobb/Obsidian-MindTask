@@ -27,6 +27,9 @@
 
 .vtasks-node {
   position: absolute;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
   padding: 4px 8px;
   background: var(--background-secondary-alt);
   border: 1px solid var(--background-modifier-border);

@@ -138,9 +138,8 @@ export class BoardView extends ItemView {
     if (pos.color) nodeEl.style.borderColor = pos.color;
 
     const inHandle = nodeEl.createDiv('vtasks-handle vtasks-handle-in');
-    const metaEl = nodeEl.createDiv('vtasks-meta');
     const textEl = nodeEl.createDiv('vtasks-text');
-    const tagsEl = nodeEl.createDiv('vtasks-tags');
+    const metaEl = nodeEl.createDiv('vtasks-meta');
     if (pos.type === 'group') {
       nodeEl.addClass('vtasks-group');
       textEl.textContent = pos.name || 'Group';
@@ -171,6 +170,7 @@ export class BoardView extends ItemView {
       }
       textEl.textContent = text.trim();
       metas.forEach((m) => metaEl.createSpan({ text: m }));
+      const tagsEl = metaEl.createDiv('vtasks-tags');
       tags.forEach((t) => tagsEl.createSpan({ text: t, cls: 'vtasks-tag' }));
       if (task?.checked) nodeEl.addClass('done');
     }
