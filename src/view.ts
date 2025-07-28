@@ -60,6 +60,7 @@ export class BoardView extends ItemView {
     nodeEl.style.left = pos.x + 'px';
     nodeEl.style.top = pos.y + 'px';
     nodeEl.textContent = this.tasks.get(id)?.text ?? id;
+    new ResizeObserver(() => this.drawEdges()).observe(nodeEl);
   }
 
   private registerEvents() {
