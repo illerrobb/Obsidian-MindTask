@@ -444,6 +444,31 @@ export class BoardView extends ItemView {
         this.controller.cycleEdgeType(idx).then(() => this.render());
       }
     });
+
+    this.svgEl.addEventListener('contextmenu', (e) => {
+      const edgeEl = (e.target as HTMLElement).closest('path.vtasks-edge') as SVGPathElement | null;
+      if (!edgeEl || !edgeEl.getAttr('data-index')) return;
+      e.preventDefault();
+      const idx = parseInt(edgeEl.getAttr('data-index')!);
+      const edge = this.board.edges[idx];
+      if (!edge) return;
+      const menu = new Menu();
+      const types = ['depends', 'subtask', 'sequence'];
+      types.forEach((t) => {
+        const title = edge.type === t ? `✔ ${t}` : t;
+        menu.addItem((item) =>
+          item.setTitle(title).onClick(() => {
+            this.controller.setEdgeType(idx, t).then(() => this.render());
+          })
+        );
+      });
+      menu.addItem((item) =>
+        item.setTitle('Delete connection').onClick(() => {
+          this.controller.deleteEdge(idx).then(() => this.render());
+        })
+      );
+      menu.showAtMouseEvent(e as MouseEvent);
+    });
   }
 
   private selectNode(el: HTMLElement, id: string, additive = false) {
