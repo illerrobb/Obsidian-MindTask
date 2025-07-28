@@ -224,7 +224,8 @@ export class BoardView extends ItemView {
         this.edgeStart = id;
         this.boardEl.classList.add('show-handles');
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        path.addClass('vtasks-edge');
+        // Display the temporary connection line while dragging
+        path.addClass('vtasks-edge-line vtasks-edge-depends');
         this.tempEdge = path;
         const boardRect = this.boardEl.getBoundingClientRect();
         const r = outHandle.getBoundingClientRect();
