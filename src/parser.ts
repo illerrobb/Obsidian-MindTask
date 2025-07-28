@@ -69,7 +69,7 @@ export function parseDependencies(tasks: ParsedTask[]): { from: string; to: stri
   for (const t of tasks) {
     let m: RegExpExecArray | null;
     while ((m = depRegex.exec(t.text)) !== null) {
-      edges.push({ from: t.blockId, to: m[2], type: 'depends' });
+      edges.push({ from: m[2], to: t.blockId, type: 'depends' });
     }
     while ((m = subtaskRegex.exec(t.text)) !== null) {
       edges.push({ from: m[2], to: t.blockId, type: 'subtask' });

@@ -166,22 +166,14 @@ export default class Controller {
       }
       return `${t} ${rel}`;
     };
-    if (type === 'depends') {
-      await this.modifyTaskText(from, insertRel);
-    } else {
-      await this.modifyTaskText(to, insertRel);
-    }
+    await this.modifyTaskText(to, insertRel);
   }
 
   private async removeRelation(type: string, from: ParsedTask, to: ParsedTask) {
     const rel = this.relationString(type, from, to);
     if (!rel) return;
     const re = new RegExp(`\\s*${rel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
-    if (type === 'depends') {
-      await this.modifyTaskText(from, (t) => t.replace(re, ''));
-    } else {
-      await this.modifyTaskText(to, (t) => t.replace(re, ''));
-    }
+    await this.modifyTaskText(to, (t) => t.replace(re, ''));
   }
 
   async createEdge(from: string, to: string, type: string) {
