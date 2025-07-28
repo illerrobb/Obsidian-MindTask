@@ -38,6 +38,12 @@ export class BoardView extends ItemView {
     this.render();
   }
 
+  updateData(board: BoardData, tasks: Map<string, ParsedTask>) {
+    this.board = board;
+    this.tasks = tasks;
+    this.render();
+  }
+
   private render() {
     this.containerEl.empty();
     this.boardEl = this.containerEl.createDiv('vtasks-board');
