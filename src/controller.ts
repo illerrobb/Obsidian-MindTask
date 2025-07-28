@@ -1,6 +1,6 @@
 import { App, normalizePath, TFile } from 'obsidian';
 import crypto from 'crypto';
-import { BoardData, saveBoard } from './boardStore';
+import { BoardData, NodeData, saveBoard } from './boardStore';
 import { ParsedTask } from './parser';
 import { PluginSettings } from './settings';
 
@@ -15,7 +15,7 @@ export default class Controller {
 
   async moveNode(id: string, x: number, y: number) {
     if (!this.board.nodes[id]) return;
-    this.board.nodes[id] = { x, y };
+    this.board.nodes[id] = { ...this.board.nodes[id], x, y } as NodeData;
     await saveBoard(this.app, this.boardFile, this.board);
   }
 
@@ -44,7 +44,7 @@ export default class Controller {
       dependsOn: [],
     };
     this.tasks.set(id, task);
-    this.board.nodes[id] = { x, y };
+    this.board.nodes[id] = { x, y } as NodeData;
     await saveBoard(this.app, this.boardFile, this.board);
     return id;
   }
@@ -62,16 +62,33 @@ export default class Controller {
   async toggleCheck(id: string) {
     const task = this.tasks.get(id);
     if (!task) return;
+    await this.setCheck(id, !task.checked);
+  }
+
+  async setCheck(id: string, checked: boolean) {
+    const task = this.tasks.get(id);
+    if (!task) return;
     const lines = (await this.app.vault.read(task.file)).split(/\r?\n/);
     const line = lines[task.line];
     const m = line.match(/^(\s*)- \[( |x)\] (.*)/);
     if (!m) return;
     const indent = m[1];
-    const checked = m[2] === 'x';
     const rest = m[3];
-    lines[task.line] = `${indent}- [${checked ? ' ' : 'x'}] ${rest}`;
+    lines[task.line] = `${indent}- [${checked ? 'x' : ' '}] ${rest}`;
     await this.app.vault.modify(task.file, lines.join('\n'));
-    task.checked = !checked;
+    task.checked = checked;
+  }
+
+  async setNodeColor(id: string, color: string | null) {
+    if (!this.board.nodes[id]) return;
+    const data: NodeData = { ...this.board.nodes[id] } as NodeData;
+    if (color) {
+      data.color = color;
+    } else {
+      delete (data as any).color;
+    }
+    this.board.nodes[id] = data;
+    await saveBoard(this.app, this.boardFile, this.board);
   }
 
   private async modifyTaskText(task: ParsedTask, fn: (text: string) => string) {

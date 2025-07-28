@@ -1,8 +1,14 @@
 import { App, normalizePath, TFile } from 'obsidian';
 
+export interface NodeData {
+  x: number;
+  y: number;
+  color?: string;
+}
+
 export interface BoardData {
   version: number;
-  nodes: Record<string, { x: number; y: number }>;
+  nodes: Record<string, NodeData>;
   edges: { from: string; to: string; type: string }[];
 }
 

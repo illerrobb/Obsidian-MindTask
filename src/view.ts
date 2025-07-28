@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf } from 'obsidian';
+import { ItemView, WorkspaceLeaf, Menu } from 'obsidian';
 import Controller from './controller';
 import { BoardData } from './boardStore';
 import { ParsedTask } from './parser';
@@ -105,6 +105,7 @@ export class BoardView extends ItemView {
     nodeEl.setAttr('data-id', id);
     nodeEl.style.left = pos.x + 'px';
     nodeEl.style.top = pos.y + 'px';
+    if (pos.color) nodeEl.style.borderColor = pos.color;
 
     const inHandle = nodeEl.createDiv('vtasks-handle vtasks-handle-in');
     const textEl = nodeEl.createDiv('vtasks-text');
@@ -155,7 +156,7 @@ export class BoardView extends ItemView {
         const y = (e as PointerEvent).clientY - boardRect.top - this.dragOffsetY;
         nodeEl.style.left = x + 'px';
         nodeEl.style.top = y + 'px';
-        this.board.nodes[id] = { x, y };
+        this.board.nodes[id] = { ...this.board.nodes[id], x, y };
         this.drawEdges();
       } else if (this.edgeStart && this.tempEdge) {
         const boardRect = this.boardEl.getBoundingClientRect();
@@ -203,6 +204,31 @@ export class BoardView extends ItemView {
       } else {
         this.clearSelection();
       }
+    });
+
+    this.boardEl.addEventListener('contextmenu', (e) => {
+      const target = (e.target as HTMLElement).closest('.vtasks-node') as HTMLElement | null;
+      if (!target) return;
+      e.preventDefault();
+      const id = target.getAttribute('data-id')!;
+      const menu = new Menu();
+      const colors = ['red', 'green', 'blue', 'yellow', ''];
+      colors.forEach((c) => {
+        const title = c ? `Outline ${c}` : 'Default outline';
+        menu.addItem((item) =>
+          item.setTitle(title).onClick(() => {
+            target.style.borderColor = c ? c : '';
+            this.controller.setNodeColor(id, c || null).then(() => this.render());
+          })
+        );
+      });
+      const checked = this.tasks.get(id)?.checked ?? false;
+      menu.addItem((item) =>
+        item
+          .setTitle(checked ? 'Mark not done' : 'Mark done')
+          .onClick(() => this.controller.setCheck(id, !checked).then(() => this.render()))
+      );
+      menu.showAtMouseEvent(e as MouseEvent);
     });
 
     this.boardEl.addEventListener('keydown', (e) => {
