@@ -25,6 +25,11 @@ export class BoardView extends ItemView {
   private selectionRect: HTMLElement | null = null;
   private selStartX = 0;
   private selStartY = 0;
+  private isBoardDragging = false;
+  private boardStartX = 0;
+  private boardStartY = 0;
+  private boardOffsetX = 0;
+  private boardOffsetY = 0;
   private resizingId: string | null = null;
   private resizeDir = '';
   private resizeStartWidth = 0;
@@ -107,6 +112,7 @@ export class BoardView extends ItemView {
 
     this.boardEl = this.containerEl.createDiv('vtasks-board');
     this.boardEl.tabIndex = 0;
+    this.boardEl.style.transform = `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px)`;
     this.alignVLine = this.boardEl.createDiv('vtasks-align-line vtasks-align-v');
     this.alignHLine = this.boardEl.createDiv('vtasks-align-line vtasks-align-h');
     this.alignVLine.style.display = 'none';
@@ -246,6 +252,14 @@ export class BoardView extends ItemView {
           const npos = this.board.nodes[sid];
           this.dragStartPositions.set(sid, { x: npos.x, y: npos.y });
         });
+      } else if (
+        !node &&
+        (((e as PointerEvent).button === 1) || ((e as PointerEvent).ctrlKey && (e as PointerEvent).button === 0))
+      ) {
+        e.preventDefault();
+        this.isBoardDragging = true;
+        this.boardStartX = (e as PointerEvent).clientX - this.boardOffsetX;
+        this.boardStartY = (e as PointerEvent).clientY - this.boardOffsetY;
       } else {
         const boardRect = this.boardEl.getBoundingClientRect();
         this.selStartX = (e as PointerEvent).clientX - boardRect.left;
@@ -301,9 +315,13 @@ export class BoardView extends ItemView {
           const nodeEl = this.boardEl.querySelector(`.vtasks-node[data-id="${id}"]`) as HTMLElement;
           nodeEl.style.left = x + 'px';
           nodeEl.style.top = y + 'px';
-          this.board.nodes[id] = { ...this.board.nodes[id], x, y };
-        });
-        this.drawEdges();
+        this.board.nodes[id] = { ...this.board.nodes[id], x, y };
+      });
+      this.drawEdges();
+      } else if (this.isBoardDragging) {
+        this.boardOffsetX = (e as PointerEvent).clientX - this.boardStartX;
+        this.boardOffsetY = (e as PointerEvent).clientY - this.boardStartY;
+        this.boardEl.style.transform = `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px)`;
       } else if (this.edgeStart && this.tempEdge) {
         const boardRect = this.boardEl.getBoundingClientRect();
         const x2 = (e as PointerEvent).clientX - boardRect.left;
@@ -340,6 +358,8 @@ export class BoardView extends ItemView {
           const pos = this.board.nodes[id];
           this.controller.moveNode(id, pos.x, pos.y);
         });
+      } else if (this.isBoardDragging) {
+        this.isBoardDragging = false;
       } else if (this.edgeStart) {
         const handle = (e.target as HTMLElement).closest('.vtasks-handle-in') as HTMLElement | null;
         const node = handle ? handle.closest('.vtasks-node') as HTMLElement | null : null;
@@ -369,6 +389,12 @@ export class BoardView extends ItemView {
         });
         this.selectionRect.remove();
         this.selectionRect = null;
+      }
+    };
+
+    this.boardEl.onpointerleave = () => {
+      if (this.isBoardDragging) {
+        this.isBoardDragging = false;
       }
     };
 
