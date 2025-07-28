@@ -158,10 +158,18 @@ export default class Controller {
   private async applyRelation(type: string, from: ParsedTask, to: ParsedTask) {
     const rel = this.relationString(type, from, to);
     if (!rel) return;
+    const insertRel = (t: string) => {
+      if (t.includes(rel)) return t;
+      const match = t.match(/\^([\w-]+)$/);
+      if (match) {
+        return t.replace(/\^([\w-]+)$/, `${rel} ^$1`);
+      }
+      return `${t} ${rel}`;
+    };
     if (type === 'depends') {
-      await this.modifyTaskText(from, (t) => (t.includes(rel) ? t : `${t} ${rel}`));
+      await this.modifyTaskText(from, insertRel);
     } else {
-      await this.modifyTaskText(to, (t) => (t.includes(rel) ? t : `${t} ${rel}`));
+      await this.modifyTaskText(to, insertRel);
     }
   }
 
