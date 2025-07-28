@@ -31,6 +31,13 @@ export class BoardView extends ItemView {
   private boardOffsetX = 0;
   private boardOffsetY = 0;
   private zoom = 1;
+  private minimapEl!: HTMLElement;
+  private minimapSvg!: SVGSVGElement;
+  private minimapView!: HTMLElement;
+  private minimapScale = 1;
+  private minimapOffsetX = 0;
+  private minimapOffsetY = 0;
+  private isMinimapDragging = false;
   private resizingId: string | null = null;
   private resizeDir = '';
   private resizeStartWidth = 0;
@@ -131,6 +138,12 @@ export class BoardView extends ItemView {
       }
     }
     this.drawEdges();
+    this.minimapEl = this.containerEl.createDiv('vtasks-minimap');
+    this.minimapSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    this.minimapEl.appendChild(this.minimapSvg);
+    this.minimapView = this.minimapEl.createDiv('vtasks-mini-view');
+    this.drawMinimap();
+    this.updateMinimapView();
     this.registerEvents();
   }
 
@@ -304,6 +317,7 @@ export class BoardView extends ItemView {
         this.board.nodes[id] = { ...this.board.nodes[id], x, y, width, height };
         this.updateOverflow(nodeEl);
         this.drawEdges();
+        this.drawMinimap();
       } else if (this.draggingId) {
         const coords = this.getBoardCoords(e as PointerEvent);
         const curX = coords.x;
@@ -323,10 +337,12 @@ export class BoardView extends ItemView {
         this.board.nodes[id] = { ...this.board.nodes[id], x, y };
       });
       this.drawEdges();
+      this.drawMinimap();
       } else if (this.isBoardDragging) {
         this.boardOffsetX = (e as PointerEvent).clientX - this.boardStartX;
         this.boardOffsetY = (e as PointerEvent).clientY - this.boardStartY;
         this.boardEl.style.transform = `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px) scale(${this.zoom})`;
+        this.updateMinimapView();
       } else if (this.edgeStart && this.tempEdge) {
         const coords = this.getBoardCoords(e as PointerEvent);
         const x2 = coords.x;
@@ -355,6 +371,7 @@ export class BoardView extends ItemView {
         const pos = this.board.nodes[id];
         this.controller.moveNode(id, pos.x, pos.y);
         this.controller.resizeNode(id, pos.width ?? 0, pos.height ?? 0);
+        this.drawMinimap();
       } else if (this.draggingId) {
         this.draggingId = null;
         this.alignVLine.style.display = 'none';
@@ -363,8 +380,10 @@ export class BoardView extends ItemView {
           const pos = this.board.nodes[id];
           this.controller.moveNode(id, pos.x, pos.y);
         });
+        this.drawMinimap();
       } else if (this.isBoardDragging) {
         this.isBoardDragging = false;
+        this.updateMinimapView();
       } else if (this.edgeStart) {
         const handle = (e.target as HTMLElement).closest('.vtasks-handle-in') as HTMLElement | null;
         const node = handle ? handle.closest('.vtasks-node') as HTMLElement | null : null;
@@ -400,6 +419,7 @@ export class BoardView extends ItemView {
     this.boardEl.onpointerleave = () => {
       if (this.isBoardDragging) {
         this.isBoardDragging = false;
+        this.updateMinimapView();
       }
     };
 
@@ -416,6 +436,7 @@ export class BoardView extends ItemView {
           this.zoom = Math.min(Math.max(this.zoom, 0.2), 4);
           this.boardEl.style.transform = `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px) scale(${this.zoom})`;
           this.drawEdges();
+          this.updateMinimapView();
         }
       },
       { passive: false }
@@ -485,12 +506,14 @@ export class BoardView extends ItemView {
         this.zoom = Math.min(this.zoom * 1.1, 4);
         this.boardEl.style.transform = `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px) scale(${this.zoom})`;
         this.drawEdges();
+        this.updateMinimapView();
         return;
       }
       if (e.key === '-') {
         this.zoom = Math.max(this.zoom / 1.1, 0.2);
         this.boardEl.style.transform = `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px) scale(${this.zoom})`;
         this.drawEdges();
+        this.updateMinimapView();
         return;
       }
       if (!first) return;
@@ -532,6 +555,20 @@ export class BoardView extends ItemView {
       );
       menu.showAtMouseEvent(e as MouseEvent);
     });
+
+    this.minimapEl.onpointerdown = (e) => {
+      this.isMinimapDragging = true;
+      this.moveBoardFromMinimap(e as PointerEvent);
+    };
+    this.minimapEl.onpointermove = (e) => {
+      if (this.isMinimapDragging) this.moveBoardFromMinimap(e as PointerEvent);
+    };
+    this.minimapEl.onpointerup = () => {
+      this.isMinimapDragging = false;
+    };
+    this.minimapEl.onpointerleave = () => {
+      this.isMinimapDragging = false;
+    };
   }
 
   private selectNode(el: HTMLElement, id: string, additive = false) {
@@ -611,6 +648,95 @@ export class BoardView extends ItemView {
     this.groupId = id;
     this.clearSelection();
     this.render();
+  }
+
+  private drawMinimap() {
+    if (!this.minimapSvg) return;
+    this.minimapSvg.empty();
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    const nodes: { x: number; y: number; w: number; h: number }[] = [];
+    for (const id in this.board.nodes) {
+      const n = this.board.nodes[id];
+      if ((n.group || null) !== this.groupId) continue;
+      const w = n.width ?? 120;
+      const h = n.height ?? (n.type === 'group' ? 80 : 40);
+      nodes.push({ x: n.x, y: n.y, w, h });
+      minX = Math.min(minX, n.x);
+      minY = Math.min(minY, n.y);
+      maxX = Math.max(maxX, n.x + w);
+      maxY = Math.max(maxY, n.y + h);
+    }
+    if (!nodes.length) return;
+    const pad = 50;
+    minX -= pad;
+    minY -= pad;
+    maxX += pad;
+    maxY += pad;
+    const bw = maxX - minX;
+    const bh = maxY - minY;
+    const mw = this.minimapEl.clientWidth;
+    const mh = this.minimapEl.clientHeight;
+    const scale = Math.min(mw / bw, mh / bh);
+    this.minimapScale = scale;
+    this.minimapOffsetX = minX;
+    this.minimapOffsetY = minY;
+    this.minimapSvg.setAttr('viewBox', `0 0 ${mw} ${mh}`);
+    nodes.forEach((n) => {
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rect.setAttr('x', ((n.x - minX) * scale).toString());
+      rect.setAttr('y', ((n.y - minY) * scale).toString());
+      rect.setAttr('width', (n.w * scale).toString());
+      rect.setAttr('height', (n.h * scale).toString());
+      rect.addClass('vtasks-mini-node');
+      this.minimapSvg.appendChild(rect);
+    });
+    this.board.edges.forEach((edge) => {
+      const from = this.board.nodes[edge.from];
+      const to = this.board.nodes[edge.to];
+      if ((from.group || null) !== this.groupId || (to.group || null) !== this.groupId) return;
+      const fw = from.width ?? 120;
+      const fh = from.height ?? (from.type === 'group' ? 80 : 40);
+      const tw = to.width ?? 120;
+      const th = to.height ?? (to.type === 'group' ? 80 : 40);
+      const x1 = (from.x + fw / 2 - minX) * scale;
+      const y1 = (from.y + fh / 2 - minY) * scale;
+      const x2 = (to.x + tw / 2 - minX) * scale;
+      const y2 = (to.y + th / 2 - minY) * scale;
+      const dx = Math.abs(x2 - x1);
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttr('d', `M${x1} ${y1} C ${x1 + dx / 2} ${y1}, ${x2 - dx / 2} ${y2}, ${x2} ${y2}`);
+      path.addClass('vtasks-mini-edge');
+      this.minimapSvg.appendChild(path);
+    });
+    this.updateMinimapView();
+  }
+
+  private updateMinimapView() {
+    if (!this.minimapView) return;
+    const x = (-this.boardOffsetX / this.zoom - this.minimapOffsetX) * this.minimapScale;
+    const y = (-this.boardOffsetY / this.zoom - this.minimapOffsetY) * this.minimapScale;
+    const w = (this.boardEl.offsetWidth / this.zoom) * this.minimapScale;
+    const h = (this.boardEl.offsetHeight / this.zoom) * this.minimapScale;
+    this.minimapView.style.left = x + 'px';
+    this.minimapView.style.top = y + 'px';
+    this.minimapView.style.width = w + 'px';
+    this.minimapView.style.height = h + 'px';
+  }
+
+  private moveBoardFromMinimap(e: PointerEvent) {
+    const rect = this.minimapEl.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const bx = x / this.minimapScale + this.minimapOffsetX;
+    const by = y / this.minimapScale + this.minimapOffsetY;
+    this.boardOffsetX = this.boardEl.offsetWidth / 2 - bx * this.zoom;
+    this.boardOffsetY = this.boardEl.offsetHeight / 2 - by * this.zoom;
+    this.boardEl.style.transform = `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px) scale(${this.zoom})`;
+    this.updateMinimapView();
+    this.drawEdges();
   }
 
   private getBoardCoords(e: MouseEvent | PointerEvent) {
