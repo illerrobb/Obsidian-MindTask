@@ -135,7 +135,9 @@ export class BoardView extends ItemView {
     if (pos.color) nodeEl.style.borderColor = pos.color;
 
     const inHandle = nodeEl.createDiv('vtasks-handle vtasks-handle-in');
+    const metaEl = nodeEl.createDiv('vtasks-meta');
     const textEl = nodeEl.createDiv('vtasks-text');
+    const tagsEl = nodeEl.createDiv('vtasks-tags');
     if (pos.type === 'group') {
       nodeEl.addClass('vtasks-group');
       textEl.textContent = pos.name || 'Group';
@@ -147,14 +149,34 @@ export class BoardView extends ItemView {
       const num = nodeEl.createDiv('vtasks-group-count');
       num.textContent = String(count);
     } else {
-      textEl.textContent = this.tasks.get(id)?.text ?? id;
+      const task = this.tasks.get(id);
+      let text = task?.text ?? id;
+      const metas: string[] = [];
+      const tags: string[] = [];
+      text = text.replace(/\b(\w+)::\s*([^#\s]+)/g, (m, key, val) => {
+        if (!['dependsOn', 'subtaskOf', 'after'].includes(key)) metas.push(`${key}:${val}`);
+        return '';
+      });
+      text = text.replace(/#(\S+)/g, (_, t) => {
+        tags.push('#' + t);
+        return '';
+      });
+      textEl.textContent = text.trim();
+      metas.forEach((m) => metaEl.createSpan({ text: m }));
+      tags.forEach((t) => tagsEl.createSpan({ text: t, cls: 'vtasks-tag' }));
+      if (task?.checked) nodeEl.addClass('done');
     }
     const outHandle = nodeEl.createDiv('vtasks-handle vtasks-handle-out');
 
     const dirs = ['n', 'e', 's', 'w', 'ne', 'nw', 'se', 'sw'];
     dirs.forEach((d) => nodeEl.createDiv(`vtasks-resize vtasks-resize-${d}`));
 
-    new ResizeObserver(() => this.drawEdges()).observe(nodeEl);
+    new ResizeObserver(() => {
+      this.drawEdges();
+      this.updateOverflow(nodeEl);
+    }).observe(nodeEl);
+
+    this.updateOverflow(nodeEl);
 
     nodeEl.addEventListener('dblclick', (e) => {
       e.stopPropagation();
@@ -186,6 +208,7 @@ export class BoardView extends ItemView {
       } else if (outHandle && node) {
         const id = node.getAttribute('data-id')!;
         this.edgeStart = id;
+        this.boardEl.classList.add('show-handles');
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         path.addClass('vtasks-edge');
         this.tempEdge = path;
@@ -231,13 +254,14 @@ export class BoardView extends ItemView {
           height = this.resizeStartHeight - dy;
           y = this.board.nodes[id].y + dy;
         }
-        width = Math.max(40, width);
+        width = Math.max(120, width);
         height = Math.max(20, height);
         nodeEl.style.width = width + 'px';
         nodeEl.style.height = height + 'px';
         nodeEl.style.left = x + 'px';
         nodeEl.style.top = y + 'px';
         this.board.nodes[id] = { ...this.board.nodes[id], x, y, width, height };
+        this.updateOverflow(nodeEl);
         this.drawEdges();
       } else if (this.draggingId) {
         const id = this.draggingId;
@@ -326,6 +350,7 @@ export class BoardView extends ItemView {
           }
         }
         this.edgeStart = null;
+        this.boardEl.classList.remove('show-handles');
         if (this.tempEdge) {
           this.tempEdge.remove();
           this.tempEdge = null;
@@ -459,6 +484,21 @@ export class BoardView extends ItemView {
       path.setAttr('data-index', String(idx));
       this.svgEl.appendChild(path);
     });
+  }
+
+  private updateOverflow(nodeEl: HTMLElement) {
+    const textEl = nodeEl.querySelector('.vtasks-text') as HTMLElement | null;
+    if (!textEl) return;
+    if (nodeEl.style.height) {
+      textEl.style.maxHeight = '100%';
+    } else {
+      textEl.style.maxHeight = '';
+    }
+    if (textEl.scrollHeight > textEl.clientHeight) {
+      textEl.classList.add('vtasks-fade');
+    } else {
+      textEl.classList.remove('vtasks-fade');
+    }
   }
 
   private openGroup(id: string | null) {
