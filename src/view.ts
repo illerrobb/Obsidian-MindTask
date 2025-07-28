@@ -68,6 +68,11 @@ export class BoardView extends ItemView {
     const outHandle = nodeEl.createDiv('vtasks-handle vtasks-handle-out');
 
     new ResizeObserver(() => this.drawEdges()).observe(nodeEl);
+
+    nodeEl.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      this.controller.openTask(id);
+    });
   }
 
   private registerEvents() {
