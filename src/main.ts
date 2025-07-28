@@ -15,19 +15,17 @@ export default class VisualTasksPlugin extends Plugin {
   async onload() {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
     this.addSettingTab(new SettingsTab(this.app, this));
-    this.registerView(VIEW_TYPE_BOARD, (leaf) => {
-      if (!this.board || !this.controller) {
-        throw new Error('Board not loaded');
-      }
-      return new BoardView(
+    await this.loadBoardData();
+    this.registerView(VIEW_TYPE_BOARD, (leaf) =>
+      new BoardView(
         leaf,
         this.controller!,
         this.board!,
         this.tasks,
         { tags: this.settings.tagFilters, folders: this.settings.folderPaths },
         (tags, folders) => this.updateFilters(tags, folders)
-      );
-    });
+      )
+    );
 
     const onVaultChange = (file: TAbstractFile) => {
       if (this.boardFile && file.path === this.boardFile.path) return;
@@ -45,13 +43,21 @@ export default class VisualTasksPlugin extends Plugin {
   }
 
   async openBoard() {
+    await this.loadBoardData();
+
+    const leaf = this.app.workspace.getLeaf(true);
+    await leaf.setViewState({ type: VIEW_TYPE_BOARD, active: true });
+  }
+
+  private async loadBoardData() {
     const files = this.app.vault.getMarkdownFiles();
     const parsed = await scanFiles(this.app, files, {
       tags: this.settings.tagFilters,
       folders: this.settings.folderPaths,
     });
-    this.tasks = new Map(parsed.map((t) => [t.blockId, t]));
     const deps = parseDependencies(parsed);
+
+    this.tasks = new Map(parsed.map((t) => [t.blockId, t]));
 
     this.boardFile = await getBoardFile(this.app, this.settings.boardFilePath);
     this.board = await loadBoard(this.app, this.boardFile);
@@ -62,7 +68,11 @@ export default class VisualTasksPlugin extends Plugin {
       }
     }
     for (const dep of deps) {
-      if (!this.board.edges.find((e) => e.from === dep.from && e.to === dep.to && e.type === dep.type)) {
+      if (
+        !this.board.edges.find(
+          (e) => e.from === dep.from && e.to === dep.to && e.type === dep.type
+        )
+      ) {
         this.board.edges.push(dep);
       }
     }
@@ -76,9 +86,6 @@ export default class VisualTasksPlugin extends Plugin {
       this.tasks,
       this.settings
     );
-
-    const leaf = this.app.workspace.getLeaf(true);
-    await leaf.setViewState({ type: VIEW_TYPE_BOARD, active: true });
   }
 
   async updateFilters(tags: string[], folders: string[]) {
