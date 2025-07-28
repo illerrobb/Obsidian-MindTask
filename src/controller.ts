@@ -2,13 +2,15 @@ import { App, normalizePath, TFile } from 'obsidian';
 import crypto from 'crypto';
 import { BoardData, saveBoard } from './boardStore';
 import { ParsedTask } from './parser';
+import { PluginSettings } from './settings';
 
 export default class Controller {
   constructor(
     private app: App,
     private boardFile: TFile,
     private board: BoardData,
-    private tasks: Map<string, ParsedTask>
+    private tasks: Map<string, ParsedTask>,
+    private settings: PluginSettings
   ) {}
 
   async moveNode(id: string, x: number, y: number) {
@@ -17,7 +19,12 @@ export default class Controller {
     await saveBoard(this.app, this.boardFile, this.board);
   }
 
-  async createTask(text: string, x: number, y: number, filePath = 'Tasks.md') {
+  async createTask(
+    text: string,
+    x: number,
+    y: number,
+    filePath = this.settings.defaultTaskFile
+  ) {
     const path = normalizePath(filePath);
     let file = this.app.vault.getAbstractFileByPath(path) as TFile;
     if (!file) {

@@ -3,14 +3,18 @@ import { BoardView, VIEW_TYPE_BOARD } from './view';
 import { BoardData, loadBoard, saveBoard, getBoardFile } from './boardStore';
 import { scanFiles, parseDependencies, ParsedTask } from './parser';
 import Controller from './controller';
+import { PluginSettings, DEFAULT_SETTINGS, SettingsTab } from './settings';
 
 export default class VisualTasksPlugin extends Plugin {
   private board: BoardData | null = null;
   private boardFile: TFile | null = null;
   private tasks: Map<string, ParsedTask> = new Map();
   private controller: Controller | null = null;
+  settings: PluginSettings = DEFAULT_SETTINGS;
 
   async onload() {
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    this.addSettingTab(new SettingsTab(this.app, this));
     this.registerView(VIEW_TYPE_BOARD, (leaf) => {
       if (!this.board || !this.controller) {
         throw new Error('Board not loaded');
@@ -31,7 +35,7 @@ export default class VisualTasksPlugin extends Plugin {
     this.tasks = new Map(parsed.map((t) => [t.blockId, t]));
     const deps = parseDependencies(parsed);
 
-    this.boardFile = await getBoardFile(this.app, 'tasks.vtasks.json');
+    this.boardFile = await getBoardFile(this.app, this.settings.boardFilePath);
     this.board = await loadBoard(this.app, this.boardFile);
 
     for (const task of parsed) {
@@ -47,7 +51,13 @@ export default class VisualTasksPlugin extends Plugin {
 
     await saveBoard(this.app, this.boardFile, this.board);
 
-    this.controller = new Controller(this.app, this.boardFile, this.board, this.tasks);
+    this.controller = new Controller(
+      this.app,
+      this.boardFile,
+      this.board,
+      this.tasks,
+      this.settings
+    );
 
     const leaf = this.app.workspace.getLeaf(true);
     await leaf.setViewState({ type: VIEW_TYPE_BOARD, active: true });
