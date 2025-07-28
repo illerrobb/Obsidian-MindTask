@@ -8,6 +8,9 @@ export const VIEW_TYPE_BOARD = 'visual-tasks-board';
 export class BoardView extends ItemView {
   private boardEl!: HTMLElement;
   private svgEl!: SVGSVGElement;
+  private alignVLine!: HTMLElement;
+  private alignHLine!: HTMLElement;
+  private readonly gridSize = 20;
   private selectedId: string | null = null;
   private draggingId: string | null = null;
   private dragOffsetX = 0;
@@ -86,6 +89,10 @@ export class BoardView extends ItemView {
 
     this.boardEl = this.containerEl.createDiv('vtasks-board');
     this.boardEl.tabIndex = 0;
+    this.alignVLine = this.boardEl.createDiv('vtasks-align-line vtasks-align-v');
+    this.alignHLine = this.boardEl.createDiv('vtasks-align-line vtasks-align-h');
+    this.alignVLine.style.display = 'none';
+    this.alignHLine.style.display = 'none';
     this.svgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     this.svgEl.addClass('vtasks-edges');
     this.boardEl.appendChild(this.svgEl);
@@ -152,8 +159,41 @@ export class BoardView extends ItemView {
         const id = this.draggingId;
         const nodeEl = this.boardEl.querySelector(`.vtasks-node[data-id="${id}"]`) as HTMLElement;
         const boardRect = this.boardEl.getBoundingClientRect();
-        const x = (e as PointerEvent).clientX - boardRect.left - this.dragOffsetX;
-        const y = (e as PointerEvent).clientY - boardRect.top - this.dragOffsetY;
+        let x = (e as PointerEvent).clientX - boardRect.left - this.dragOffsetX;
+        let y = (e as PointerEvent).clientY - boardRect.top - this.dragOffsetY;
+
+        x = Math.round(x / this.gridSize) * this.gridSize;
+        y = Math.round(y / this.gridSize) * this.gridSize;
+
+        let alignX: number | null = null;
+        let alignY: number | null = null;
+        const tolerance = this.gridSize / 2;
+        for (const oid in this.board.nodes) {
+          if (oid === id) continue;
+          const n = this.board.nodes[oid];
+          if (Math.abs(n.x - x) <= tolerance) alignX = n.x;
+          if (Math.abs(n.y - y) <= tolerance) alignY = n.y;
+        }
+        const centerX = Math.round(boardRect.width / 2 / this.gridSize) * this.gridSize;
+        const centerY = Math.round(boardRect.height / 2 / this.gridSize) * this.gridSize;
+        if (Math.abs(centerX - x) <= tolerance) alignX = centerX;
+        if (Math.abs(centerY - y) <= tolerance) alignY = centerY;
+
+        if (alignX !== null) {
+          x = alignX;
+          this.alignVLine.style.left = alignX + 'px';
+          this.alignVLine.style.display = 'block';
+        } else {
+          this.alignVLine.style.display = 'none';
+        }
+        if (alignY !== null) {
+          y = alignY;
+          this.alignHLine.style.top = alignY + 'px';
+          this.alignHLine.style.display = 'block';
+        } else {
+          this.alignHLine.style.display = 'none';
+        }
+
         nodeEl.style.left = x + 'px';
         nodeEl.style.top = y + 'px';
         this.board.nodes[id] = { ...this.board.nodes[id], x, y };
@@ -171,6 +211,8 @@ export class BoardView extends ItemView {
       if (this.draggingId) {
         const id = this.draggingId;
         this.draggingId = null;
+        this.alignVLine.style.display = 'none';
+        this.alignHLine.style.display = 'none';
         const pos = this.board.nodes[id];
         this.controller.moveNode(id, pos.x, pos.y);
       } else if (this.edgeStart) {
