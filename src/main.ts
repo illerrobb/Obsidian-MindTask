@@ -1,4 +1,4 @@
-import { Plugin, TFile } from 'obsidian';
+import { Plugin, TFile, TAbstractFile } from 'obsidian';
 import { BoardView, VIEW_TYPE_BOARD } from './view';
 import { BoardData, loadBoard, saveBoard, getBoardFile } from './boardStore';
 import { scanFiles, parseDependencies, ParsedTask, ScanOptions } from './parser';
@@ -29,15 +29,13 @@ export default class VisualTasksPlugin extends Plugin {
       );
     });
 
-    this.registerEvent(
-      this.app.vault.on('create', () => this.refreshFromVault())
-    );
-    this.registerEvent(
-      this.app.vault.on('modify', () => this.refreshFromVault())
-    );
-    this.registerEvent(
-      this.app.vault.on('delete', () => this.refreshFromVault())
-    );
+    const onVaultChange = (file: TAbstractFile) => {
+      if (this.boardFile && file.path === this.boardFile.path) return;
+      this.refreshFromVault();
+    };
+    this.registerEvent(this.app.vault.on('create', onVaultChange));
+    this.registerEvent(this.app.vault.on('modify', onVaultChange));
+    this.registerEvent(this.app.vault.on('delete', onVaultChange));
 
     this.addCommand({
       id: 'open-board',
