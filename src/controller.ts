@@ -191,10 +191,18 @@ export default class Controller {
     const types = ['depends', 'subtask', 'sequence'];
     const current = types.indexOf(edge.type);
     const next = types[(current + 1) % types.length];
-    const fromTask = this.tasks.get(edge.from);
-    const toTask = this.tasks.get(edge.to);
+    let fromTask = this.tasks.get(edge.from);
+    let toTask = this.tasks.get(edge.to);
     if (!fromTask || !toTask) return;
+
     await this.removeRelation(edge.type, fromTask, toTask);
+
+    if (edge.type === 'depends' || next === 'depends') {
+      [edge.from, edge.to] = [edge.to, edge.from];
+      fromTask = this.tasks.get(edge.from)!;
+      toTask = this.tasks.get(edge.to)!;
+    }
+
     await this.applyRelation(next, fromTask, toTask);
     edge.type = next;
     await saveBoard(this.app, this.boardFile, this.board);
