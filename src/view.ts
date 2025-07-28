@@ -30,6 +30,7 @@ export class BoardView extends ItemView {
   private boardStartY = 0;
   private boardOffsetX = 0;
   private boardOffsetY = 0;
+  private zoom = 1;
   private resizingId: string | null = null;
   private resizeDir = '';
   private resizeStartWidth = 0;
@@ -112,7 +113,7 @@ export class BoardView extends ItemView {
 
     this.boardEl = this.containerEl.createDiv('vtasks-board');
     this.boardEl.tabIndex = 0;
-    this.boardEl.style.transform = `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px)`;
+    this.boardEl.style.transform = `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px) scale(${this.zoom})`;
     this.alignVLine = this.boardEl.createDiv('vtasks-align-line vtasks-align-v');
     this.alignHLine = this.boardEl.createDiv('vtasks-align-line vtasks-align-h');
     this.alignVLine.style.display = 'none';
@@ -220,11 +221,15 @@ export class BoardView extends ItemView {
         const cls = Array.from(resizeEl.classList).find((c) => c.startsWith('vtasks-resize-'))!;
         this.resizeDir = cls.replace('vtasks-resize-', '');
         const rect = node.getBoundingClientRect();
-        this.resizeStartWidth = rect.width;
-        this.resizeStartHeight = rect.height;
+        this.resizeStartWidth = rect.width / this.zoom;
+        this.resizeStartHeight = rect.height / this.zoom;
         this.resizeStartX = (e as PointerEvent).clientX;
         this.resizeStartY = (e as PointerEvent).clientY;
-        this.board.nodes[id] = { ...this.board.nodes[id], width: rect.width, height: rect.height };
+        this.board.nodes[id] = {
+          ...this.board.nodes[id],
+          width: rect.width / this.zoom,
+          height: rect.height / this.zoom,
+        };
       } else if (outHandle && node) {
         const id = node.getAttribute('data-id')!;
         this.edgeStart = id;
@@ -236,17 +241,17 @@ export class BoardView extends ItemView {
         this.tempEdge = path;
         const boardRect = this.boardEl.getBoundingClientRect();
         const r = outHandle.getBoundingClientRect();
-        this.edgeX = r.left - boardRect.left + r.width / 2;
-        this.edgeY = r.top - boardRect.top + r.height / 2;
+        this.edgeX = (r.left - boardRect.left + r.width / 2) / this.zoom;
+        this.edgeY = (r.top - boardRect.top + r.height / 2) / this.zoom;
         path.setAttr('d', `M${this.edgeX} ${this.edgeY} C ${this.edgeX} ${this.edgeY} ${this.edgeX} ${this.edgeY} ${this.edgeX} ${this.edgeY}`);
         this.svgEl.appendChild(path);
       } else if (node && !inHandle) {
         const id = node.getAttribute('data-id')!;
         this.selectNode(node, id, (e as PointerEvent).shiftKey || (e as PointerEvent).metaKey);
         this.draggingId = id;
-        const boardRect = this.boardEl.getBoundingClientRect();
-        this.dragStartX = (e as PointerEvent).clientX - boardRect.left;
-        this.dragStartY = (e as PointerEvent).clientY - boardRect.top;
+        const coords = this.getBoardCoords(e as PointerEvent);
+        this.dragStartX = coords.x;
+        this.dragStartY = coords.y;
         this.dragStartPositions.clear();
         this.selectedIds.forEach((sid) => {
           const npos = this.board.nodes[sid];
@@ -261,9 +266,9 @@ export class BoardView extends ItemView {
         this.boardStartX = (e as PointerEvent).clientX - this.boardOffsetX;
         this.boardStartY = (e as PointerEvent).clientY - this.boardOffsetY;
       } else {
-        const boardRect = this.boardEl.getBoundingClientRect();
-        this.selStartX = (e as PointerEvent).clientX - boardRect.left;
-        this.selStartY = (e as PointerEvent).clientY - boardRect.top;
+        const coords = this.getBoardCoords(e as PointerEvent);
+        this.selStartX = coords.x;
+        this.selStartY = coords.y;
         this.selectionRect = this.boardEl.createDiv('vtasks-selection');
         this.selectionRect.style.left = this.selStartX + 'px';
         this.selectionRect.style.top = this.selStartY + 'px';
@@ -274,8 +279,8 @@ export class BoardView extends ItemView {
       if (this.resizingId) {
         const id = this.resizingId;
         const nodeEl = this.boardEl.querySelector(`.vtasks-node[data-id="${id}"]`) as HTMLElement;
-        const dx = (e as PointerEvent).clientX - this.resizeStartX;
-        const dy = (e as PointerEvent).clientY - this.resizeStartY;
+        const dx = ((e as PointerEvent).clientX - this.resizeStartX) / this.zoom;
+        const dy = ((e as PointerEvent).clientY - this.resizeStartY) / this.zoom;
         let width = this.resizeStartWidth;
         let height = this.resizeStartHeight;
         let x = this.board.nodes[id].x;
@@ -300,9 +305,9 @@ export class BoardView extends ItemView {
         this.updateOverflow(nodeEl);
         this.drawEdges();
       } else if (this.draggingId) {
-        const boardRect = this.boardEl.getBoundingClientRect();
-        const curX = (e as PointerEvent).clientX - boardRect.left;
-        const curY = (e as PointerEvent).clientY - boardRect.top;
+        const coords = this.getBoardCoords(e as PointerEvent);
+        const curX = coords.x;
+        const curY = coords.y;
         const dx = Math.round((curX - this.dragStartX) / this.gridSize) * this.gridSize;
         const dy = Math.round((curY - this.dragStartY) / this.gridSize) * this.gridSize;
 
@@ -321,17 +326,17 @@ export class BoardView extends ItemView {
       } else if (this.isBoardDragging) {
         this.boardOffsetX = (e as PointerEvent).clientX - this.boardStartX;
         this.boardOffsetY = (e as PointerEvent).clientY - this.boardStartY;
-        this.boardEl.style.transform = `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px)`;
+        this.boardEl.style.transform = `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px) scale(${this.zoom})`;
       } else if (this.edgeStart && this.tempEdge) {
-        const boardRect = this.boardEl.getBoundingClientRect();
-        const x2 = (e as PointerEvent).clientX - boardRect.left;
-        const y2 = (e as PointerEvent).clientY - boardRect.top;
+        const coords = this.getBoardCoords(e as PointerEvent);
+        const x2 = coords.x;
+        const y2 = coords.y;
         const dx = Math.abs(x2 - this.edgeX);
         this.tempEdge.setAttr('d', `M${this.edgeX} ${this.edgeY} C ${this.edgeX + dx / 2} ${this.edgeY}, ${x2 - dx / 2} ${y2}, ${x2} ${y2}`);
       } else if (this.selectionRect) {
-        const boardRect = this.boardEl.getBoundingClientRect();
-        const x = (e as PointerEvent).clientX - boardRect.left;
-        const y = (e as PointerEvent).clientY - boardRect.top;
+        const coords = this.getBoardCoords(e as PointerEvent);
+        const x = coords.x;
+        const y = coords.y;
         const left = Math.min(this.selStartX, x);
         const top = Math.min(this.selStartY, y);
         const width = Math.abs(x - this.selStartX);
@@ -398,9 +403,28 @@ export class BoardView extends ItemView {
       }
     };
 
+    this.boardEl.addEventListener(
+      'wheel',
+      (e) => {
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          if (e.deltaY < 0) {
+            this.zoom *= 1.1;
+          } else {
+            this.zoom /= 1.1;
+          }
+          this.zoom = Math.min(Math.max(this.zoom, 0.2), 4);
+          this.boardEl.style.transform = `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px) scale(${this.zoom})`;
+          this.drawEdges();
+        }
+      },
+      { passive: false }
+    );
+
     this.boardEl.ondblclick = (e) => {
       if ((e.target as HTMLElement).closest('.vtasks-node')) return;
-      this.controller.createTask('New Task', (e as MouseEvent).offsetX, (e as MouseEvent).offsetY).then(() => this.render());
+      const pos = this.getBoardCoords(e as MouseEvent);
+      this.controller.createTask('New Task', pos.x, pos.y).then(() => this.render());
     };
 
     this.boardEl.addEventListener('click', (e) => {
@@ -457,6 +481,18 @@ export class BoardView extends ItemView {
 
     this.boardEl.addEventListener('keydown', (e) => {
       const first = Array.from(this.selectedIds)[0];
+      if (e.key === '+' || e.key === '=') {
+        this.zoom = Math.min(this.zoom * 1.1, 4);
+        this.boardEl.style.transform = `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px) scale(${this.zoom})`;
+        this.drawEdges();
+        return;
+      }
+      if (e.key === '-') {
+        this.zoom = Math.max(this.zoom / 1.1, 0.2);
+        this.boardEl.style.transform = `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px) scale(${this.zoom})`;
+        this.drawEdges();
+        return;
+      }
       if (!first) return;
       if (e.key === ' ') {
         e.preventDefault();
@@ -535,10 +571,10 @@ export class BoardView extends ItemView {
       const boardRect = this.boardEl.getBoundingClientRect();
       const fr = fromEl.getBoundingClientRect();
       const tr = toEl.getBoundingClientRect();
-      const x1 = fr.left - boardRect.left + fr.width / 2;
-      const y1 = fr.top - boardRect.top + fr.height / 2;
-      const x2 = tr.left - boardRect.left + tr.width / 2;
-      const y2 = tr.top - boardRect.top + tr.height / 2;
+      const x1 = (fr.left - boardRect.left + fr.width / 2) / this.zoom;
+      const y1 = (fr.top - boardRect.top + fr.height / 2) / this.zoom;
+      const x2 = (tr.left - boardRect.left + tr.width / 2) / this.zoom;
+      const y2 = (tr.top - boardRect.top + tr.height / 2) / this.zoom;
       const dx = Math.abs(x2 - x1);
       const d = `M${x1} ${y1} C ${x1 + dx / 2} ${y1}, ${x2 - dx / 2} ${y2}, ${x2} ${y2}`;
 
@@ -575,5 +611,13 @@ export class BoardView extends ItemView {
     this.groupId = id;
     this.clearSelection();
     this.render();
+  }
+
+  private getBoardCoords(e: MouseEvent | PointerEvent) {
+    const rect = this.boardEl.getBoundingClientRect();
+    return {
+      x: (e.clientX - rect.left) / this.zoom,
+      y: (e.clientY - rect.top) / this.zoom,
+    };
   }
 }
