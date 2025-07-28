@@ -15,6 +15,9 @@ export class BoardView extends ItemView {
   private draggingId: string | null = null;
   private dragOffsetX = 0;
   private dragOffsetY = 0;
+  private dragStartX = 0;
+  private dragStartY = 0;
+  private dragStartPositions: Map<string, { x: number; y: number }> = new Map();
   private edgeStart: string | null = null;
   private tempEdge: SVGPathElement | null = null;
   private edgeX = 0;
@@ -220,14 +223,20 @@ export class BoardView extends ItemView {
         this.svgEl.appendChild(path);
       } else if (node && !inHandle) {
         const id = node.getAttribute('data-id')!;
-        this.selectNode(node, id);
+        this.selectNode(node, id, (e as PointerEvent).shiftKey || (e as PointerEvent).metaKey);
         this.draggingId = id;
-        const rect = node.getBoundingClientRect();
-        this.dragOffsetX = (e as PointerEvent).clientX - rect.left;
-        this.dragOffsetY = (e as PointerEvent).clientY - rect.top;
+        const boardRect = this.boardEl.getBoundingClientRect();
+        this.dragStartX = (e as PointerEvent).clientX - boardRect.left;
+        this.dragStartY = (e as PointerEvent).clientY - boardRect.top;
+        this.dragStartPositions.clear();
+        this.selectedIds.forEach((sid) => {
+          const npos = this.board.nodes[sid];
+          this.dragStartPositions.set(sid, { x: npos.x, y: npos.y });
+        });
       } else {
-        this.selStartX = (e as PointerEvent).offsetX;
-        this.selStartY = (e as PointerEvent).offsetY;
+        const boardRect = this.boardEl.getBoundingClientRect();
+        this.selStartX = (e as PointerEvent).clientX - boardRect.left;
+        this.selStartY = (e as PointerEvent).clientY - boardRect.top;
         this.selectionRect = this.boardEl.createDiv('vtasks-selection');
         this.selectionRect.style.left = this.selStartX + 'px';
         this.selectionRect.style.top = this.selStartY + 'px';
@@ -264,47 +273,23 @@ export class BoardView extends ItemView {
         this.updateOverflow(nodeEl);
         this.drawEdges();
       } else if (this.draggingId) {
-        const id = this.draggingId;
-        const nodeEl = this.boardEl.querySelector(`.vtasks-node[data-id="${id}"]`) as HTMLElement;
         const boardRect = this.boardEl.getBoundingClientRect();
-        let x = (e as PointerEvent).clientX - boardRect.left - this.dragOffsetX;
-        let y = (e as PointerEvent).clientY - boardRect.top - this.dragOffsetY;
+        const curX = (e as PointerEvent).clientX - boardRect.left;
+        const curY = (e as PointerEvent).clientY - boardRect.top;
+        const dx = Math.round((curX - this.dragStartX) / this.gridSize) * this.gridSize;
+        const dy = Math.round((curY - this.dragStartY) / this.gridSize) * this.gridSize;
 
-        x = Math.round(x / this.gridSize) * this.gridSize;
-        y = Math.round(y / this.gridSize) * this.gridSize;
+        this.selectedIds.forEach((id) => {
+          const start = this.dragStartPositions.get(id);
+          if (!start) return;
+          let x = start.x + dx;
+          let y = start.y + dy;
 
-        let alignX: number | null = null;
-        let alignY: number | null = null;
-        const tolerance = this.gridSize / 2;
-        for (const oid in this.board.nodes) {
-          if (oid === id) continue;
-          const n = this.board.nodes[oid];
-          if (Math.abs(n.x - x) <= tolerance) alignX = n.x;
-          if (Math.abs(n.y - y) <= tolerance) alignY = n.y;
-        }
-        const centerX = Math.round(boardRect.width / 2 / this.gridSize) * this.gridSize;
-        const centerY = Math.round(boardRect.height / 2 / this.gridSize) * this.gridSize;
-        if (Math.abs(centerX - x) <= tolerance) alignX = centerX;
-        if (Math.abs(centerY - y) <= tolerance) alignY = centerY;
-
-        if (alignX !== null) {
-          x = alignX;
-          this.alignVLine.style.left = alignX + 'px';
-          this.alignVLine.style.display = 'block';
-        } else {
-          this.alignVLine.style.display = 'none';
-        }
-        if (alignY !== null) {
-          y = alignY;
-          this.alignHLine.style.top = alignY + 'px';
-          this.alignHLine.style.display = 'block';
-        } else {
-          this.alignHLine.style.display = 'none';
-        }
-
-        nodeEl.style.left = x + 'px';
-        nodeEl.style.top = y + 'px';
-        this.board.nodes[id] = { ...this.board.nodes[id], x, y };
+          const nodeEl = this.boardEl.querySelector(`.vtasks-node[data-id="${id}"]`) as HTMLElement;
+          nodeEl.style.left = x + 'px';
+          nodeEl.style.top = y + 'px';
+          this.board.nodes[id] = { ...this.board.nodes[id], x, y };
+        });
         this.drawEdges();
       } else if (this.edgeStart && this.tempEdge) {
         const boardRect = this.boardEl.getBoundingClientRect();
@@ -313,8 +298,9 @@ export class BoardView extends ItemView {
         const dx = Math.abs(x2 - this.edgeX);
         this.tempEdge.setAttr('d', `M${this.edgeX} ${this.edgeY} C ${this.edgeX + dx / 2} ${this.edgeY}, ${x2 - dx / 2} ${y2}, ${x2} ${y2}`);
       } else if (this.selectionRect) {
-        const x = (e as PointerEvent).offsetX;
-        const y = (e as PointerEvent).offsetY;
+        const boardRect = this.boardEl.getBoundingClientRect();
+        const x = (e as PointerEvent).clientX - boardRect.left;
+        const y = (e as PointerEvent).clientY - boardRect.top;
         const left = Math.min(this.selStartX, x);
         const top = Math.min(this.selStartY, y);
         const width = Math.abs(x - this.selStartX);
@@ -334,12 +320,13 @@ export class BoardView extends ItemView {
         this.controller.moveNode(id, pos.x, pos.y);
         this.controller.resizeNode(id, pos.width ?? 0, pos.height ?? 0);
       } else if (this.draggingId) {
-        const id = this.draggingId;
         this.draggingId = null;
         this.alignVLine.style.display = 'none';
         this.alignHLine.style.display = 'none';
-        const pos = this.board.nodes[id];
-        this.controller.moveNode(id, pos.x, pos.y);
+        this.selectedIds.forEach((id) => {
+          const pos = this.board.nodes[id];
+          this.controller.moveNode(id, pos.x, pos.y);
+        });
       } else if (this.edgeStart) {
         const handle = (e.target as HTMLElement).closest('.vtasks-handle-in') as HTMLElement | null;
         const node = handle ? handle.closest('.vtasks-node') as HTMLElement | null : null;
@@ -358,12 +345,13 @@ export class BoardView extends ItemView {
         this.drawEdges();
       } else if (this.selectionRect) {
         const rect = this.selectionRect.getBoundingClientRect();
-        this.clearSelection();
+        const additive = (e as MouseEvent).shiftKey || (e as MouseEvent).metaKey;
+        if (!additive) this.clearSelection();
         this.boardEl.querySelectorAll('.vtasks-node').forEach((n) => {
           const r = n.getBoundingClientRect();
           if (r.left >= rect.left && r.right <= rect.right && r.top >= rect.top && r.bottom <= rect.bottom) {
             const id = n.getAttribute('data-id')!;
-            this.selectNode(n as HTMLElement, id, true);
+            this.selectNode(n as HTMLElement, id, additive);
           }
         });
         this.selectionRect.remove();
@@ -472,9 +460,19 @@ export class BoardView extends ItemView {
   }
 
   private selectNode(el: HTMLElement, id: string, additive = false) {
-    if (!additive) this.clearSelection();
-    this.selectedIds.add(id);
-    el.classList.add('selected');
+    if (!additive) {
+      this.clearSelection();
+      this.selectedIds.add(id);
+      el.classList.add('selected');
+    } else {
+      if (this.selectedIds.has(id)) {
+        this.selectedIds.delete(id);
+        el.classList.remove('selected');
+      } else {
+        this.selectedIds.add(id);
+        el.classList.add('selected');
+      }
+    }
     this.boardEl.focus();
   }
 
