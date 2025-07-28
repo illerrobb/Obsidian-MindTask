@@ -91,6 +91,32 @@ export default class Controller {
     await saveBoard(this.app, this.boardFile, this.board);
   }
 
+  async groupNodes(ids: string[], name: string) {
+    if (!ids.length) return;
+    const id = 'g-' + crypto.randomBytes(4).toString('hex');
+    const posX = ids.reduce((s, i) => s + (this.board.nodes[i]?.x || 0), 0) / ids.length;
+    const posY = ids.reduce((s, i) => s + (this.board.nodes[i]?.y || 0), 0) / ids.length;
+    this.board.nodes[id] = { x: posX, y: posY, type: 'group', name, members: ids } as NodeData;
+    ids.forEach((nid) => {
+      if (this.board.nodes[nid]) {
+        (this.board.nodes[nid] as NodeData).group = id;
+      }
+    });
+    await saveBoard(this.app, this.boardFile, this.board);
+  }
+
+  async ungroupNode(id: string) {
+    const node = this.board.nodes[id];
+    if (!node || node.type !== 'group' || !node.members) return;
+    node.members.forEach((nid) => {
+      if (this.board.nodes[nid]) {
+        delete (this.board.nodes[nid] as any).group;
+      }
+    });
+    delete this.board.nodes[id];
+    await saveBoard(this.app, this.boardFile, this.board);
+  }
+
   private async modifyTaskText(task: ParsedTask, fn: (text: string) => string) {
     const lines = (await this.app.vault.read(task.file)).split(/\r?\n/);
     const line = lines[task.line];
