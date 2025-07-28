@@ -13,7 +13,9 @@ export class BoardView extends ItemView {
   private dragOffsetX = 0;
   private dragOffsetY = 0;
   private edgeStart: string | null = null;
-  private tempEdge: SVGLineElement | null = null;
+  private tempEdge: SVGPathElement | null = null;
+  private edgeX = 0;
+  private edgeY = 0;
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -59,36 +61,39 @@ export class BoardView extends ItemView {
     nodeEl.setAttr('data-id', id);
     nodeEl.style.left = pos.x + 'px';
     nodeEl.style.top = pos.y + 'px';
-    nodeEl.textContent = this.tasks.get(id)?.text ?? id;
+
+    const inHandle = nodeEl.createDiv('vtasks-handle vtasks-handle-in');
+    const textEl = nodeEl.createDiv('vtasks-text');
+    textEl.textContent = this.tasks.get(id)?.text ?? id;
+    const outHandle = nodeEl.createDiv('vtasks-handle vtasks-handle-out');
+
     new ResizeObserver(() => this.drawEdges()).observe(nodeEl);
   }
 
   private registerEvents() {
     this.boardEl.onpointerdown = (e) => {
-      const target = (e.target as HTMLElement).closest('.vtasks-node') as HTMLElement | null;
-      if (target) {
-        const id = target.getAttribute('data-id')!;
-        this.selectNode(target, id);
-        if ((e as PointerEvent).shiftKey) {
-          this.edgeStart = id;
-          const edge = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-          edge.addClass('vtasks-edge');
-          this.tempEdge = edge;
-          const rect = target.getBoundingClientRect();
-          const boardRect = this.boardEl.getBoundingClientRect();
-          const x = rect.left - boardRect.left + rect.width / 2;
-          const y = rect.top - boardRect.top + rect.height / 2;
-          edge.setAttr('x1', String(x));
-          edge.setAttr('y1', String(y));
-          edge.setAttr('x2', String(x));
-          edge.setAttr('y2', String(y));
-          this.svgEl.appendChild(edge);
-        } else {
-          this.draggingId = id;
-          const rect = target.getBoundingClientRect();
-          this.dragOffsetX = (e as PointerEvent).clientX - rect.left;
-          this.dragOffsetY = (e as PointerEvent).clientY - rect.top;
-        }
+      const outHandle = (e.target as HTMLElement).closest('.vtasks-handle-out') as HTMLElement | null;
+      const inHandle = (e.target as HTMLElement).closest('.vtasks-handle-in') as HTMLElement | null;
+      const node = (e.target as HTMLElement).closest('.vtasks-node') as HTMLElement | null;
+      if (outHandle && node) {
+        const id = node.getAttribute('data-id')!;
+        this.edgeStart = id;
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.addClass('vtasks-edge');
+        this.tempEdge = path;
+        const boardRect = this.boardEl.getBoundingClientRect();
+        const r = outHandle.getBoundingClientRect();
+        this.edgeX = r.left - boardRect.left + r.width / 2;
+        this.edgeY = r.top - boardRect.top + r.height / 2;
+        path.setAttr('d', `M${this.edgeX} ${this.edgeY} C ${this.edgeX} ${this.edgeY} ${this.edgeX} ${this.edgeY} ${this.edgeX} ${this.edgeY}`);
+        this.svgEl.appendChild(path);
+      } else if (node && !inHandle) {
+        const id = node.getAttribute('data-id')!;
+        this.selectNode(node, id);
+        this.draggingId = id;
+        const rect = node.getBoundingClientRect();
+        this.dragOffsetX = (e as PointerEvent).clientX - rect.left;
+        this.dragOffsetY = (e as PointerEvent).clientY - rect.top;
       }
     };
 
@@ -105,8 +110,10 @@ export class BoardView extends ItemView {
         this.drawEdges();
       } else if (this.edgeStart && this.tempEdge) {
         const boardRect = this.boardEl.getBoundingClientRect();
-        this.tempEdge.setAttr('x2', String((e as PointerEvent).clientX - boardRect.left));
-        this.tempEdge.setAttr('y2', String((e as PointerEvent).clientY - boardRect.top));
+        const x2 = (e as PointerEvent).clientX - boardRect.left;
+        const y2 = (e as PointerEvent).clientY - boardRect.top;
+        const dx = Math.abs(x2 - this.edgeX);
+        this.tempEdge.setAttr('d', `M${this.edgeX} ${this.edgeY} C ${this.edgeX + dx / 2} ${this.edgeY}, ${x2 - dx / 2} ${y2}, ${x2} ${y2}`);
       }
     };
 
@@ -117,11 +124,12 @@ export class BoardView extends ItemView {
         const pos = this.board.nodes[id];
         this.controller.moveNode(id, pos.x, pos.y);
       } else if (this.edgeStart) {
-        const target = (e.target as HTMLElement).closest('.vtasks-node') as HTMLElement | null;
-        if (target) {
-          const toId = target.getAttribute('data-id')!;
+        const handle = (e.target as HTMLElement).closest('.vtasks-handle-in') as HTMLElement | null;
+        const node = handle ? handle.closest('.vtasks-node') as HTMLElement | null : null;
+        if (node) {
+          const toId = node.getAttribute('data-id')!;
           if (toId !== this.edgeStart) {
-            this.controller.createEdge(this.edgeStart, toId, 'relates');
+            this.controller.createEdge(this.edgeStart, toId, 'depends').then(() => this.render());
           }
         }
         this.edgeStart = null;
@@ -155,6 +163,14 @@ export class BoardView extends ItemView {
         this.controller.toggleCheck(this.selectedId).then(() => this.render());
       }
     });
+
+    this.svgEl.addEventListener('click', (e) => {
+      const edgeEl = (e.target as HTMLElement).closest('path.vtasks-edge') as SVGPathElement | null;
+      if (edgeEl && edgeEl.getAttr('data-index')) {
+        const idx = parseInt(edgeEl.getAttr('data-index')!);
+        this.controller.cycleEdgeType(idx).then(() => this.render());
+      }
+    });
   }
 
   private selectNode(el: HTMLElement, id: string) {
@@ -174,20 +190,23 @@ export class BoardView extends ItemView {
 
   private drawEdges() {
     this.svgEl.empty();
-    for (const edge of this.board.edges) {
-      const fromEl = this.boardEl.querySelector(`.vtasks-node[data-id="${edge.from}"]`) as HTMLElement | null;
-      const toEl = this.boardEl.querySelector(`.vtasks-node[data-id="${edge.to}"]`) as HTMLElement | null;
-      if (!fromEl || !toEl) continue;
+    this.board.edges.forEach((edge, idx) => {
+      const fromEl = this.boardEl.querySelector(`.vtasks-node[data-id="${edge.from}"] .vtasks-handle-out`) as HTMLElement | null;
+      const toEl = this.boardEl.querySelector(`.vtasks-node[data-id="${edge.to}"] .vtasks-handle-in`) as HTMLElement | null;
+      if (!fromEl || !toEl) return;
       const boardRect = this.boardEl.getBoundingClientRect();
       const fr = fromEl.getBoundingClientRect();
       const tr = toEl.getBoundingClientRect();
-      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-      line.setAttribute('x1', String(fr.left - boardRect.left + fr.width / 2));
-      line.setAttribute('y1', String(fr.top - boardRect.top + fr.height / 2));
-      line.setAttribute('x2', String(tr.left - boardRect.left + tr.width / 2));
-      line.setAttribute('y2', String(tr.top - boardRect.top + tr.height / 2));
-      line.classList.add('vtasks-edge');
-      this.svgEl.appendChild(line);
-    }
+      const x1 = fr.left - boardRect.left + fr.width / 2;
+      const y1 = fr.top - boardRect.top + fr.height / 2;
+      const x2 = tr.left - boardRect.left + tr.width / 2;
+      const y2 = tr.top - boardRect.top + tr.height / 2;
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      const dx = Math.abs(x2 - x1);
+      path.setAttr('d', `M${x1} ${y1} C ${x1 + dx / 2} ${y1}, ${x2 - dx / 2} ${y2}, ${x2} ${y2}`);
+      path.classList.add('vtasks-edge', `vtasks-edge-${edge.type}`);
+      path.setAttr('data-index', String(idx));
+      this.svgEl.appendChild(path);
+    });
   }
 }
