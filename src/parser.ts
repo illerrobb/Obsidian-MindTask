@@ -14,9 +14,22 @@ export interface ParsedTask {
 /**
  * Scan given markdown files for tasks. Adds a block ID if missing.
  */
-export async function scanFiles(app: App, files: TFile[]): Promise<ParsedTask[]> {
+export interface ScanOptions {
+  tags?: string[];
+  folders?: string[];
+}
+
+export async function scanFiles(
+  app: App,
+  files: TFile[],
+  options: ScanOptions = {}
+): Promise<ParsedTask[]> {
+  const { tags = [], folders = [] } = options;
   const tasks: ParsedTask[] = [];
   for (const file of files) {
+    if (folders.length && !folders.some((f) => file.path.startsWith(f))) {
+      continue;
+    }
     const content = await app.vault.read(file);
     const lines = content.split(/\r?\n/);
     let modified = false;
@@ -26,6 +39,7 @@ export async function scanFiles(app: App, files: TFile[]): Promise<ParsedTask[]>
       const indent = m[1].length;
       const checked = m[2] === 'x';
       let text = m[3];
+      if (tags.length && !tags.some((t) => text.includes('#' + t))) continue;
       const idMatch = text.match(/\^([\w-]+)$/);
       let blockId: string;
       if (idMatch) {
