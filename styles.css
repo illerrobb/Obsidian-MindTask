@@ -11,20 +11,65 @@
   border: 1px solid var(--background-modifier-border);
   border-radius: 4px;
   resize: both;
-  overflow: hidden;
+  overflow: visible;
   max-width: 260px;
   -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 calc(100% - 1.2em), transparent 100%);
           mask-image: linear-gradient(180deg, #000 0%, #000 calc(100% - 1.2em), transparent 100%);
+}
+
+.vtasks-text {
+  pointer-events: none;
 }
 .vtasks-node.selected {
   outline: 2px solid var(--color-accent);
 }
 
 .vtasks-edges {
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .vtasks-edge {
   stroke: var(--text-muted);
   stroke-width: 1.5px;
+  fill: none;
+  cursor: pointer;
+  pointer-events: stroke;
+}
+
+.vtasks-edge-depends {
+  stroke: var(--color-accent);
+}
+
+.vtasks-edge-subtask {
+  stroke: var(--color-yellow);
+  stroke-dasharray: 4 2;
+}
+
+.vtasks-edge-sequence {
+  stroke: var(--color-green);
+  stroke-dasharray: 2 2;
+}
+
+.vtasks-handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  z-index: 1;
+  cursor: crosshair;
+  -webkit-mask: none;
+          mask: none;
+}
+
+.vtasks-handle-in {
+  left: 0;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.vtasks-handle-out {
+  right: 0;
+  top: 50%;
+  transform: translate(50%, -50%);
 }

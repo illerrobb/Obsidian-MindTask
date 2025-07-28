@@ -57,8 +57,76 @@ export default class Controller {
     task.checked = !checked;
   }
 
+  private async modifyTaskText(task: ParsedTask, fn: (text: string) => string) {
+    const lines = (await this.app.vault.read(task.file)).split(/\r?\n/);
+    const line = lines[task.line];
+    const m = line.match(/^(\s*)- \[( |x)\] (.*)/);
+    if (!m) return;
+    const indent = m[1];
+    const checked = m[2];
+    let text = m[3];
+    text = fn(text);
+    lines[task.line] = `${indent}- [${checked}] ${text}`;
+    await this.app.vault.modify(task.file, lines.join('\n'));
+    task.text = text;
+  }
+
+  private relationString(type: string, from: ParsedTask, to: ParsedTask) {
+    const target = `[[${to.file.path}#^${to.blockId}]]`;
+    switch (type) {
+      case 'depends':
+        return `dependsOn:: ${target}`;
+      case 'subtask':
+        return `subtaskOf:: ${target}`;
+      case 'sequence':
+        return `after:: ${target}`;
+      default:
+        return '';
+    }
+  }
+
+  private async applyRelation(type: string, from: ParsedTask, to: ParsedTask) {
+    const rel = this.relationString(type, from, to);
+    if (!rel) return;
+    if (type === 'depends') {
+      await this.modifyTaskText(from, (t) => (t.includes(rel) ? t : `${t} ${rel}`));
+    } else {
+      await this.modifyTaskText(to, (t) => (t.includes(rel) ? t : `${t} ${rel}`));
+    }
+  }
+
+  private async removeRelation(type: string, from: ParsedTask, to: ParsedTask) {
+    const rel = this.relationString(type, from, to);
+    if (!rel) return;
+    const re = new RegExp(`\\s*${rel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
+    if (type === 'depends') {
+      await this.modifyTaskText(from, (t) => t.replace(re, ''));
+    } else {
+      await this.modifyTaskText(to, (t) => t.replace(re, ''));
+    }
+  }
+
   async createEdge(from: string, to: string, type: string) {
+    const fromTask = this.tasks.get(from);
+    const toTask = this.tasks.get(to);
+    if (!fromTask || !toTask) return;
+    await this.applyRelation(type, fromTask, toTask);
     this.board.edges.push({ from, to, type });
+    await saveBoard(this.app, this.boardFile, this.board);
+  }
+
+  async cycleEdgeType(index: number) {
+    const edge = this.board.edges[index];
+    if (!edge) return;
+    const types = ['depends', 'subtask', 'sequence'];
+    const current = types.indexOf(edge.type);
+    const next = types[(current + 1) % types.length];
+    const fromTask = this.tasks.get(edge.from);
+    const toTask = this.tasks.get(edge.to);
+    if (!fromTask || !toTask) return;
+    await this.removeRelation(edge.type, fromTask, toTask);
+    await this.applyRelation(next, fromTask, toTask);
+    edge.type = next;
     await saveBoard(this.app, this.boardFile, this.board);
   }
 }
