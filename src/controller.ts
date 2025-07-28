@@ -199,4 +199,28 @@ export default class Controller {
     edge.type = next;
     await saveBoard(this.app, this.boardFile, this.board);
   }
+
+  async setEdgeType(index: number, type: string) {
+    const edge = this.board.edges[index];
+    if (!edge || edge.type === type) return;
+    const fromTask = this.tasks.get(edge.from);
+    const toTask = this.tasks.get(edge.to);
+    if (!fromTask || !toTask) return;
+    await this.removeRelation(edge.type, fromTask, toTask);
+    await this.applyRelation(type, fromTask, toTask);
+    edge.type = type;
+    await saveBoard(this.app, this.boardFile, this.board);
+  }
+
+  async deleteEdge(index: number) {
+    const edge = this.board.edges[index];
+    if (!edge) return;
+    const fromTask = this.tasks.get(edge.from);
+    const toTask = this.tasks.get(edge.to);
+    if (fromTask && toTask) {
+      await this.removeRelation(edge.type, fromTask, toTask);
+    }
+    this.board.edges.splice(index, 1);
+    await saveBoard(this.app, this.boardFile, this.board);
+  }
 }
