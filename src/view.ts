@@ -156,14 +156,19 @@ export class BoardView extends ItemView {
       let text = task?.text ?? id;
       const metas: string[] = [];
       const tags: string[] = [];
-      text = text.replace(/\b(\w+)::\s*([^#\s]+)/g, (m, key, val) => {
-        if (!['dependsOn', 'subtaskOf', 'after'].includes(key)) metas.push(`${key}:${val}`);
+      text = text.replace(/\b(\w+)::\s*((?:\[\[[^\]]+\]\]|[^#\n])*?)(?=\s+\w+::|\s+#|$)/g, (m, key, val) => {
+        if (!['dependsOn', 'subtaskOf', 'after'].includes(key)) metas.push(`${key}:${val.trim()}`);
         return '';
       });
       text = text.replace(/#(\S+)/g, (_, t) => {
         tags.push('#' + t);
         return '';
       });
+      const idMatch = text.trim().match(/\^[\w-]+$/);
+      if (idMatch) {
+        metas.push(`ID:${idMatch[0].slice(1)}`);
+        text = text.replace(/\^[\w-]+$/, '');
+      }
       textEl.textContent = text.trim();
       metas.forEach((m) => metaEl.createSpan({ text: m }));
       tags.forEach((t) => tagsEl.createSpan({ text: t, cls: 'vtasks-tag' }));
