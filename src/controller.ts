@@ -42,6 +42,16 @@ export default class Controller {
     return id;
   }
 
+  async openTask(id: string) {
+    const task = this.tasks.get(id);
+    if (!task) return;
+    await this.app.workspace.openLinkText(
+      `${task.file.path}#^${task.blockId}`,
+      '',
+      true
+    );
+  }
+
   async toggleCheck(id: string) {
     const task = this.tasks.get(id);
     if (!task) return;
