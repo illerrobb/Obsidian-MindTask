@@ -4,6 +4,7 @@ This experimental Obsidian plugin lets you manage markdown tasks on an interacti
 
 All tasks in your vault are parsed and shown as draggable nodes. Positions and connections are stored in `*.vtasks.json` files next to your notes. Nodes can be moved with the mouse, dependencies are drawn as lines and several keyboard shortcuts allow quick editing directly from the board.
 Tasks can also be selected with a rectangle and grouped into collapsible boxes.
+You can pan the board itself by dragging with the middle mouse button or holding `Ctrl` while left-clicking on empty space.
 
 Edges support different relationship types: dependency, subtask and sequence. Click an edge to cycle through these types and the line style will update accordingly.
 
