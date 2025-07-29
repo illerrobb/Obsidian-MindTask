@@ -71,19 +71,19 @@ export async function scanFiles(
  */
 export function parseDependencies(tasks: ParsedTask[]): { from: string; to: string; type: string }[] {
   const edges: { from: string; to: string; type: string }[] = [];
-  const depRegex = /dependsOn::\s*\[\[(.+?)#\^(\w+)\]\]/g;
-  const subtaskRegex = /subtaskOf::\s*\[\[(.+?)#\^(\w+)\]\]/g;
-  const seqRegex = /after::\s*\[\[(.+?)#\^(\w+)\]\]/g;
+  const depRegex = /\[dependsOn::\s*([\w-]+)\]/g;
+  const subtaskRegex = /\[subtaskOf::\s*([\w-]+)\]/g;
+  const seqRegex = /\[after::\s*([\w-]+)\]/g;
   for (const t of tasks) {
     let m: RegExpExecArray | null;
     while ((m = depRegex.exec(t.text)) !== null) {
-      edges.push({ from: m[2], to: t.blockId, type: 'depends' });
+      edges.push({ from: m[1], to: t.blockId, type: 'depends' });
     }
     while ((m = subtaskRegex.exec(t.text)) !== null) {
-      edges.push({ from: m[2], to: t.blockId, type: 'subtask' });
+      edges.push({ from: m[1], to: t.blockId, type: 'subtask' });
     }
     while ((m = seqRegex.exec(t.text)) !== null) {
-      edges.push({ from: m[2], to: t.blockId, type: 'sequence' });
+      edges.push({ from: m[1], to: t.blockId, type: 'sequence' });
     }
   }
   return edges;

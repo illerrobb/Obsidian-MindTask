@@ -9,6 +9,12 @@ A minimap in the bottom-right shows an overview of all nodes. Click or drag insi
 
 Edges support different relationship types: dependency, subtask and sequence. Click an edge to cycle through these types and the line style will update accordingly.
 
+Task relationships are stored using Dataview inline fields referencing the target task's ID:
+
+- `[dependsOn:: id]` – the current task depends on another
+- `[subtaskOf:: id]` – the current task is a subtask
+- `[after:: id]` – the current task should come after another
+
 ## Development
 
 Install dependencies and build the plugin:
