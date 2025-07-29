@@ -1,5 +1,5 @@
 {
-  "name": "visual-tasks-board",
+  "name": "mind-task",
   "version": "0.0.1",
   "description": "Obsidian plugin to visualize tasks on a board",
   "main": "dist/main.js",

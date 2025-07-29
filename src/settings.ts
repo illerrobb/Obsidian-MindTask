@@ -1,5 +1,5 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
-import VisualTasksPlugin from './main';
+import MindTaskPlugin from './main';
 
 export interface PluginSettings {
   boardFilePath: string;
@@ -16,7 +16,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 };
 
 export class SettingsTab extends PluginSettingTab {
-  constructor(app: App, private plugin: VisualTasksPlugin) {
+  constructor(app: App, private plugin: MindTaskPlugin) {
     super(app, plugin);
   }
 
