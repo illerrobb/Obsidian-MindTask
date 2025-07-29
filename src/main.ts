@@ -126,15 +126,17 @@ export default class MindTaskPlugin extends Plugin {
         (this.tasks.has(e.to) || this.board.nodes[e.to]?.type === 'group')
     );
 
+    const existing = this.board.edges.filter((e) =>
+      deps.some((d) => d.from === e.from && d.to === e.to && d.type === e.type)
+    );
+
     for (const dep of deps) {
-      if (
-        !this.board.edges.find(
-          (e) => e.from === dep.from && e.to === dep.to && e.type === dep.type
-        )
-      ) {
-        this.board.edges.push(dep);
+      if (!existing.find((e) => e.from === dep.from && e.to === dep.to && e.type === dep.type)) {
+        existing.push(dep);
       }
     }
+
+    this.board.edges = existing;
 
     await saveBoard(this.app, this.boardFile, this.board);
 
