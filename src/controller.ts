@@ -145,14 +145,13 @@ export default class Controller {
   }
 
   private relationString(type: string, from: ParsedTask, to: ParsedTask) {
-    const target = `[[${to.file.path}#^${to.blockId}]]`;
     switch (type) {
       case 'depends':
-        return `dependsOn:: ${target}`;
+        return `[dependsOn:: ${to.blockId}]`;
       case 'subtask':
-        return `subtaskOf:: ${target}`;
+        return `[subtaskOf:: ${to.blockId}]`;
       case 'sequence':
-        return `after:: ${target}`;
+        return `[after:: ${to.blockId}]`;
       default:
         return '';
     }
@@ -163,6 +162,10 @@ export default class Controller {
     if (!rel) return;
     const insertRel = (t: string) => {
       if (t.includes(rel)) return t;
+      const dv = t.match(/\[id::\s*([\w-]+)\]/);
+      if (dv) {
+        return t.replace(/\[id::\s*([\w-]+)\]/, `${rel} [id:: $1]`);
+      }
       const match = t.match(/\^([\w-]+)$/);
       if (match) {
         return t.replace(/\^([\w-]+)$/, `${rel} ^$1`);
