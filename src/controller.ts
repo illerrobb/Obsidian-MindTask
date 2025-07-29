@@ -147,11 +147,11 @@ export default class Controller {
   private relationString(type: string, from: ParsedTask, to: ParsedTask) {
     switch (type) {
       case 'depends':
-        return `[dependsOn:: ${to.blockId}]`;
+        return `[dependsOn:: ${from.blockId}]`;
       case 'subtask':
-        return `[subtaskOf:: ${to.blockId}]`;
+        return `[subtaskOf:: ${from.blockId}]`;
       case 'sequence':
-        return `[after:: ${to.blockId}]`;
+        return `[after:: ${from.blockId}]`;
       default:
         return '';
     }
