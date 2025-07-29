@@ -12,11 +12,12 @@ export interface ParsedTask {
 }
 
 /**
- * Scan given markdown files for tasks. Adds a block ID if missing.
+ * Scan given markdown files for tasks. Adds an identifier if missing.
  */
 export interface ScanOptions {
   tags?: string[];
   folders?: string[];
+  useBlockId?: boolean;
 }
 
 export async function scanFiles(
@@ -24,7 +25,7 @@ export async function scanFiles(
   files: TFile[],
   options: ScanOptions = {}
 ): Promise<ParsedTask[]> {
-  const { tags = [], folders = [] } = options;
+  const { tags = [], folders = [], useBlockId = true } = options;
   const tasks: ParsedTask[] = [];
   for (const file of files) {
     if (folders.length && !folders.some((f) => file.path.startsWith(f))) {
@@ -41,12 +42,19 @@ export async function scanFiles(
       let text = m[3];
       if (tags.length && !tags.some((t) => text.includes('#' + t))) continue;
       const idMatch = text.match(/\^([\w-]+)$/);
+      const dvMatch = text.match(/\[id::\s*([\w-]+)\]/);
       let blockId: string;
       if (idMatch) {
         blockId = idMatch[1];
+      } else if (dvMatch) {
+        blockId = dvMatch[1];
       } else {
         blockId = 't-' + crypto.randomBytes(4).toString('hex');
-        lines[i] = lines[i] + ` ^${blockId}`;
+        if (useBlockId) {
+          lines[i] = lines[i] + ` ^${blockId}`;
+        } else {
+          lines[i] = lines[i] + ` [id:: ${blockId}]`;
+        }
         modified = true;
       }
       tasks.push({ file, line: i, text, checked, blockId, indent, dependsOn: [] });
