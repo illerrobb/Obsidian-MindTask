@@ -5,7 +5,7 @@ import { scanFiles, parseDependencies, ParsedTask, ScanOptions } from './parser'
 import Controller from './controller';
 import { PluginSettings, DEFAULT_SETTINGS, SettingsTab } from './settings';
 
-export default class VisualTasksPlugin extends Plugin {
+export default class MindTaskPlugin extends Plugin {
   private board: BoardData | null = null;
   private boardFile: TFile | null = null;
   private tasks: Map<string, ParsedTask> = new Map();
@@ -37,7 +37,7 @@ export default class VisualTasksPlugin extends Plugin {
 
     this.addCommand({
       id: 'open-board',
-      name: 'Open Tasks Board',
+      name: 'Open MindTask Board',
       callback: () => this.openBoard(),
     });
   }

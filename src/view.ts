@@ -3,7 +3,7 @@ import Controller from './controller';
 import { BoardData } from './boardStore';
 import { ParsedTask } from './parser';
 
-export const VIEW_TYPE_BOARD = 'visual-tasks-board';
+export const VIEW_TYPE_BOARD = 'mind-task';
 
 export class BoardView extends ItemView {
   private boardEl!: HTMLElement;
@@ -70,7 +70,7 @@ export class BoardView extends ItemView {
   }
 
   getDisplayText() {
-    return 'Tasks Board';
+    return 'MindTask Board';
   }
 
   async onOpen() {
