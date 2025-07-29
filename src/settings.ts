@@ -6,6 +6,8 @@ export interface PluginSettings {
   defaultTaskFile: string;
   tagFilters: string[];
   folderPaths: string[];
+  /** Use ^id block anchors rather than [id:: ] inline fields */
+  useBlockId: boolean;
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
@@ -13,6 +15,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   defaultTaskFile: 'Tasks.md',
   tagFilters: [],
   folderPaths: [],
+  useBlockId: true,
 };
 
 export class SettingsTab extends PluginSettingTab {
@@ -78,6 +81,18 @@ export class SettingsTab extends PluginSettingTab {
               .split(',')
               .map((v) => v.trim())
               .filter((v) => v.length > 0);
+            await this.plugin.saveData(this.plugin.settings);
+          })
+      );
+
+    new Setting(containerEl)
+      .setName('Use block IDs')
+      .setDesc('Add tasks with ^id anchors instead of [id::] fields')
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.useBlockId)
+          .onChange(async (value) => {
+            this.plugin.settings.useBlockId = value;
             await this.plugin.saveData(this.plugin.settings);
           })
       );

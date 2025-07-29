@@ -22,13 +22,19 @@ Load `manifest.json`, `main.js`, and `styles.css` from the `dist` folder into Ob
 
 ## Structure
 
-- `src/parser.ts` – reads tasks from markdown files and ensures they have block IDs
+- `src/parser.ts` – reads tasks from markdown files and ensures they have unique IDs
 - `src/boardStore.ts` – saves and loads board state
 - `src/controller.ts` – high level actions like creating tasks and edges
 - `src/view.ts` – basic SVG board rendering
 - `src/main.ts` – plugin entry point
 
 This is an early prototype and not feature complete.
+
+## Settings
+
+MindTask can store task identifiers either as block anchors or as dataview
+inline fields. The default **Use block IDs** option appends `^id` at the end of
+each task. When disabled, new tasks receive `[id:: id]` instead.
 
 ## License
 

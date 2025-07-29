@@ -54,6 +54,7 @@ export default class MindTaskPlugin extends Plugin {
     const parsed = await scanFiles(this.app, files, {
       tags: this.settings.tagFilters,
       folders: this.settings.folderPaths,
+      useBlockId: this.settings.useBlockId,
     });
     const deps = parseDependencies(parsed);
 
@@ -102,6 +103,7 @@ export default class MindTaskPlugin extends Plugin {
     const parsed = await scanFiles(this.app, files, {
       tags: this.settings.tagFilters,
       folders: this.settings.folderPaths,
+      useBlockId: this.settings.useBlockId,
     });
     const deps = parseDependencies(parsed);
 

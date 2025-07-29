@@ -41,7 +41,10 @@ export default class Controller {
       file = await this.app.vault.create(path, '');
     }
     const id = 't-' + crypto.randomBytes(4).toString('hex');
-    await this.app.vault.append(file, `- [ ] ${text} ^${id}\n`);
+    const idPart = this.settings.useBlockId
+      ? `^${id}`
+      : `[id:: ${id}]`;
+    await this.app.vault.append(file, `- [ ] ${text} ${idPart}\n`);
     const content = await this.app.vault.read(file);
     const line = content.split(/\r?\n/).length - 1;
     const task: ParsedTask = {
