@@ -11,6 +11,7 @@ export class BoardView extends ItemView {
   private alignVLine!: HTMLElement;
   private alignHLine!: HTMLElement;
   private readonly gridSize = 20;
+  private readonly boardSize = 50000;
   private selectedIds: Set<string> = new Set();
   private draggingId: string | null = null;
   private dragOffsetX = 0;
@@ -122,7 +123,10 @@ export class BoardView extends ItemView {
       backBtn.onclick = () => this.openGroup(this.board.nodes[this.groupId!].group || null);
     }
 
-    this.boardEl = this.containerEl.createDiv('vtasks-board');
+    const wrapper = this.containerEl.createDiv('vtasks-board-wrapper');
+    this.boardEl = wrapper.createDiv('vtasks-board');
+    this.boardEl.style.width = `${this.boardSize}px`;
+    this.boardEl.style.height = `${this.boardSize}px`;
     this.boardEl.tabIndex = 0;
     this.boardEl.style.transform = `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px) scale(${this.zoom})`;
     this.alignVLine = this.boardEl.createDiv('vtasks-align-line vtasks-align-v');
@@ -694,18 +698,8 @@ export class BoardView extends ItemView {
 
   private updateBoardSize() {
     if (!this.boardEl) return;
-    let maxX = 0;
-    let maxY = 0;
-    for (const id in this.board.nodes) {
-      const n = this.board.nodes[id];
-      if ((n.group || null) !== this.groupId) continue;
-      const w = n.width ?? 120;
-      const h = n.height ?? (n.type === 'group' ? 80 : 40);
-      maxX = Math.max(maxX, n.x + w);
-      maxY = Math.max(maxY, n.y + h);
-    }
-    this.boardEl.style.width = maxX + 'px';
-    this.boardEl.style.height = maxY + 'px';
+    this.boardEl.style.width = `${this.boardSize}px`;
+    this.boardEl.style.height = `${this.boardSize}px`;
   }
 
   private openGroup(id: string | null) {
