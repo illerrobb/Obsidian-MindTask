@@ -40,6 +40,8 @@ export class BoardView extends ItemView {
   private minimapScale = 1;
   private minimapOffsetX = 0;
   private minimapOffsetY = 0;
+  private contentWidth = 0;
+  private contentHeight = 0;
   private isMinimapDragging = false;
   private contentWidth = 0;
   private contentHeight = 0;
@@ -796,6 +798,7 @@ export class BoardView extends ItemView {
     const y = e.clientY - rect.top;
     const bx = x / this.minimapScale + this.minimapOffsetX;
     const by = y / this.minimapScale + this.minimapOffsetY;
+
     const cw = this.contentWidth || this.boardEl.offsetWidth;
     const ch = this.contentHeight || this.boardEl.offsetHeight;
     this.boardOffsetX = cw / 2 - bx * this.zoom;
