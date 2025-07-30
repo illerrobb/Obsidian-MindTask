@@ -32,7 +32,6 @@ export class BoardView extends ItemView {
   private boardStartY = 0;
   private boardOffsetX = 0;
   private boardOffsetY = 0;
-  private boardPadding = 10000;
   private zoom = 1;
   private minimapEl!: HTMLElement;
   private minimapSvg!: SVGSVGElement;
@@ -125,10 +124,6 @@ export class BoardView extends ItemView {
 
     this.boardEl = this.containerEl.createDiv('vtasks-board');
     this.boardEl.tabIndex = 0;
-    if (this.boardOffsetX === 0 && this.boardOffsetY === 0) {
-      this.boardOffsetX = this.containerEl.clientWidth / 2 - this.boardPadding;
-      this.boardOffsetY = this.containerEl.clientHeight / 2 - this.boardPadding;
-    }
     this.boardEl.style.transform = `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px) scale(${this.zoom})`;
     this.alignVLine = this.boardEl.createDiv('vtasks-align-line vtasks-align-v');
     this.alignHLine = this.boardEl.createDiv('vtasks-align-line vtasks-align-h');
@@ -163,8 +158,8 @@ export class BoardView extends ItemView {
     const pos = this.board.nodes[id];
     const nodeEl = this.boardEl.createDiv('vtasks-node');
     nodeEl.setAttr('data-id', id);
-    nodeEl.style.left = pos.x + this.boardPadding + 'px';
-    nodeEl.style.top = pos.y + this.boardPadding + 'px';
+    nodeEl.style.left = pos.x + 'px';
+    nodeEl.style.top = pos.y + 'px';
     if (pos.width) nodeEl.style.width = pos.width + 'px';
     if (pos.height) nodeEl.style.height = pos.height + 'px';
     if (pos.color) nodeEl.style.borderColor = pos.color;
@@ -297,8 +292,8 @@ export class BoardView extends ItemView {
         this.selStartX = coords.x;
         this.selStartY = coords.y;
         this.selectionRect = this.boardEl.createDiv('vtasks-selection');
-        this.selectionRect.style.left = this.selStartX + this.boardPadding + 'px';
-        this.selectionRect.style.top = this.selStartY + this.boardPadding + 'px';
+        this.selectionRect.style.left = this.selStartX + 'px';
+        this.selectionRect.style.top = this.selStartY + 'px';
       }
     };
 
@@ -326,8 +321,8 @@ export class BoardView extends ItemView {
         height = Math.max(20, height);
         nodeEl.style.width = width + 'px';
         nodeEl.style.height = height + 'px';
-        nodeEl.style.left = x + this.boardPadding + 'px';
-        nodeEl.style.top = y + this.boardPadding + 'px';
+        nodeEl.style.left = x + 'px';
+        nodeEl.style.top = y + 'px';
         this.board.nodes[id] = { ...this.board.nodes[id], x, y, width, height };
         this.updateOverflow(nodeEl);
         this.updateBoardSize();
@@ -347,9 +342,9 @@ export class BoardView extends ItemView {
           let y = start.y + dy;
 
           const nodeEl = this.boardEl.querySelector(`.vtasks-node[data-id="${id}"]`) as HTMLElement;
-          nodeEl.style.left = x + this.boardPadding + 'px';
-          nodeEl.style.top = y + this.boardPadding + 'px';
-          this.board.nodes[id] = { ...this.board.nodes[id], x, y };
+          nodeEl.style.left = x + 'px';
+          nodeEl.style.top = y + 'px';
+        this.board.nodes[id] = { ...this.board.nodes[id], x, y };
       });
       this.updateBoardSize();
       this.drawEdges();
@@ -373,8 +368,8 @@ export class BoardView extends ItemView {
         const top = Math.min(this.selStartY, y);
         const width = Math.abs(x - this.selStartX);
         const height = Math.abs(y - this.selStartY);
-        this.selectionRect.style.left = left + this.boardPadding + 'px';
-        this.selectionRect.style.top = top + this.boardPadding + 'px';
+        this.selectionRect.style.left = left + 'px';
+        this.selectionRect.style.top = top + 'px';
         this.selectionRect.style.width = width + 'px';
         this.selectionRect.style.height = height + 'px';
       }
@@ -700,7 +695,7 @@ export class BoardView extends ItemView {
   private updateBoardSize() {
     if (!this.boardEl) return;
     // Keep the board extremely large so users never see an edge
-    const size = this.boardPadding * 2;
+    const size = 20000;
     this.boardEl.style.width = `${size}px`;
     this.boardEl.style.height = `${size}px`;
   }
@@ -803,8 +798,8 @@ export class BoardView extends ItemView {
   private getBoardCoords(e: MouseEvent | PointerEvent) {
     const rect = this.boardEl.getBoundingClientRect();
     return {
-      x: (e.clientX - rect.left) / this.zoom - this.boardPadding,
-      y: (e.clientY - rect.top) / this.zoom - this.boardPadding,
+      x: (e.clientX - rect.left) / this.zoom,
+      y: (e.clientY - rect.top) / this.zoom,
     };
   }
 }
