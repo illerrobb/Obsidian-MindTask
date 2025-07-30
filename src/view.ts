@@ -694,18 +694,10 @@ export class BoardView extends ItemView {
 
   private updateBoardSize() {
     if (!this.boardEl) return;
-    let maxX = 0;
-    let maxY = 0;
-    for (const id in this.board.nodes) {
-      const n = this.board.nodes[id];
-      if ((n.group || null) !== this.groupId) continue;
-      const w = n.width ?? 120;
-      const h = n.height ?? (n.type === 'group' ? 80 : 40);
-      maxX = Math.max(maxX, n.x + w);
-      maxY = Math.max(maxY, n.y + h);
-    }
-    this.boardEl.style.width = maxX + 'px';
-    this.boardEl.style.height = maxY + 'px';
+    // Keep the board extremely large so users never see an edge
+    const size = 20000;
+    this.boardEl.style.width = `${size}px`;
+    this.boardEl.style.height = `${size}px`;
   }
 
   private openGroup(id: string | null) {
@@ -782,8 +774,8 @@ export class BoardView extends ItemView {
     if (!this.minimapView) return;
     const x = (-this.boardOffsetX / this.zoom - this.minimapOffsetX) * this.minimapScale;
     const y = (-this.boardOffsetY / this.zoom - this.minimapOffsetY) * this.minimapScale;
-    const w = (this.boardEl.offsetWidth / this.zoom) * this.minimapScale;
-    const h = (this.boardEl.offsetHeight / this.zoom) * this.minimapScale;
+    const w = (this.containerEl.clientWidth / this.zoom) * this.minimapScale;
+    const h = (this.containerEl.clientHeight / this.zoom) * this.minimapScale;
     this.minimapView.style.left = x + 'px';
     this.minimapView.style.top = y + 'px';
     this.minimapView.style.width = w + 'px';
@@ -796,8 +788,8 @@ export class BoardView extends ItemView {
     const y = e.clientY - rect.top;
     const bx = x / this.minimapScale + this.minimapOffsetX;
     const by = y / this.minimapScale + this.minimapOffsetY;
-    this.boardOffsetX = this.boardEl.offsetWidth / 2 - bx * this.zoom;
-    this.boardOffsetY = this.boardEl.offsetHeight / 2 - by * this.zoom;
+    this.boardOffsetX = this.containerEl.clientWidth / 2 - bx * this.zoom;
+    this.boardOffsetY = this.containerEl.clientHeight / 2 - by * this.zoom;
     this.boardEl.style.transform = `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px) scale(${this.zoom})`;
     this.updateMinimapView();
     this.drawEdges();
