@@ -152,6 +152,26 @@ export class BoardView extends ItemView {
     this.drawMinimap();
     this.updateMinimapView();
     this.registerEvents();
+
+    // Centra la board solo se non hai già fatto panning
+    if (this.boardOffsetX === 0 && this.boardOffsetY === 0) {
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (const id in this.board.nodes) {
+        const n = this.board.nodes[id];
+        minX = Math.min(minX, n.x);
+        minY = Math.min(minY, n.y);
+        maxX = Math.max(maxX, n.x + (n.width ?? 120));
+        maxY = Math.max(maxY, n.y + (n.height ?? 40));
+      }
+      if (minX !== Infinity) {
+        const boardW = maxX - minX;
+        const boardH = maxY - minY;
+        const viewW = this.containerEl.clientWidth || window.innerWidth;
+        const viewH = this.containerEl.clientHeight || window.innerHeight;
+        this.boardOffsetX = (viewW - boardW * this.zoom) / 2 - minX * this.zoom;
+        this.boardOffsetY = (viewH - boardH * this.zoom) / 2 - minY * this.zoom;
+      }
+    }
   }
 
   private createNodeElement(id: string) {
@@ -570,7 +590,7 @@ export class BoardView extends ItemView {
       this.moveBoardFromMinimap(e as PointerEvent);
     };
     this.minimapEl.onpointermove = (e) => {
-      if (this.isMinimapDragging) this.moveBoardFromMinimap(e as PointerEvent);
+      if this.isMinimapDragging) this.moveBoardFromMinimap(e as PointerEvent);
     };
     this.minimapEl.onpointerup = () => {
       this.isMinimapDragging = false;
