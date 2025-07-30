@@ -90,6 +90,7 @@ export class BoardView extends ItemView {
 
   private render() {
     this.containerEl.empty();
+    this.containerEl.addClass('vtasks-container');
     const controls = this.containerEl.createDiv('vtasks-filter-bar');
     const tagInput = controls.createEl('input', {
       type: 'text',
