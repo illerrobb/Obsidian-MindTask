@@ -43,8 +43,6 @@ export class BoardView extends ItemView {
   private contentWidth = 0;
   private contentHeight = 0;
   private isMinimapDragging = false;
-  private contentWidth = 0;
-  private contentHeight = 0;
   private resizingId: string | null = null;
   private resizeDir = '';
   private resizeStartWidth = 0;
@@ -782,10 +780,8 @@ export class BoardView extends ItemView {
     if (!this.minimapView) return;
     const x = (-this.boardOffsetX / this.zoom - this.minimapOffsetX) * this.minimapScale;
     const y = (-this.boardOffsetY / this.zoom - this.minimapOffsetY) * this.minimapScale;
-    const cw = this.contentWidth || this.boardEl.offsetWidth;
-    const ch = this.contentHeight || this.boardEl.offsetHeight;
-    const w = (cw / this.zoom) * this.minimapScale;
-    const h = (ch / this.zoom) * this.minimapScale;
+    const w = (this.contentWidth || this.boardEl.offsetWidth) / this.zoom * this.minimapScale;
+    const h = (this.contentHeight || this.boardEl.offsetHeight) / this.zoom * this.minimapScale;
     this.minimapView.style.left = x + 'px';
     this.minimapView.style.top = y + 'px';
     this.minimapView.style.width = w + 'px';
@@ -798,11 +794,10 @@ export class BoardView extends ItemView {
     const y = e.clientY - rect.top;
     const bx = x / this.minimapScale + this.minimapOffsetX;
     const by = y / this.minimapScale + this.minimapOffsetY;
-
-    const cw = this.contentWidth || this.boardEl.offsetWidth;
-    const ch = this.contentHeight || this.boardEl.offsetHeight;
-    this.boardOffsetX = cw / 2 - bx * this.zoom;
-    this.boardOffsetY = ch / 2 - by * this.zoom;
+    const boardW = this.contentWidth || this.boardEl.offsetWidth;
+    const boardH = this.contentHeight || this.boardEl.offsetHeight;
+    this.boardOffsetX = boardW / 2 - bx * this.zoom;
+    this.boardOffsetY = boardH / 2 - by * this.zoom;
     this.boardEl.style.transform = `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px) scale(${this.zoom})`;
     this.updateMinimapView();
     this.drawEdges();

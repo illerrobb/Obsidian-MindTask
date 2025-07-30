@@ -12,7 +12,6 @@
   background-image: radial-gradient(var(--background-modifier-border) 1px, transparent 0);
   background-size: 20px 20px;
   transform: translate(0, 0) scale(1);
-  transform-origin: 0 0;
 }
 
 .vtasks-align-line {
