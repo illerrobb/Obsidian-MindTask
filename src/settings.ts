@@ -12,6 +12,8 @@ export interface PluginSettings {
   folderPaths: string[];
   /** Use ^id block anchors rather than [id:: ] inline fields */
   useBlockId: boolean;
+  /** Folder to store board files */
+  boardFolder: string;
 }
 
 export interface PluginData {
@@ -24,6 +26,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   tagFilters: [],
   folderPaths: [],
   useBlockId: true,
+  boardFolder: '',
 };
 
 export class SettingsTab extends PluginSettingTab {
@@ -79,6 +82,19 @@ export class SettingsTab extends PluginSettingTab {
             this.plugin.boards.push({ name: 'New Board', path: 'tasks.vtasks.json' });
             await this.plugin.savePluginData();
             this.display();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName('Board folder')
+      .setDesc('Folder where new board files are stored')
+      .addText((text) =>
+        text
+          .setPlaceholder('(root)')
+          .setValue(this.plugin.settings.boardFolder)
+          .onChange(async (value) => {
+            this.plugin.settings.boardFolder = value.trim();
+            await this.plugin.savePluginData();
           })
       );
 
