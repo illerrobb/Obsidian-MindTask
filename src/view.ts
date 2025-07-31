@@ -40,6 +40,8 @@ export class BoardView extends ItemView {
   private minimapOffsetX = 0;
   private minimapOffsetY = 0;
   private isMinimapDragging = false;
+  private editTimer: number | null = null;
+  private editingId: string | null = null;
   private resizingId: string | null = null;
   private resizeDir = '';
   private resizeStartWidth = 0;
@@ -218,6 +220,10 @@ export class BoardView extends ItemView {
       let text = task?.text ?? id;
       const metas: { key: string; val: string }[] = [];
       const tags: string[] = [];
+      text = text.replace(/\[(\w+)::\s*([^\]]+)\]/g, (m, key, val) => {
+        if (!['dependsOn', 'subtaskOf', 'after'].includes(key)) metas.push({ key, val: val.trim() });
+        return '';
+      });
       text = text.replace(/\b(\w+)::\s*((?:\[\[[^\]]+\]\]|[^\n])*?)(?=\s+\w+::|\s+#|$)/g, (m, key, val) => {
         if (!['dependsOn', 'subtaskOf', 'after'].includes(key)) metas.push({ key, val: val.trim() });
         return '';
@@ -257,6 +263,13 @@ export class BoardView extends ItemView {
 
     nodeEl.addEventListener('dblclick', (e) => {
       e.stopPropagation();
+      if (this.editTimer) {
+        window.clearTimeout(this.editTimer);
+        this.editTimer = null;
+      }
+      if (this.editingId) {
+        this.finishEditing(true);
+      }
       if (pos.type === 'group') {
         this.openGroup(id);
       } else {
@@ -267,6 +280,7 @@ export class BoardView extends ItemView {
 
   private registerEvents() {
     this.boardEl.onpointerdown = (e) => {
+      if (this.editingId) this.finishEditing(true);
       const resizeEl = (e.target as HTMLElement).closest('.vtasks-resize') as HTMLElement | null;
       const outHandle = (e.target as HTMLElement).closest('.vtasks-handle-out') as HTMLElement | null;
       const inHandle = (e.target as HTMLElement).closest('.vtasks-handle-in') as HTMLElement | null;
@@ -512,7 +526,15 @@ export class BoardView extends ItemView {
       if (target) {
         const id = target.getAttribute('data-id')!;
         this.selectNode(target, id, (e as MouseEvent).shiftKey || (e as MouseEvent).metaKey);
+        if ((e as MouseEvent).detail === 1) {
+          if (this.editTimer) window.clearTimeout(this.editTimer);
+          this.editTimer = window.setTimeout(() => {
+            if (this.editingId) return;
+            this.startEditing(target, id);
+          }, 200);
+        }
       } else {
+        this.finishEditing(true);
         this.clearSelection();
       }
     });
@@ -803,6 +825,63 @@ export class BoardView extends ItemView {
       this.alignHLine.style.display = '';
     } else {
       this.alignHLine.style.display = 'none';
+    }
+  }
+
+  private startEditing(nodeEl: HTMLElement, id: string) {
+    if (!this.controller) return;
+    const textEl = nodeEl.querySelector('.vtasks-text') as HTMLElement | null;
+    if (!textEl) return;
+    this.editingId = id;
+    const original = textEl.textContent || '';
+    const input = document.createElement('input');
+    input.value = original;
+    input.classList.add('vtasks-edit-input');
+    textEl.replaceWith(input);
+    const finish = (save: boolean) => {
+      if (this.editingId !== id) return;
+      this.editingId = null;
+      const val = save ? input.value : original;
+      const span = document.createElement('div');
+      span.classList.add('vtasks-text');
+      span.textContent = val;
+      input.replaceWith(span);
+      if (save && val !== original) {
+        this.controller!.renameTask(id, val).then(() => this.render());
+      }
+    };
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        finish(true);
+      } else if (e.key === 'Escape') {
+        finish(false);
+      }
+    });
+    input.addEventListener('blur', () => finish(true));
+    input.focus();
+  }
+
+  private finishEditing(save: boolean) {
+    if (!this.editingId) return;
+    const nodeEl = this.boardEl.querySelector(`.vtasks-node[data-id="${this.editingId}"]`);
+    if (!nodeEl) {
+      this.editingId = null;
+      return;
+    }
+    const input = nodeEl.querySelector('input.vtasks-edit-input') as HTMLInputElement | null;
+    if (!input) {
+      this.editingId = null;
+      return;
+    }
+    const val = input.value;
+    const span = document.createElement('div');
+    span.classList.add('vtasks-text');
+    span.textContent = val;
+    input.replaceWith(span);
+    const id = this.editingId;
+    this.editingId = null;
+    if (save) {
+      this.controller!.renameTask(id, val).then(() => this.render());
     }
   }
 

@@ -51,9 +51,9 @@ export async function scanFiles(
       } else {
         blockId = 't-' + crypto.randomBytes(4).toString('hex');
         if (useBlockId) {
-          lines[i] = lines[i] + ` ^${blockId}`;
+          lines[i] = lines[i] + `  ^${blockId}`;
         } else {
-          lines[i] = lines[i] + ` [id:: ${blockId}]`;
+          lines[i] = lines[i] + `  [id:: ${blockId}]`;
         }
         modified = true;
       }
