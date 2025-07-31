@@ -46,8 +46,10 @@ When creating a new board you can choose where the `.vtasks.json` file is saved.
 If the selected path includes folders that do not exist, MindTask will create
 those folders automatically before writing the board file.
 
-You can also configure which background colors appear in the node context menu
-by entering a comma separated list in the plugin settings.
+You can configure the colors shown in the context menu from the plugin
+settings. Each color can optionally be paired with a label such as `urgent` or
+`priority:: lowest`. When a task contains that tag or metadata field, the node
+is automatically colored.
 
 ## License
 

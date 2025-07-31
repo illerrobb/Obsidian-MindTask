@@ -65,6 +65,13 @@ export default class MindTaskPlugin extends Plugin {
     const data = (await this.loadData()) as Partial<PluginData> | null;
     if (data) {
       this.settings = Object.assign({}, DEFAULT_SETTINGS, data.settings);
+      if (
+        Array.isArray((this.settings as any).backgroundColors) &&
+        typeof (this.settings as any).backgroundColors[0] === 'string'
+      ) {
+        this.settings.backgroundColors = ((this.settings as any)
+          .backgroundColors as unknown as string[]).map((c) => ({ color: c }));
+      }
       this.boards = data.boards ?? [];
     } else {
       this.settings = { ...DEFAULT_SETTINGS };
