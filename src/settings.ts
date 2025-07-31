@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting, SettingTab } from 'obsidian';
+import { App, PluginSettingTab, Setting } from 'obsidian';
 import MindTaskPlugin from './main';
 
 export interface BoardInfo {
