@@ -46,6 +46,9 @@ When creating a new board you can choose where the `.vtasks.json` file is saved.
 If the selected path includes folders that do not exist, MindTask will create
 those folders automatically before writing the board file.
 
+You can also configure which background colors appear in the node context menu
+by entering a comma separated list in the plugin settings.
+
 ## License
 
 Distributed under the MIT License. See [LICENSE](LICENSE) for more information.

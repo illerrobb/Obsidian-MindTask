@@ -198,7 +198,7 @@ export class BoardView extends ItemView {
     nodeEl.style.top = pos.y + 'px';
     if (pos.width) nodeEl.style.width = pos.width + 'px';
     if (pos.height) nodeEl.style.height = pos.height + 'px';
-    if (pos.color) nodeEl.style.borderColor = pos.color;
+    if (pos.color) nodeEl.style.backgroundColor = pos.color;
 
     const inHandle = nodeEl.createDiv('vtasks-handle vtasks-handle-in');
     const textEl = nodeEl.createDiv('vtasks-text');
@@ -549,15 +549,29 @@ export class BoardView extends ItemView {
           item.setTitle('Ungroup').onClick(() => this.controller.ungroupNode(id).then(() => this.render()))
         );
       }
-      const colors = ['red', 'green', 'blue', 'yellow', ''];
+      const colorMenu = new Menu();
+      const colors = this.controller!.settings.backgroundColors;
       colors.forEach((c) => {
-        const title = c ? `Outline ${c}` : 'Default outline';
-        menu.addItem((item) =>
-          item.setTitle(title).onClick(() => {
-            target.style.borderColor = c ? c : '';
-            this.controller.setNodeColor(id, c || null).then(() => this.render());
-          })
-        );
+        colorMenu.addItem((sub) => {
+          sub.setTitle(c).setIcon('circle');
+          if ((sub as any).iconEl) {
+            ((sub as any).iconEl as HTMLElement).style.color = c;
+          }
+          sub.onClick(() => {
+            target.style.backgroundColor = c;
+            this.controller!.setNodeColor(id, c).then(() => this.render());
+          });
+        });
+      });
+      colorMenu.addItem((sub) =>
+        sub.setTitle('Default').onClick(() => {
+          target.style.backgroundColor = '';
+          this.controller!.setNodeColor(id, null).then(() => this.render());
+        })
+      );
+      menu.addItem((item) => {
+        item.setTitle('Color').setIcon('palette');
+        (item as any).setSubmenu(colorMenu);
       });
       const checked = this.tasks.get(id)?.checked ?? false;
       menu.addItem((item) =>

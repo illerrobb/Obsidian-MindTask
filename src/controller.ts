@@ -10,7 +10,7 @@ export default class Controller {
     private boardFile: TFile,
     private board: BoardData,
     private tasks: Map<string, ParsedTask>,
-    private settings: PluginSettings
+    public settings: PluginSettings
   ) {}
 
   async moveNode(id: string, x: number, y: number) {
