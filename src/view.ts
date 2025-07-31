@@ -54,8 +54,8 @@ export class BoardView extends ItemView {
 
   constructor(
     leaf: WorkspaceLeaf,
-    private controller: Controller,
-    private board: BoardData,
+    private controller: Controller | null,
+    private board: BoardData | null,
     private tasks: Map<string, ParsedTask>,
     filters: { tags: string[]; folders: string[] },
     onFilterChange: (tags: string[], folders: string[]) => void
@@ -74,21 +74,26 @@ export class BoardView extends ItemView {
   }
 
   async onOpen() {
-    this.render();
+    if (this.board) {
+      this.render();
+    }
   }
 
   updateData(
     board: BoardData,
     tasks: Map<string, ParsedTask>,
+    controller: Controller,
     filters: { tags: string[]; folders: string[] }
   ) {
     this.board = board;
     this.tasks = tasks;
+    this.controller = controller;
     this.filters = filters;
     this.render();
   }
 
   private render() {
+    if (!this.board) return;
     this.containerEl.empty();
     this.containerEl.addClass('vtasks-container');
     const controls = this.containerEl.createDiv('vtasks-filter-bar');
