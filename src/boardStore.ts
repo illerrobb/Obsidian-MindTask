@@ -38,6 +38,18 @@ export async function getBoardFile(app: App, path: string): Promise<TFile> {
   const normalized = normalizePath(path);
   let file = app.vault.getAbstractFileByPath(normalized) as TFile;
   if (!file) {
+    const dir = normalized.split('/').slice(0, -1).join('/');
+    if (dir) {
+      const parts = dir.split('/');
+      let cur = '';
+      for (const part of parts) {
+        cur = cur ? `${cur}/${part}` : part;
+        if (!app.vault.getAbstractFileByPath(cur)) {
+          await app.vault.createFolder(cur);
+        }
+      }
+    }
+
     try {
       await app.vault.create(
         normalized,

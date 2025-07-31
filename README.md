@@ -42,6 +42,10 @@ MindTask can store task identifiers either as block anchors or as dataview
 inline fields. The default **Use block IDs** option appends `^id` at the end of
 each task. When disabled, new tasks receive `[id:: id]` instead.
 
+When creating a new board you can choose where the `.vtasks.json` file is saved.
+If the selected path includes folders that do not exist, MindTask will create
+those folders automatically before writing the board file.
+
 ## License
 
 Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
