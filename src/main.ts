@@ -13,6 +13,53 @@ export default class MindTaskPlugin extends Plugin {
   boards: BoardInfo[] = [];
   private activeBoard: BoardInfo | null = null;
   settings: PluginSettings = DEFAULT_SETTINGS;
+  private explorerObserver: MutationObserver | null = null;
+
+  private updateExplorerTitles() {
+    const leaves = this.app.workspace.getLeavesOfType('file-explorer');
+    for (const leaf of leaves) {
+      const root = leaf.view.containerEl;
+      root
+        .querySelectorAll<HTMLElement>(
+          '.nav-file-title[data-path$=".vtasks.json"] .nav-file-title-content'
+        )
+        .forEach((el) => {
+          const title = el.textContent || '';
+          if (!el.dataset.origTitle) {
+            el.dataset.origTitle = title;
+          }
+          const path = (el.parentElement as HTMLElement).getAttribute('data-path') || '';
+          const base = path
+            .split('/')
+            .pop()!
+            .replace(/\.vtasks\.json$/, '');
+          el.textContent = base;
+          el.parentElement?.classList.add('mindtask-file');
+        });
+    }
+  }
+
+  private restoreExplorerTitles() {
+    document
+      .querySelectorAll<HTMLElement>('.nav-file-title-content[data-orig-title]')
+      .forEach((el) => {
+        el.textContent = el.dataset.origTitle!;
+        el.removeAttribute('data-orig-title');
+        el.parentElement?.classList.remove('mindtask-file');
+      });
+  }
+
+  private observeExplorer() {
+    this.updateExplorerTitles();
+    const leaves = this.app.workspace.getLeavesOfType('file-explorer');
+    if (!leaves.length) return;
+    const root = leaves[0].view.containerEl;
+    this.explorerObserver = new MutationObserver(() => this.updateExplorerTitles());
+    this.explorerObserver.observe(root, { childList: true, subtree: true });
+    this.registerEvent(this.app.vault.on('rename', () => this.updateExplorerTitles()));
+    this.registerEvent(this.app.vault.on('create', () => this.updateExplorerTitles()));
+    this.registerEvent(this.app.vault.on('delete', () => this.updateExplorerTitles()));
+  }
 
   async onload() {
     const data = (await this.loadData()) as Partial<PluginData> | null;
@@ -35,6 +82,7 @@ export default class MindTaskPlugin extends Plugin {
       )
     );
     this.registerExtensions(['vtasks.json'], VIEW_TYPE_BOARD);
+    this.observeExplorer();
 
     this.registerEvent(
       this.app.workspace.on('file-open', async (file) => {
@@ -258,5 +306,13 @@ export default class MindTaskPlugin extends Plugin {
       }
       new NewBoardModal(this).open();
     });
+  }
+
+  onunload() {
+    this.restoreExplorerTitles();
+    if (this.explorerObserver) {
+      this.explorerObserver.disconnect();
+      this.explorerObserver = null;
+    }
   }
 }
