@@ -27,6 +27,7 @@ export class BoardView extends ItemView {
   private selectionRect: HTMLElement | null = null;
   private selStartX = 0;
   private selStartY = 0;
+  private didDragSelect = false;
   private isBoardDragging = false;
   private boardStartX = 0;
   private boardStartY = 0;
@@ -370,6 +371,7 @@ export class BoardView extends ItemView {
         this.selectionRect = this.boardEl.createDiv('vtasks-selection');
         this.selectionRect.style.left = this.selStartX + 'px';
         this.selectionRect.style.top = this.selStartY + 'px';
+        this.didDragSelect = true;
       }
     };
 
@@ -512,6 +514,7 @@ export class BoardView extends ItemView {
         });
         this.selectionRect.remove();
         this.selectionRect = null;
+        setTimeout(() => (this.didDragSelect = false), 0);
       }
     };
 
@@ -561,7 +564,9 @@ export class BoardView extends ItemView {
         }
       } else {
         this.finishEditing(true);
-        this.clearSelection();
+        if (!this.didDragSelect) {
+          this.clearSelection();
+        }
       }
       this.pointerDownSelected = false;
     });
