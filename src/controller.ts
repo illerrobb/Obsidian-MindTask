@@ -62,6 +62,12 @@ export default class Controller {
     return id;
   }
 
+  async addExistingTask(id: string, x: number, y: number) {
+    if (!this.tasks.has(id)) return;
+    this.board.nodes[id] = { x, y } as NodeData;
+    await saveBoard(this.app, this.boardFile, this.board);
+  }
+
   async openTask(id: string) {
     const task = this.tasks.get(id);
     if (!task) return;
