@@ -14,6 +14,8 @@ export interface PluginSettings {
   useBlockId: boolean;
   /** Folder to store board files */
   boardFolder: string;
+  /** List of background colors for tasks */
+  backgroundColors: string[];
 }
 
 export interface PluginData {
@@ -27,6 +29,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   folderPaths: [],
   useBlockId: true,
   boardFolder: '',
+  backgroundColors: ['red', 'green', 'blue', 'yellow'],
 };
 
 export class SettingsTab extends PluginSettingTab {
@@ -151,6 +154,22 @@ export class SettingsTab extends PluginSettingTab {
           .setValue(this.plugin.settings.useBlockId)
           .onChange(async (value) => {
             this.plugin.settings.useBlockId = value;
+            await this.plugin.savePluginData();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName('Background colors')
+      .setDesc('Comma separated list of background colors for tasks')
+      .addText((text) =>
+        text
+          .setPlaceholder('red, green, blue, yellow')
+          .setValue(this.plugin.settings.backgroundColors.join(', '))
+          .onChange(async (value) => {
+            this.plugin.settings.backgroundColors = value
+              .split(',')
+              .map((v) => v.trim())
+              .filter((v) => v.length > 0);
             await this.plugin.savePluginData();
           })
       );
