@@ -74,13 +74,10 @@ export default class MindTaskPlugin extends Plugin {
     this.boardFile = await getBoardFile(this.app, path);
     this.board = await loadBoard(this.app, this.boardFile);
 
-    for (const task of parsed) {
-      if (!this.board.nodes[task.blockId]) {
-        this.board.nodes[task.blockId] = { x: 20, y: 20 };
-      }
-    }
     for (const dep of deps) {
       if (
+        this.board.nodes[dep.from] &&
+        this.board.nodes[dep.to] &&
         !this.board.edges.find(
           (e) => e.from === dep.from && e.to === dep.to && e.type === dep.type
         )
@@ -121,9 +118,6 @@ export default class MindTaskPlugin extends Plugin {
     this.tasks.clear();
     for (const task of parsed) {
       this.tasks.set(task.blockId, task);
-      if (!this.board.nodes[task.blockId]) {
-        this.board.nodes[task.blockId] = { x: 20, y: 20 };
-      }
     }
 
     for (const id of Object.keys(this.board.nodes)) {
@@ -142,7 +136,13 @@ export default class MindTaskPlugin extends Plugin {
     );
 
     for (const dep of deps) {
-      if (!existing.find((e) => e.from === dep.from && e.to === dep.to && e.type === dep.type)) {
+      if (
+        this.board.nodes[dep.from] &&
+        this.board.nodes[dep.to] &&
+        !existing.find(
+          (e) => e.from === dep.from && e.to === dep.to && e.type === dep.type
+        )
+      ) {
         existing.push(dep);
       }
     }
