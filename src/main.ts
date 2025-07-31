@@ -1,21 +1,29 @@
-import { Plugin, TFile, TAbstractFile } from 'obsidian';
+import { Plugin, TFile, TAbstractFile, FuzzySuggestModal, Modal, TextComponent, Notice, Setting } from 'obsidian';
 import { BoardView, VIEW_TYPE_BOARD } from './view';
 import { BoardData, loadBoard, saveBoard, getBoardFile } from './boardStore';
 import { scanFiles, parseDependencies, ParsedTask, ScanOptions } from './parser';
 import Controller from './controller';
-import { PluginSettings, DEFAULT_SETTINGS, SettingsTab } from './settings';
+import { PluginSettings, DEFAULT_SETTINGS, SettingsTab, BoardInfo, PluginData } from './settings';
 
 export default class MindTaskPlugin extends Plugin {
   private board: BoardData | null = null;
   private boardFile: TFile | null = null;
   private tasks: Map<string, ParsedTask> = new Map();
   private controller: Controller | null = null;
+  boards: BoardInfo[] = [];
+  private activeBoard: BoardInfo | null = null;
   settings: PluginSettings = DEFAULT_SETTINGS;
 
   async onload() {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    const data = (await this.loadData()) as Partial<PluginData> | null;
+    if (data) {
+      this.settings = Object.assign({}, DEFAULT_SETTINGS, data.settings);
+      this.boards = data.boards ?? [];
+    } else {
+      this.settings = { ...DEFAULT_SETTINGS };
+      this.boards = [];
+    }
     this.addSettingTab(new SettingsTab(this.app, this));
-    await this.loadBoardData();
     this.registerView(VIEW_TYPE_BOARD, (leaf) =>
       new BoardView(
         leaf,
@@ -28,7 +36,8 @@ export default class MindTaskPlugin extends Plugin {
     );
 
     const onVaultChange = (file: TAbstractFile) => {
-      if (this.boardFile && file.path === this.boardFile.path) return;
+      if (!this.boardFile) return;
+      if (file.path === this.boardFile.path) return;
       this.refreshFromVault();
     };
     this.registerEvent(this.app.vault.on('create', onVaultChange));
@@ -43,13 +52,15 @@ export default class MindTaskPlugin extends Plugin {
   }
 
   async openBoard() {
-    await this.loadBoardData();
-
+    let board = await this.selectBoard();
+    if (!board) return;
+    this.activeBoard = board;
+    await this.loadBoardData(board.path);
     const leaf = this.app.workspace.getLeaf(true);
     await leaf.setViewState({ type: VIEW_TYPE_BOARD, active: true });
   }
 
-  private async loadBoardData() {
+  private async loadBoardData(path: string) {
     const files = this.app.vault.getMarkdownFiles();
     const parsed = await scanFiles(this.app, files, {
       tags: this.settings.tagFilters,
@@ -60,7 +71,7 @@ export default class MindTaskPlugin extends Plugin {
 
     this.tasks = new Map(parsed.map((t) => [t.blockId, t]));
 
-    this.boardFile = await getBoardFile(this.app, this.settings.boardFilePath);
+    this.boardFile = await getBoardFile(this.app, path);
     this.board = await loadBoard(this.app, this.boardFile);
 
     for (const task of parsed) {
@@ -92,7 +103,7 @@ export default class MindTaskPlugin extends Plugin {
   async updateFilters(tags: string[], folders: string[]) {
     this.settings.tagFilters = tags;
     this.settings.folderPaths = folders;
-    await this.saveData(this.settings);
+    await this.savePluginData();
     await this.refreshFromVault();
   }
 
@@ -147,5 +158,88 @@ export default class MindTaskPlugin extends Plugin {
         folders: this.settings.folderPaths,
       });
     }
+  }
+
+  async savePluginData() {
+    const data: PluginData = { settings: this.settings, boards: this.boards };
+    await this.saveData(data);
+  }
+
+  private selectBoard(): Promise<BoardInfo | null> {
+    return new Promise((resolve) => {
+      const createItem: BoardInfo = { name: 'Create new board...', path: '' };
+      class BoardModal extends FuzzySuggestModal<BoardInfo> {
+        constructor(private plugin: MindTaskPlugin) {
+          super(plugin.app);
+        }
+        getItems(): BoardInfo[] {
+          return [...this.plugin.boards, createItem];
+        }
+        getItemText(item: BoardInfo): string {
+          return item === createItem ? 'Create new board...' : item.name;
+        }
+        onChooseItem(item: BoardInfo) {
+          if (item === createItem) {
+            this.close();
+            this.plugin.createBoard().then(resolve);
+          } else {
+            resolve(item);
+          }
+        }
+      }
+      new BoardModal(this).open();
+    });
+  }
+
+  private createBoard(): Promise<BoardInfo | null> {
+    return new Promise((resolve) => {
+      class NewBoardModal extends Modal {
+        nameInput!: TextComponent;
+        pathInput!: TextComponent;
+        constructor(private plugin: MindTaskPlugin) {
+          super(plugin.app);
+        }
+        onOpen() {
+          const { contentEl } = this;
+          contentEl.createEl('h2', { text: 'Create Board' });
+          new Setting(contentEl)
+            .setName('Name')
+            .addText((t) => (this.nameInput = t.setPlaceholder('Board name')));
+          new Setting(contentEl)
+            .setName('File path')
+            .addText((t) =>
+              (this.pathInput = t.setPlaceholder('tasks.vtasks.json'))
+            );
+          new Setting(contentEl)
+            .addButton((btn) =>
+              btn.setButtonText('Create').setCta().onClick(() => {
+                const name = this.nameInput.getValue().trim();
+                const path = this.pathInput.getValue().trim();
+                if (!name || !path) {
+                  new Notice('Name and path required');
+                  return;
+                }
+                const info: BoardInfo = { name, path };
+                this.plugin.boards.push(info);
+                this.plugin
+                  .savePluginData()
+                  .then(() => resolve(info));
+                this.close();
+              })
+            )
+            .addExtraButton((btn) =>
+              btn.setIcon('cross').setTooltip('Cancel').onClick(() => {
+                this.close();
+                resolve(null);
+              })
+            );
+        }
+        onClose() {
+          const { contentEl } = this;
+          contentEl.empty();
+        }
+      }
+      new NewBoardModal(this).open();
+    });
   }
 }
