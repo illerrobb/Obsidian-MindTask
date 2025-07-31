@@ -195,7 +195,6 @@ export default class MindTaskPlugin extends Plugin {
     return new Promise((resolve) => {
       class NewBoardModal extends Modal {
         nameInput!: TextComponent;
-        pathInput!: TextComponent;
         constructor(private plugin: MindTaskPlugin) {
           super(plugin.app);
         }
@@ -206,24 +205,26 @@ export default class MindTaskPlugin extends Plugin {
             .setName('Name')
             .addText((t) => (this.nameInput = t.setPlaceholder('Board name')));
           new Setting(contentEl)
-            .setName('File path')
-            .addText((t) =>
-              (this.pathInput = t.setPlaceholder('tasks.vtasks.json'))
-            );
-          new Setting(contentEl)
             .addButton((btn) =>
-              btn.setButtonText('Create').setCta().onClick(() => {
+              btn.setButtonText('Create').setCta().onClick(async () => {
                 const name = this.nameInput.getValue().trim();
-                const path = this.pathInput.getValue().trim();
-                if (!name || !path) {
-                  new Notice('Name and path required');
+                if (!name) {
+                  new Notice('Name required');
                   return;
                 }
+                const slug = name
+                  .toLowerCase()
+                  .replace(/[^a-z0-9]+/g, '-')
+                  .replace(/^-|-$/g, '');
+                const folder = this.plugin.settings.boardFolder.trim();
+                const path = folder
+                  ? `${folder.replace(/\/$/, '')}/${slug}.vtasks.json`
+                  : `${slug}.vtasks.json`;
                 const info: BoardInfo = { name, path };
                 this.plugin.boards.push(info);
-                this.plugin
-                  .savePluginData()
-                  .then(() => resolve(info));
+                await getBoardFile(this.plugin.app, path);
+                await this.plugin.savePluginData();
+                resolve(info);
                 this.close();
               })
             )
