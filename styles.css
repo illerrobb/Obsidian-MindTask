@@ -253,10 +253,10 @@
 }
 
 .vtasks-minimap {
-  position: absolute;
+  position: fixed;
   right: 10px;
-  bottom: 10px;
-  width: 200px;
+  bottom: 40px;
+  width: 270px;
   height: 150px;
   border: 1px solid var(--background-modifier-border);
   background: var(--background-primary);
