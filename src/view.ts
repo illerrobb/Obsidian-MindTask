@@ -571,29 +571,29 @@ export class BoardView extends ItemView {
           item.setTitle('Ungroup').onClick(() => this.controller.ungroupNode(id).then(() => this.render()))
         );
       }
-      const colorMenu = new Menu();
       const colors = this.controller!.settings.backgroundColors;
-      colors.forEach((c) => {
-        colorMenu.addItem((sub) => {
-          sub.setTitle(c).setIcon('circle');
-          if ((sub as any).iconEl) {
-            ((sub as any).iconEl as HTMLElement).style.color = c;
-          }
-          sub.onClick(() => {
-            target.style.backgroundColor = c;
-            this.controller!.setNodeColor(id, c).then(() => this.render());
-          });
-        });
-      });
-      colorMenu.addItem((sub) =>
-        sub.setTitle('Default').onClick(() => {
-          target.style.backgroundColor = '';
-          this.controller!.setNodeColor(id, null).then(() => this.render());
-        })
-      );
       menu.addItem((item) => {
         item.setTitle('Color').setIcon('palette');
-        (item as any).setSubmenu(colorMenu);
+        item.setSubmenu((sub) => {
+          colors.forEach((c) => {
+            sub.addItem((subItem) => {
+              subItem.setTitle(c).setIcon('circle');
+              if ((subItem as any).iconEl) {
+                ((subItem as any).iconEl as HTMLElement).style.color = c;
+              }
+              subItem.onClick(() => {
+                target.style.backgroundColor = c;
+                this.controller!.setNodeColor(id, c).then(() => this.render());
+              });
+            });
+          });
+          sub.addItem((subItem) =>
+            subItem.setTitle('Default').onClick(() => {
+              target.style.backgroundColor = '';
+              this.controller!.setNodeColor(id, null).then(() => this.render());
+            })
+          );
+        });
       });
       const checked = this.tasks.get(id)?.checked ?? false;
       menu.addItem((item) =>
