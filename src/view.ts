@@ -42,6 +42,7 @@ export class BoardView extends ItemView {
   private isMinimapDragging = false;
   private editTimer: number | null = null;
   private editingId: string | null = null;
+  private pointerDownSelected = false;
   private resizingId: string | null = null;
   private resizeDir = '';
   private resizeStartWidth = 0;
@@ -299,6 +300,7 @@ export class BoardView extends ItemView {
 
   private registerEvents() {
     this.boardEl.onpointerdown = (e) => {
+      this.pointerDownSelected = false;
       if (this.editingId) this.finishEditing(true);
       const resizeEl = (e.target as HTMLElement).closest('.vtasks-resize') as HTMLElement | null;
       const outHandle = (e.target as HTMLElement).closest('.vtasks-handle-out') as HTMLElement | null;
@@ -343,6 +345,7 @@ export class BoardView extends ItemView {
           return;
         }
         this.selectNode(node, id, (e as PointerEvent).shiftKey || (e as PointerEvent).metaKey);
+        this.pointerDownSelected = true;
         this.draggingId = id;
         const coords = this.getBoardCoords(e as PointerEvent);
         this.dragStartX = coords.x;
@@ -550,13 +553,17 @@ export class BoardView extends ItemView {
         const id = target.getAttribute('data-id')!;
         if ((e as MouseEvent).ctrlKey || (e as MouseEvent).metaKey) {
           this.controller?.openTask(id);
+          this.pointerDownSelected = false;
           return;
         }
-        this.selectNode(target, id, (e as MouseEvent).shiftKey || (e as MouseEvent).metaKey);
+        if (!this.pointerDownSelected) {
+          this.selectNode(target, id, (e as MouseEvent).shiftKey || (e as MouseEvent).metaKey);
+        }
       } else {
         this.finishEditing(true);
         this.clearSelection();
       }
+      this.pointerDownSelected = false;
     });
 
     this.boardEl.addEventListener('contextmenu', (e) => {
