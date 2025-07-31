@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, Menu } from 'obsidian';
+import { ItemView, WorkspaceLeaf, Menu, FuzzySuggestModal } from 'obsidian';
 import Controller from './controller';
 import { BoardData } from './boardStore';
 import { ParsedTask } from './parser';
@@ -489,7 +489,16 @@ export class BoardView extends ItemView {
 
     this.boardEl.addEventListener('contextmenu', (e) => {
       const target = (e.target as HTMLElement).closest('.vtasks-node') as HTMLElement | null;
-      if (!target) return;
+      if (!target) {
+        e.preventDefault();
+        const pos = this.getBoardCoords(e as MouseEvent);
+        const menu = new Menu();
+        menu.addItem((item) =>
+          item.setTitle('Add existing task').onClick(() => this.openExistingTaskModal(pos))
+        );
+        menu.showAtMouseEvent(e as MouseEvent);
+        return;
+      }
       e.preventDefault();
       const id = target.getAttribute('data-id')!;
       const menu = new Menu();
@@ -802,6 +811,27 @@ export class BoardView extends ItemView {
     this.boardEl.style.transform = `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px) scale(${this.zoom})`;
     this.updateMinimapView();
     this.drawEdges();
+  }
+
+  private openExistingTaskModal(pos: { x: number; y: number }) {
+    const tasks = Array.from(this.tasks.values());
+    class TaskModal extends FuzzySuggestModal<ParsedTask> {
+      constructor(private view: BoardView) {
+        super(view.app);
+      }
+      getItems(): ParsedTask[] {
+        return tasks;
+      }
+      getItemText(item: ParsedTask): string {
+        return item.text;
+      }
+      onChooseItem(item: ParsedTask) {
+        this.view.controller
+          .addExistingTask(item.blockId, pos.x, pos.y)
+          .then(() => this.view.render());
+      }
+    }
+    new TaskModal(this).open();
   }
 
   private getBoardCoords(e: MouseEvent | PointerEvent) {
