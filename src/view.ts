@@ -153,9 +153,12 @@ export class BoardView extends ItemView {
     this.updateMinimapView();
     this.registerEvents();
 
-    // Centra la board solo se non hai già fatto panning
+    // Center the board only if no panning has occurred yet
     if (this.boardOffsetX === 0 && this.boardOffsetY === 0) {
-      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      let minX = Infinity,
+        minY = Infinity,
+        maxX = -Infinity,
+        maxY = -Infinity;
       for (const id in this.board.nodes) {
         const n = this.board.nodes[id];
         minX = Math.min(minX, n.x);
@@ -163,14 +166,22 @@ export class BoardView extends ItemView {
         maxX = Math.max(maxX, n.x + (n.width ?? 120));
         maxY = Math.max(maxY, n.y + (n.height ?? 40));
       }
-      if (minX !== Infinity) {
+      const viewW = this.containerEl.clientWidth || window.innerWidth;
+      const viewH = this.containerEl.clientHeight || window.innerHeight;
+      if (minX === Infinity) {
+        // No nodes: center the empty 100000x100000 board
+        this.boardOffsetX = viewW / 2 - 50000 * this.zoom;
+        this.boardOffsetY = viewH / 2 - 50000 * this.zoom;
+      } else {
         const boardW = maxX - minX;
         const boardH = maxY - minY;
-        const viewW = this.containerEl.clientWidth || window.innerWidth;
-        const viewH = this.containerEl.clientHeight || window.innerHeight;
-        this.boardOffsetX = (viewW - boardW * this.zoom) / 2 - minX * this.zoom;
-        this.boardOffsetY = (viewH - boardH * this.zoom) / 2 - minY * this.zoom;
+        this.boardOffsetX =
+          (viewW - boardW * this.zoom) / 2 - minX * this.zoom;
+        this.boardOffsetY =
+          (viewH - boardH * this.zoom) / 2 - minY * this.zoom;
       }
+      this.boardEl.style.transform = `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px) scale(${this.zoom})`;
+      this.updateMinimapView();
     }
   }
 
