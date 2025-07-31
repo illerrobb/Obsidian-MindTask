@@ -598,13 +598,16 @@ export class BoardView extends ItemView {
         item.setSubmenu((sub) => {
           colors.forEach((c) => {
             sub.addItem((subItem) => {
-              subItem.setTitle(c).setIcon('circle');
+              const title = c.label ? `${c.label} (${c.color})` : c.color;
+              subItem.setTitle(title).setIcon('circle');
               if ((subItem as any).iconEl) {
-                ((subItem as any).iconEl as HTMLElement).style.color = c;
+                ((subItem as any).iconEl as HTMLElement).style.color = c.color;
               }
               subItem.onClick(() => {
-                target.style.backgroundColor = c;
-                this.controller!.setNodeColor(id, c).then(() => this.render());
+                target.style.backgroundColor = c.color;
+                this.controller!
+                  .setNodeColor(id, c.color)
+                  .then(() => this.render());
               });
             });
           });
