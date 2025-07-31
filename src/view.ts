@@ -592,6 +592,39 @@ export class BoardView extends ItemView {
       const selected = Array.from(this.selectedIds);
       if (selected.length > 1) {
         menu.addItem((item) =>
+          item
+            .setTitle('Rearrange selected')
+            .onClick(() =>
+              this.controller
+                .rearrangeNodes(selected)
+                .then(() => this.render())
+            )
+        );
+        menu.addItem((item) => {
+          item.setTitle('Align');
+          item.setSubmenu((sub) => {
+            const opts: [string, Parameters<typeof this.controller.alignNodes>[1]][] = [
+              ['Left', 'left'],
+              ['Right', 'right'],
+              ['Top', 'top'],
+              ['Bottom', 'bottom'],
+              ['Horizontal center', 'hcenter'],
+              ['Vertical center', 'vcenter'],
+            ];
+            opts.forEach(([label, type]) => {
+              sub.addItem((subItem) =>
+                subItem
+                  .setTitle(label)
+                  .onClick(() =>
+                    this.controller
+                      .alignNodes(selected, type)
+                      .then(() => this.render())
+                  )
+              );
+            });
+          });
+        });
+        menu.addItem((item) =>
           item.setTitle('Group selected').onClick(async () => {
             const name = await new Promise<string>((resolve) => {
               const n = prompt('Group name', 'Group') || 'Group';

@@ -272,4 +272,84 @@ export default class Controller {
     this.board.edges.splice(index, 1);
     await saveBoard(this.app, this.boardFile, this.board);
   }
+
+  async rearrangeNodes(ids: string[]) {
+    const nodes = ids
+      .map((id) => ({ id, node: this.board.nodes[id] }))
+      .filter((p) => p.node);
+    if (!nodes.length) return;
+    const avgW =
+      nodes.reduce((s, p) => s + (p.node.width ?? 120), 0) / nodes.length;
+    const avgH =
+      nodes.reduce(
+        (s, p) =>
+          s + (p.node.height ?? (p.node.type === 'group' ? 80 : 40)),
+        0
+      ) / nodes.length;
+    const cols = Math.ceil(Math.sqrt(nodes.length));
+    const startX = Math.min(...nodes.map((p) => p.node.x));
+    const startY = Math.min(...nodes.map((p) => p.node.y));
+    nodes.forEach((p, idx) => {
+      const col = idx % cols;
+      const row = Math.floor(idx / cols);
+      p.node.x = startX + col * (avgW + 40);
+      p.node.y = startY + row * (avgH + 40);
+    });
+    await saveBoard(this.app, this.boardFile, this.board);
+  }
+
+  async alignNodes(
+    ids: string[],
+    type: 'left' | 'right' | 'top' | 'bottom' | 'hcenter' | 'vcenter'
+  ) {
+    const nodes = ids
+      .map((id) => ({ id, node: this.board.nodes[id] }))
+      .filter((p) => p.node);
+    if (!nodes.length) return;
+    const widths = nodes.map((p) => p.node.width ?? 120);
+    const heights = nodes.map((p) =>
+      p.node.height ?? (p.node.type === 'group' ? 80 : 40)
+    );
+    switch (type) {
+      case 'left': {
+        const x = Math.min(...nodes.map((p) => p.node.x));
+        nodes.forEach((p) => (p.node.x = x));
+        break;
+      }
+      case 'right': {
+        const maxX = Math.max(...nodes.map((p, i) => p.node.x + widths[i]));
+        nodes.forEach((p, i) => (p.node.x = maxX - widths[i]));
+        break;
+      }
+      case 'top': {
+        const y = Math.min(...nodes.map((p) => p.node.y));
+        nodes.forEach((p) => (p.node.y = y));
+        break;
+      }
+      case 'bottom': {
+        const maxY = Math.max(...nodes.map((p, i) => p.node.y + heights[i]));
+        nodes.forEach((p, i) => (p.node.y = maxY - heights[i]));
+        break;
+      }
+      case 'hcenter': {
+        const cx =
+          nodes.reduce((s, p, i) => s + p.node.x + widths[i] / 2, 0) /
+          nodes.length;
+        nodes.forEach((p, i) => (p.node.x = cx - widths[i] / 2));
+        break;
+      }
+      case 'vcenter': {
+        const cy =
+          nodes.reduce(
+            (s, p, i) => s + p.node.y + heights[i] / 2,
+            0
+          ) / nodes.length;
+        nodes.forEach((p, i) => (p.node.y = cy - heights[i] / 2));
+        break;
+      }
+      default:
+        return;
+    }
+    await saveBoard(this.app, this.boardFile, this.board);
+  }
 }
