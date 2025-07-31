@@ -27,8 +27,8 @@ export default class MindTaskPlugin extends Plugin {
     this.registerView(VIEW_TYPE_BOARD, (leaf) =>
       new BoardView(
         leaf,
-        this.controller!,
-        this.board!,
+        this.controller,
+        this.board,
         this.tasks,
         { tags: this.settings.tagFilters, folders: this.settings.folderPaths },
         (tags, folders) => this.updateFilters(tags, folders)
@@ -42,8 +42,8 @@ export default class MindTaskPlugin extends Plugin {
         this.activeBoard = { name: file.basename, path: file.path };
         await this.loadBoardData(file.path);
         const view = this.app.workspace.getActiveViewOfType(BoardView);
-        if (view) {
-          view.updateData(this.board!, this.tasks, {
+        if (view && this.board && this.controller) {
+          view.updateData(this.board, this.tasks, this.controller, {
             tags: this.settings.tagFilters,
             folders: this.settings.folderPaths,
           });
@@ -168,8 +168,8 @@ export default class MindTaskPlugin extends Plugin {
     await saveBoard(this.app, this.boardFile, this.board);
 
     const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_BOARD)[0];
-    if (leaf) {
-      (leaf.view as BoardView).updateData(this.board, this.tasks, {
+    if (leaf && this.controller) {
+      (leaf.view as BoardView).updateData(this.board, this.tasks, this.controller, {
         tags: this.settings.tagFilters,
         folders: this.settings.folderPaths,
       });
