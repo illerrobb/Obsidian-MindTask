@@ -245,6 +245,25 @@ export class BoardView extends ItemView {
           metaEl.createSpan({ text: `${m.key}:${m.val}` });
         }
       });
+      if (!pos.color) {
+        const rules = this.controller?.settings.backgroundColors ?? [];
+        for (const r of rules) {
+          if (!r.label) continue;
+          if (r.label.includes('::')) {
+            const [k, v] = r.label.split('::').map((s) => s.trim());
+            if (metas.some((m) => m.key === k && m.val === v)) {
+              nodeEl.style.backgroundColor = r.color;
+              break;
+            }
+          } else {
+            const lbl = r.label.replace(/^#/, '');
+            if (tags.includes('#' + lbl)) {
+              nodeEl.style.backgroundColor = r.color;
+              break;
+            }
+          }
+        }
+      }
       const tagsEl = metaEl.createDiv('vtasks-tags');
       tags.forEach((t) => tagsEl.createSpan({ text: t, cls: 'vtasks-tag' }));
       if (task?.checked) nodeEl.addClass('done');
@@ -575,13 +594,13 @@ export class BoardView extends ItemView {
       const colors = this.controller!.settings.backgroundColors;
       colors.forEach((c) => {
         colorMenu.addItem((sub) => {
-          sub.setTitle(c).setIcon('circle');
+          sub.setTitle(c.label ? c.label : c.color).setIcon('circle');
           if ((sub as any).iconEl) {
-            ((sub as any).iconEl as HTMLElement).style.color = c;
+            ((sub as any).iconEl as HTMLElement).style.color = c.color;
           }
           sub.onClick(() => {
-            target.style.backgroundColor = c;
-            this.controller!.setNodeColor(id, c).then(() => this.render());
+            target.style.backgroundColor = c.color;
+            this.controller!.setNodeColor(id, c.color).then(() => this.render());
           });
         });
       });

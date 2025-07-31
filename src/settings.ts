@@ -6,6 +6,12 @@ export interface BoardInfo {
   path: string;
 }
 
+export interface ColorOption {
+  color: string;
+  /** Optional tag or field label that triggers this color */
+  label?: string;
+}
+
 export interface PluginSettings {
   defaultTaskFile: string;
   tagFilters: string[];
@@ -15,7 +21,7 @@ export interface PluginSettings {
   /** Folder to store board files */
   boardFolder: string;
   /** List of background colors for tasks */
-  backgroundColors: string[];
+  backgroundColors: ColorOption[];
 }
 
 export interface PluginData {
@@ -29,7 +35,12 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   folderPaths: [],
   useBlockId: true,
   boardFolder: '',
-  backgroundColors: ['red', 'green', 'blue', 'yellow'],
+  backgroundColors: [
+    { color: 'red' },
+    { color: 'green' },
+    { color: 'blue' },
+    { color: 'yellow' },
+  ],
 };
 
 export class SettingsTab extends PluginSettingTab {
@@ -158,20 +169,64 @@ export class SettingsTab extends PluginSettingTab {
           })
       );
 
+    containerEl.createEl('h2', { text: 'Background colors' });
+    const colorsEl = containerEl.createDiv();
+
+    const renderColors = () => {
+      colorsEl.empty();
+      this.plugin.settings.backgroundColors.forEach((c, i) => {
+        const setting = new Setting(colorsEl);
+        const preview = setting.controlEl.createEl('span');
+        preview.style.display = 'inline-block';
+        preview.style.width = '1em';
+        preview.style.height = '1em';
+        preview.style.marginRight = '8px';
+        preview.style.backgroundColor = c.color;
+        setting
+          .addText((text) =>
+            text
+              .setPlaceholder('Color')
+              .setValue(c.color)
+              .onChange(async (v) => {
+                c.color = v.trim();
+                preview.style.backgroundColor = c.color;
+                await this.plugin.savePluginData();
+              })
+          )
+          .addText((text) =>
+            text
+              .setPlaceholder('Label (optional)')
+              .setValue(c.label ?? '')
+              .onChange(async (v) => {
+                c.label = v.trim() || undefined;
+                await this.plugin.savePluginData();
+              })
+          )
+          .addExtraButton((btn) =>
+            btn
+              .setIcon('trash')
+              .setTooltip('Delete')
+              .onClick(async () => {
+                this.plugin.settings.backgroundColors.splice(i, 1);
+                await this.plugin.savePluginData();
+                renderColors();
+              })
+          );
+      });
+    };
+
     new Setting(containerEl)
-      .setName('Background colors')
-      .setDesc('Comma separated list of background colors for tasks')
-      .addText((text) =>
-        text
-          .setPlaceholder('red, green, blue, yellow')
-          .setValue(this.plugin.settings.backgroundColors.join(', '))
-          .onChange(async (value) => {
-            this.plugin.settings.backgroundColors = value
-              .split(',')
-              .map((v) => v.trim())
-              .filter((v) => v.length > 0);
+      .addButton((btn) =>
+        btn
+          .setButtonText('Add color')
+          .setCta()
+          .onClick(async () => {
+            this.plugin.settings.backgroundColors.push({ color: '#ffffff' });
             await this.plugin.savePluginData();
+            renderColors();
           })
       );
+
+    renderColors();
   }
 }
