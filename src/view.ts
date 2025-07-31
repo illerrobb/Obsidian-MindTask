@@ -590,7 +590,7 @@ export class BoardView extends ItemView {
       this.moveBoardFromMinimap(e as PointerEvent);
     };
     this.minimapEl.onpointermove = (e) => {
-      if this.isMinimapDragging) this.moveBoardFromMinimap(e as PointerEvent);
+      if (this.isMinimapDragging) this.moveBoardFromMinimap(e as PointerEvent);
     };
     this.minimapEl.onpointerup = () => {
       this.isMinimapDragging = false;

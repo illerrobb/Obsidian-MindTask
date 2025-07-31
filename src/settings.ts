@@ -1,8 +1,12 @@
-import { App, PluginSettingTab, Setting } from 'obsidian';
+import { App, PluginSettingTab, Setting, SettingTab } from 'obsidian';
 import MindTaskPlugin from './main';
 
+export interface BoardInfo {
+  name: string;
+  path: string;
+}
+
 export interface PluginSettings {
-  boardFilePath: string;
   defaultTaskFile: string;
   tagFilters: string[];
   folderPaths: string[];
@@ -10,8 +14,12 @@ export interface PluginSettings {
   useBlockId: boolean;
 }
 
+export interface PluginData {
+  settings: PluginSettings;
+  boards: BoardInfo[];
+}
+
 export const DEFAULT_SETTINGS: PluginSettings = {
-  boardFilePath: 'tasks.vtasks.json',
   defaultTaskFile: 'Tasks.md',
   tagFilters: [],
   folderPaths: [],
@@ -26,17 +34,51 @@ export class SettingsTab extends PluginSettingTab {
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
+    containerEl.createEl('h2', { text: 'Boards' });
+    const boardsEl = containerEl.createDiv();
+    this.plugin.boards.forEach((b, i) => {
+      const boardSetting = new Setting(boardsEl).setName(b.name);
+      boardSetting
+        .addText((text) =>
+          text
+            .setPlaceholder('Board name')
+            .setValue(b.name)
+            .onChange(async (v) => {
+              b.name = v;
+              boardSetting.setName(v);
+              await this.plugin.savePluginData();
+            })
+        )
+        .addText((text) =>
+          text
+            .setPlaceholder('tasks.vtasks.json')
+            .setValue(b.path)
+            .onChange(async (v) => {
+              b.path = v.trim();
+              await this.plugin.savePluginData();
+            })
+        )
+        .addExtraButton((btn) =>
+          btn
+            .setIcon('trash')
+            .setTooltip('Delete')
+            .onClick(async () => {
+              this.plugin.boards.splice(i, 1);
+              await this.plugin.savePluginData();
+              this.display();
+            })
+        );
+    });
 
     new Setting(containerEl)
-      .setName('Board JSON path')
-      .setDesc('Location where board data is stored')
-      .addText((text) =>
-        text
-          .setPlaceholder('tasks.vtasks.json')
-          .setValue(this.plugin.settings.boardFilePath)
-          .onChange(async (value) => {
-            this.plugin.settings.boardFilePath = value.trim();
-            await this.plugin.saveData(this.plugin.settings);
+      .addButton((btn) =>
+        btn
+          .setButtonText('Add board')
+          .setCta()
+          .onClick(async () => {
+            this.plugin.boards.push({ name: 'New Board', path: 'tasks.vtasks.json' });
+            await this.plugin.savePluginData();
+            this.display();
           })
       );
 
@@ -49,7 +91,7 @@ export class SettingsTab extends PluginSettingTab {
           .setValue(this.plugin.settings.defaultTaskFile)
           .onChange(async (value) => {
             this.plugin.settings.defaultTaskFile = value.trim();
-            await this.plugin.saveData(this.plugin.settings);
+            await this.plugin.savePluginData();
           })
       );
 
@@ -65,7 +107,7 @@ export class SettingsTab extends PluginSettingTab {
               .split(',')
               .map((v) => v.trim().replace(/^#/, ''))
               .filter((v) => v.length > 0);
-            await this.plugin.saveData(this.plugin.settings);
+            await this.plugin.savePluginData();
           })
       );
 
@@ -81,7 +123,7 @@ export class SettingsTab extends PluginSettingTab {
               .split(',')
               .map((v) => v.trim())
               .filter((v) => v.length > 0);
-            await this.plugin.saveData(this.plugin.settings);
+            await this.plugin.savePluginData();
           })
       );
 
@@ -93,7 +135,7 @@ export class SettingsTab extends PluginSettingTab {
           .setValue(this.plugin.settings.useBlockId)
           .onChange(async (value) => {
             this.plugin.settings.useBlockId = value;
-            await this.plugin.saveData(this.plugin.settings);
+            await this.plugin.savePluginData();
           })
       );
   }
