@@ -44,7 +44,7 @@ export default class Controller {
     const idPart = this.settings.useBlockId
       ? `^${id}`
       : `[id:: ${id}]`;
-    await this.app.vault.append(file, `- [ ] ${text} ${idPart}\n`);
+    await this.app.vault.append(file, `- [ ] ${text}  ${idPart}\n`);
     const content = await this.app.vault.read(file);
     const line = content.split(/\r?\n/).length - 1;
     const task: ParsedTask = {
@@ -96,6 +96,17 @@ export default class Controller {
     lines[task.line] = `${indent}- [${checked ? 'x' : ' '}] ${rest}`;
     await this.app.vault.modify(task.file, lines.join('\n'));
     task.checked = checked;
+  }
+
+  async renameTask(id: string, text: string) {
+    const task = this.tasks.get(id);
+    if (!task) return;
+    await this.modifyTaskText(task, (t) => {
+      const metaPart = t.match(/(?:\s+(?:\[[^\]]+\]|#[^\s]+|\^[\w-]+|\w+::\s*(?:\[[^\]]+\]|[^\s]+)))*$/)?.[0] ?? '';
+      const tokens = metaPart.trim().match(/(\[[^\]]+\]|#[^\s]+|\^[\w-]+|\w+::\s*(?:\[[^\]]+\]|[^\s]+))/g) ?? [];
+      const metaFormatted = tokens.join('  ');
+      return text.trim() + (metaFormatted ? `  ${metaFormatted}` : '');
+    });
   }
 
   async setNodeColor(id: string, color: string | null) {
@@ -170,13 +181,13 @@ export default class Controller {
       if (t.includes(rel)) return t;
       const dv = t.match(/\[id::\s*([\w-]+)\]/);
       if (dv) {
-        return t.replace(/\[id::\s*([\w-]+)\]/, `${rel} [id:: $1]`);
+        return t.replace(/\[id::\s*([\w-]+)\]/, `${rel}  [id:: $1]`);
       }
       const match = t.match(/\^([\w-]+)$/);
       if (match) {
-        return t.replace(/\^([\w-]+)$/, `${rel} ^$1`);
+        return t.replace(/\^([\w-]+)$/, `${rel}  ^$1`);
       }
-      return `${t} ${rel}`;
+      return `${t}  ${rel}`;
     };
     await this.modifyTaskText(to, insertRel);
   }
