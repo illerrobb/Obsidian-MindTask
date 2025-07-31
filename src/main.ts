@@ -34,6 +34,22 @@ export default class MindTaskPlugin extends Plugin {
         (tags, folders) => this.updateFilters(tags, folders)
       )
     );
+    this.registerExtensions(['vtasks.json'], VIEW_TYPE_BOARD);
+
+    this.registerEvent(
+      this.app.workspace.on('file-open', async (file) => {
+        if (!file || !file.path.endsWith('.vtasks.json')) return;
+        this.activeBoard = { name: file.basename, path: file.path };
+        await this.loadBoardData(file.path);
+        const view = this.app.workspace.getActiveViewOfType(BoardView);
+        if (view) {
+          view.updateData(this.board!, this.tasks, {
+            tags: this.settings.tagFilters,
+            folders: this.settings.folderPaths,
+          });
+        }
+      })
+    );
 
     const onVaultChange = (file: TAbstractFile) => {
       if (!this.boardFile) return;
