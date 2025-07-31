@@ -1,6 +1,5 @@
 import { Plugin, TFile, TAbstractFile, FuzzySuggestModal, Modal, TextComponent, Notice, Setting } from 'obsidian';
-import { WorkspaceLeaf } from "obsidian";
-import { BoardView, BOARD_VIEW_TYPE } from "./view/BoardView";
+import { BoardView, VIEW_TYPE_BOARD } from './view';
 import { BoardData, loadBoard, saveBoard, getBoardFile } from './boardStore';
 import { scanFiles, parseDependencies, ParsedTask, ScanOptions } from './parser';
 import Controller from './controller';
@@ -25,12 +24,17 @@ export default class MindTaskPlugin extends Plugin {
       this.boards = [];
     }
     this.addSettingTab(new SettingsTab(this.app, this));
-    this.registerView(
-      BOARD_VIEW_TYPE,
-      (leaf: WorkspaceLeaf) => new BoardView(leaf)
+    this.registerView(VIEW_TYPE_BOARD, (leaf) =>
+      new BoardView(
+        leaf,
+        this.controller!,
+        this.board!,
+        this.tasks,
+        { tags: this.settings.tagFilters, folders: this.settings.folderPaths },
+        (tags, folders) => this.updateFilters(tags, folders)
+      )
     );
-
-    this.registerExtensions(["vtasks.json"], BOARD_VIEW_TYPE);
+    this.registerExtensions(['vtasks.json'], VIEW_TYPE_BOARD);
 
     this.registerEvent(
       this.app.workspace.on('file-open', async (file) => {
