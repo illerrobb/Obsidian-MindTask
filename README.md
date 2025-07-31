@@ -47,9 +47,9 @@ If the selected path includes folders that do not exist, MindTask will create
 those folders automatically before writing the board file.
 
 You can configure the colors shown in the context menu from the plugin
-settings. Each color can optionally be paired with a label such as `urgent` or
-`priority:: lowest`. When a task contains that tag or metadata field, the node
-is automatically colored.
+settings. Each color can optionally be paired with a label used for automatic
+coloring. Use `#tag` to match a tag or `field:: value` to match a metadata
+field. For example `#next` or `priority:: high` will color matching tasks.
 
 ## License
 

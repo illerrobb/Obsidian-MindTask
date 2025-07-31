@@ -595,9 +595,10 @@ export class BoardView extends ItemView {
 
       menu.addItem((item) => {
         item.setTitle('Color').setIcon('palette');
-        item.setSubmenu((sub) => {
+        item.onClick((evt) => {
+          const colorMenu = new Menu();
           colors.forEach((c) => {
-            sub.addItem((subItem) => {
+            colorMenu.addItem((subItem) => {
               const title = c.label ? `${c.label} (${c.color})` : c.color;
               subItem.setTitle(title).setIcon('circle');
               if ((subItem as any).iconEl) {
@@ -611,12 +612,13 @@ export class BoardView extends ItemView {
               });
             });
           });
-          sub.addItem((subItem) =>
+          colorMenu.addItem((subItem) =>
             subItem.setTitle('Default').onClick(() => {
               target.style.backgroundColor = '';
               this.controller!.setNodeColor(id, null).then(() => this.render());
             })
           );
+          colorMenu.showAtMouseEvent(evt as MouseEvent);
         });
       });
       const checked = this.tasks.get(id)?.checked ?? false;

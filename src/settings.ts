@@ -10,7 +10,8 @@ export interface ColorOption {
   color: string;
   /**
    * Optional tag or field label that triggers this color.
-   * Use "#tag" to match a tag or "field:: value" for a metadata field.
+   * Use "#tag" for a tag match or "field:: value" for a metadata
+   * field. Example: `#next` or `priority:: high`.
    */
   label?: string;
 }
@@ -196,8 +197,8 @@ export class SettingsTab extends PluginSettingTab {
                 await this.plugin.savePluginData();
               })
           )
-          // "Label" accepts either a tag (e.g. "#next") or a field
-          // in the form "status:: done". Tasks containing the label
+          // Enter a tag (e.g. "#next") or a field in the form
+          // "status:: done". Tasks containing that tag or field will
           // automatically use this color.
           .addText((text) =>
             text
