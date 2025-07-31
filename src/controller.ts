@@ -1,4 +1,4 @@
-import { App, normalizePath, TFile } from 'obsidian';
+import { App, normalizePath, TFile, MarkdownView } from 'obsidian';
 import crypto from 'crypto';
 import { BoardData, NodeData, saveBoard } from './boardStore';
 import { ParsedTask } from './parser';
@@ -76,6 +76,24 @@ export default class Controller {
       '',
       true
     );
+  }
+
+  async editTask(id: string) {
+    const task = this.tasks.get(id);
+    if (!task) return;
+    await this.app.workspace.openLinkText(
+      `${task.file.path}#^${task.blockId}`,
+      '',
+      false
+    );
+    const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+    if (!view) return;
+    view.editor.setCursor({ line: task.line, ch: 0 });
+    if (this.app.commands.commands['obsidian-tasks-plugin:edit-task']) {
+      await this.app.commands.executeCommandById(
+        'obsidian-tasks-plugin:edit-task'
+      );
+    }
   }
 
   async toggleCheck(id: string) {

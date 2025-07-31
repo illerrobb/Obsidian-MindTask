@@ -292,7 +292,7 @@ export class BoardView extends ItemView {
       if (pos.type === 'group') {
         this.openGroup(id);
       } else {
-        this.controller.openTask(id);
+        this.controller?.editTask(id);
       }
     });
   }
@@ -338,6 +338,10 @@ export class BoardView extends ItemView {
         this.svgEl.appendChild(path);
       } else if (node && !inHandle) {
         const id = node.getAttribute('data-id')!;
+        if ((e as PointerEvent).ctrlKey || (e as PointerEvent).metaKey) {
+          // ctrl-click handled in click event
+          return;
+        }
         this.selectNode(node, id, (e as PointerEvent).shiftKey || (e as PointerEvent).metaKey);
         this.draggingId = id;
         const coords = this.getBoardCoords(e as PointerEvent);
@@ -544,14 +548,11 @@ export class BoardView extends ItemView {
       const target = (e.target as HTMLElement).closest('.vtasks-node') as HTMLElement | null;
       if (target) {
         const id = target.getAttribute('data-id')!;
-        this.selectNode(target, id, (e as MouseEvent).shiftKey || (e as MouseEvent).metaKey);
-        if ((e as MouseEvent).detail === 1) {
-          if (this.editTimer) window.clearTimeout(this.editTimer);
-          this.editTimer = window.setTimeout(() => {
-            if (this.editingId) return;
-            this.startEditing(target, id);
-          }, 200);
+        if ((e as MouseEvent).ctrlKey || (e as MouseEvent).metaKey) {
+          this.controller?.openTask(id);
+          return;
         }
+        this.selectNode(target, id, (e as MouseEvent).shiftKey || (e as MouseEvent).metaKey);
       } else {
         this.finishEditing(true);
         this.clearSelection();
