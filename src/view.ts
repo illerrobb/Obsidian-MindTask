@@ -591,18 +591,22 @@ export class BoardView extends ItemView {
       }
     });
 
-    this.svgEl.addEventListener('click', (e) => {
-      const edgeEl = (e.target as HTMLElement).closest('path.vtasks-edge') as SVGPathElement | null;
-      if (edgeEl && edgeEl.getAttr('data-index')) {
-        const idx = parseInt(edgeEl.getAttr('data-index')!);
-        this.controller.cycleEdgeType(idx).then(() => this.render());
-      }
-    });
+    // Left-clicking an edge should no longer change its type. Users now access
+    // edge actions exclusively through the context menu.
+    // this.svgEl.addEventListener('click', (e) => {
+    //   const edgeEl = (e.target as HTMLElement).closest('path.vtasks-edge') as SVGPathElement | null;
+    //   if (edgeEl && edgeEl.getAttr('data-index')) {
+    //     const idx = parseInt(edgeEl.getAttr('data-index')!);
+    //     this.controller.cycleEdgeType(idx).then(() => this.render());
+    //   }
+    // });
 
     this.svgEl.addEventListener('contextmenu', (e) => {
       const edgeEl = (e.target as HTMLElement).closest('path.vtasks-edge') as SVGPathElement | null;
       if (!edgeEl || !edgeEl.getAttr('data-index')) return;
       e.preventDefault();
+      // Prevent the board-level context menu from also opening
+      e.stopPropagation();
       const idx = parseInt(edgeEl.getAttr('data-index')!);
       const edge = this.board.edges[idx];
       if (!edge) return;

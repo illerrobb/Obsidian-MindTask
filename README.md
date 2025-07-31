@@ -7,7 +7,7 @@ Tasks can also be selected with a rectangle and grouped into collapsible boxes.
 You can pan the board itself by dragging with the middle mouse button or holding `Ctrl` while left-clicking on empty space. Hold `Ctrl` (or `Cmd` on macOS) and scroll the mouse wheel or press `+`/`-` to zoom the board.
 A minimap in the bottom-right shows an overview of all nodes. Click or drag inside the minimap to quickly pan the board.
 
-Edges support different relationship types: dependency, subtask and sequence. Click an edge to cycle through these types and the line style will update accordingly.
+Edges support different relationship types: dependency, subtask and sequence. Right-click an edge to choose its type or delete the connection from the context menu.
 
 Task relationships are stored using Dataview inline fields referencing the target task's ID:
 
