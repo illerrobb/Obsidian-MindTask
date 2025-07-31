@@ -292,7 +292,8 @@ export class BoardView extends ItemView {
       if (pos.type === 'group') {
         this.openGroup(id);
       } else {
-        this.controller?.editTask(id);
+        if (this.controller)
+          this.controller.editTask(id, this.leaf);
       }
     });
   }

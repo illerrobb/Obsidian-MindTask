@@ -1,4 +1,4 @@
-import { App, normalizePath, TFile, MarkdownView } from 'obsidian';
+import { App, normalizePath, TFile, MarkdownView, WorkspaceLeaf } from 'obsidian';
 import crypto from 'crypto';
 import { BoardData, NodeData, saveBoard } from './boardStore';
 import { ParsedTask } from './parser';
@@ -78,22 +78,21 @@ export default class Controller {
     );
   }
 
-  async editTask(id: string) {
+  async editTask(id: string, boardLeaf: WorkspaceLeaf) {
     const task = this.tasks.get(id);
     if (!task) return;
-    await this.app.workspace.openLinkText(
-      `${task.file.path}#^${task.blockId}`,
-      '',
-      false
-    );
-    const view = this.app.workspace.getActiveViewOfType(MarkdownView);
-    if (!view) return;
+    const leaf = this.app.workspace.getLeaf('tab');
+    await leaf.openFile(task.file, { active: false });
+    const view = leaf.view as MarkdownView;
     view.editor.setCursor({ line: task.line, ch: 0 });
+    this.app.workspace.setActiveLeaf(leaf, { focus: false });
     if (this.app.commands.commands['obsidian-tasks-plugin:edit-task']) {
       await this.app.commands.executeCommandById(
         'obsidian-tasks-plugin:edit-task'
       );
     }
+    this.app.workspace.setActiveLeaf(boardLeaf, { focus: true });
+    window.setTimeout(() => leaf.detach(), 300);
   }
 
   async toggleCheck(id: string) {
