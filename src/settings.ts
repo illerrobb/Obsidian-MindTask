@@ -8,7 +8,10 @@ export interface BoardInfo {
 
 export interface ColorOption {
   color: string;
-  /** Optional tag or field label that triggers this color */
+  /**
+   * Optional tag or field label that triggers this color.
+   * Use "#tag" to match a tag or "field:: value" for a metadata field.
+   */
   label?: string;
 }
 
@@ -193,9 +196,12 @@ export class SettingsTab extends PluginSettingTab {
                 await this.plugin.savePluginData();
               })
           )
+          // "Label" accepts either a tag (e.g. "#next") or a field
+          // in the form "status:: done". Tasks containing the label
+          // automatically use this color.
           .addText((text) =>
             text
-              .setPlaceholder('Label (optional)')
+              .setPlaceholder('Label (e.g. #tag or key:: value)')
               .setValue(c.label ?? '')
               .onChange(async (v) => {
                 c.label = v.trim() || undefined;
