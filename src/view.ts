@@ -851,9 +851,12 @@ export class BoardView extends ItemView {
       }
     };
     input.addEventListener('keydown', (e) => {
+      e.stopPropagation();
       if (e.key === 'Enter') {
+        e.preventDefault();
         finish(true);
       } else if (e.key === 'Escape') {
+        e.preventDefault();
         finish(false);
       }
     });
