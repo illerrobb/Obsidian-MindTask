@@ -339,26 +339,36 @@ export class BoardView extends ItemView {
         const nodeEl = this.boardEl.querySelector(`.vtasks-node[data-id="${id}"]`) as HTMLElement;
         const dx = ((e as PointerEvent).clientX - this.resizeStartX) / this.zoom;
         const dy = ((e as PointerEvent).clientY - this.resizeStartY) / this.zoom;
-        let width = this.resizeStartWidth;
-        let height = this.resizeStartHeight;
+        const right = this.resizeStartNodeX + this.resizeStartWidth;
+        const bottom = this.resizeStartNodeY + this.resizeStartHeight;
         let x = this.resizeStartNodeX;
         let y = this.resizeStartNodeY;
-        if (this.resizeDir.includes('e')) width = this.resizeStartWidth + dx;
-        if (this.resizeDir.includes('s')) height = this.resizeStartHeight + dy;
+        let width = this.resizeStartWidth;
+        let height = this.resizeStartHeight;
+
         if (this.resizeDir.includes('w')) {
-          width = this.resizeStartWidth - dx;
-          x = this.resizeStartNodeX + dx;
+          x = Math.round((this.resizeStartNodeX + dx) / this.gridSize) * this.gridSize;
+          width = right - x;
+        } else if (this.resizeDir.includes('e')) {
+          width = this.resizeStartWidth + dx;
+          width = Math.round(width / this.gridSize) * this.gridSize;
         }
+
         if (this.resizeDir.includes('n')) {
-          height = this.resizeStartHeight - dy;
-          y = this.resizeStartNodeY + dy;
+          y = Math.round((this.resizeStartNodeY + dy) / this.gridSize) * this.gridSize;
+          height = bottom - y;
+        } else if (this.resizeDir.includes('s')) {
+          height = this.resizeStartHeight + dy;
+          height = Math.round(height / this.gridSize) * this.gridSize;
         }
+
         width = Math.max(120, width);
         height = Math.max(20, height);
         nodeEl.style.width = width + 'px';
         nodeEl.style.height = height + 'px';
         nodeEl.style.left = x + 'px';
         nodeEl.style.top = y + 'px';
+        this.showAlignmentGuides(id, x, y, width, height);
         this.board.nodes[id] = { ...this.board.nodes[id], x, y, width, height };
         this.updateOverflow(nodeEl);
         this.drawEdges();
@@ -367,22 +377,26 @@ export class BoardView extends ItemView {
         const coords = this.getBoardCoords(e as PointerEvent);
         const curX = coords.x;
         const curY = coords.y;
-        const dx = Math.round((curX - this.dragStartX) / this.gridSize) * this.gridSize;
-        const dy = Math.round((curY - this.dragStartY) / this.gridSize) * this.gridSize;
-
+        let mainX = 0, mainY = 0, mainW = 0, mainH = 0;
         this.selectedIds.forEach((id) => {
           const start = this.dragStartPositions.get(id);
           if (!start) return;
-          let x = start.x + dx;
-          let y = start.y + dy;
+          let x = Math.round((start.x + curX - this.dragStartX) / this.gridSize) * this.gridSize;
+          let y = Math.round((start.y + curY - this.dragStartY) / this.gridSize) * this.gridSize;
 
           const nodeEl = this.boardEl.querySelector(`.vtasks-node[data-id="${id}"]`) as HTMLElement;
           nodeEl.style.left = x + 'px';
           nodeEl.style.top = y + 'px';
-        this.board.nodes[id] = { ...this.board.nodes[id], x, y };
-      });
-      this.drawEdges();
-      this.drawMinimap();
+          this.board.nodes[id] = { ...this.board.nodes[id], x, y };
+          if (id === this.draggingId) {
+            const w = this.board.nodes[id].width ?? 120;
+            const h = this.board.nodes[id].height ?? (this.board.nodes[id].type === 'group' ? 80 : 40);
+            mainX = x; mainY = y; mainW = w; mainH = h;
+          }
+        });
+        if (this.draggingId) this.showAlignmentGuides(this.draggingId, mainX, mainY, mainW, mainH);
+        this.drawEdges();
+        this.drawMinimap();
       } else if (this.isBoardDragging) {
         this.boardOffsetX = (e as PointerEvent).clientX - this.boardStartX;
         this.boardOffsetY = (e as PointerEvent).clientY - this.boardStartY;
@@ -730,6 +744,47 @@ export class BoardView extends ItemView {
       textEl.classList.add('vtasks-fade');
     } else {
       textEl.classList.remove('vtasks-fade');
+    }
+  }
+
+  private showAlignmentGuides(id: string, x: number, y: number, w: number, h: number) {
+    const threshold = 5;
+    const cx = x + w / 2;
+    const cy = y + h / 2;
+    let alignX: number | null = null;
+    let alignY: number | null = null;
+    for (const nid in this.board.nodes) {
+      if (nid === id) continue;
+      const n = this.board.nodes[nid];
+      if ((n.group || null) !== this.groupId) continue;
+      const nw = n.width ?? 120;
+      const nh = n.height ?? (n.type === 'group' ? 80 : 40);
+      const ncx = n.x + nw / 2;
+      const ncy = n.y + nh / 2;
+      const xs = [n.x, n.x + nw, ncx];
+      const ys = [n.y, n.y + nh, ncy];
+      xs.forEach((xx) => {
+        if (Math.abs(xx - x) <= threshold) alignX = xx;
+        if (Math.abs(xx - (x + w)) <= threshold) alignX = xx;
+        if (Math.abs(xx - cx) <= threshold) alignX = xx;
+      });
+      ys.forEach((yy) => {
+        if (Math.abs(yy - y) <= threshold) alignY = yy;
+        if (Math.abs(yy - (y + h)) <= threshold) alignY = yy;
+        if (Math.abs(yy - cy) <= threshold) alignY = yy;
+      });
+    }
+    if (alignX != null) {
+      this.alignVLine.style.left = alignX + 'px';
+      this.alignVLine.style.display = '';
+    } else {
+      this.alignVLine.style.display = 'none';
+    }
+    if (alignY != null) {
+      this.alignHLine.style.top = alignY + 'px';
+      this.alignHLine.style.display = '';
+    } else {
+      this.alignHLine.style.display = 'none';
     }
   }
 
