@@ -89,10 +89,9 @@ export default class Controller {
     const view = this.app.workspace.getActiveViewOfType(MarkdownView);
     if (!view) return;
     view.editor.setCursor({ line: task.line, ch: 0 });
-    if (this.app.commands.commands['obsidian-tasks-plugin:edit-task']) {
-      await this.app.commands.executeCommandById(
-        'obsidian-tasks-plugin:edit-task'
-      );
+    const cmdMgr = (this.app as any).commands;
+    if (cmdMgr?.commands['obsidian-tasks-plugin:edit-task']) {
+      await cmdMgr.executeCommandById('obsidian-tasks-plugin:edit-task');
     }
   }
 
