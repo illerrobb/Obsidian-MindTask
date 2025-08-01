@@ -129,7 +129,8 @@ export class BoardView extends ItemView {
 
     if (this.groupId) {
       const backBtn = controls.createEl('button', { text: 'Back' });
-      backBtn.onclick = () => this.openGroup(this.board.nodes[this.groupId!].group || null);
+      backBtn.onclick = () =>
+        this.openGroup(this.board!.nodes[this.groupId!].group || null);
     }
 
     this.boardEl = this.containerEl.createDiv('vtasks-board');
@@ -195,7 +196,7 @@ export class BoardView extends ItemView {
   }
 
   private createNodeElement(id: string) {
-    const pos = this.board.nodes[id];
+    const pos = this.board!.nodes[id];
     const nodeEl = this.boardEl.createDiv('vtasks-node');
     nodeEl.setAttr('data-id', id);
     nodeEl.style.left = pos.x + 'px';
@@ -313,15 +314,15 @@ export class BoardView extends ItemView {
         this.resizingId = id;
         const cls = Array.from(resizeEl.classList).find((c) => c.startsWith('vtasks-resize-'))!;
         this.resizeDir = cls.replace('vtasks-resize-', '');
-        this.resizeStartNodeX = this.board.nodes[id].x;
-        this.resizeStartNodeY = this.board.nodes[id].y;
+        this.resizeStartNodeX = this.board!.nodes[id].x;
+        this.resizeStartNodeY = this.board!.nodes[id].y;
         const rect = node.getBoundingClientRect();
         this.resizeStartWidth = rect.width / this.zoom;
         this.resizeStartHeight = rect.height / this.zoom;
         this.resizeStartX = (e as PointerEvent).clientX;
         this.resizeStartY = (e as PointerEvent).clientY;
-        this.board.nodes[id] = {
-          ...this.board.nodes[id],
+        this.board!.nodes[id] = {
+          ...this.board!.nodes[id],
           width: rect.width / this.zoom,
           height: rect.height / this.zoom,
         };
@@ -354,7 +355,7 @@ export class BoardView extends ItemView {
         this.dragStartY = coords.y;
         this.dragStartPositions.clear();
         this.selectedIds.forEach((sid) => {
-          const npos = this.board.nodes[sid];
+          const npos = this.board!.nodes[sid];
           this.dragStartPositions.set(sid, { x: npos.x, y: npos.y });
         });
       } else if (
@@ -413,7 +414,13 @@ export class BoardView extends ItemView {
         nodeEl.style.left = x + 'px';
         nodeEl.style.top = y + 'px';
         this.showAlignmentGuides(id, x, y, width, height);
-        this.board.nodes[id] = { ...this.board.nodes[id], x, y, width, height };
+        this.board!.nodes[id] = {
+          ...this.board!.nodes[id],
+          x,
+          y,
+          width,
+          height,
+        };
         this.updateOverflow(nodeEl);
         this.drawEdges();
         this.drawMinimap();
@@ -431,10 +438,12 @@ export class BoardView extends ItemView {
           const nodeEl = this.boardEl.querySelector(`.vtasks-node[data-id="${id}"]`) as HTMLElement;
           nodeEl.style.left = x + 'px';
           nodeEl.style.top = y + 'px';
-          this.board.nodes[id] = { ...this.board.nodes[id], x, y };
+          this.board!.nodes[id] = { ...this.board!.nodes[id], x, y };
           if (id === this.draggingId) {
-            const w = this.board.nodes[id].width ?? 120;
-            const h = this.board.nodes[id].height ?? (this.board.nodes[id].type === 'group' ? 80 : 40);
+            const w = this.board!.nodes[id].width ?? 120;
+            const h =
+              this.board!.nodes[id].height ??
+              (this.board!.nodes[id].type === 'group' ? 80 : 40);
             mainX = x; mainY = y; mainW = w; mainH = h;
           }
         });
@@ -472,17 +481,17 @@ export class BoardView extends ItemView {
       if (this.resizingId) {
         const id = this.resizingId;
         this.resizingId = null;
-        const pos = this.board.nodes[id];
-        this.controller.moveNode(id, pos.x, pos.y);
-        this.controller.resizeNode(id, pos.width ?? 0, pos.height ?? 0);
+        const pos = this.board!.nodes[id];
+        this.controller!.moveNode(id, pos.x, pos.y);
+        this.controller!.resizeNode(id, pos.width ?? 0, pos.height ?? 0);
         this.drawMinimap();
       } else if (this.draggingId) {
         this.draggingId = null;
         this.alignVLine.style.display = 'none';
         this.alignHLine.style.display = 'none';
         this.selectedIds.forEach((id) => {
-          const pos = this.board.nodes[id];
-          this.controller.moveNode(id, pos.x, pos.y);
+          const pos = this.board!.nodes[id];
+          this.controller!.moveNode(id, pos.x, pos.y);
         });
         this.drawMinimap();
       } else if (this.isBoardDragging) {
@@ -493,9 +502,11 @@ export class BoardView extends ItemView {
         const node = handle ? handle.closest('.vtasks-node') as HTMLElement | null : null;
         if (node) {
           const toId = node.getAttribute('data-id')!;
-          if (toId !== this.edgeStart) {
-            this.controller.createEdge(this.edgeStart, toId, 'depends').then(() => this.render());
-          }
+            if (toId !== this.edgeStart) {
+              this.controller!
+                .createEdge(this.edgeStart, toId, 'depends')
+                .then(() => this.render());
+            }
         }
         this.edgeStart = null;
         this.boardEl.classList.remove('show-handles');
@@ -557,11 +568,13 @@ export class BoardView extends ItemView {
       { passive: false }
     );
 
-    this.boardEl.ondblclick = (e) => {
-      if ((e.target as HTMLElement).closest('.vtasks-node')) return;
-      const pos = this.getBoardCoords(e as MouseEvent);
-      this.controller.createTask('New Task', pos.x, pos.y).then(() => this.render());
-    };
+      this.boardEl.ondblclick = (e) => {
+        if ((e.target as HTMLElement).closest('.vtasks-node')) return;
+        const pos = this.getBoardCoords(e as MouseEvent);
+        this.controller!
+          .createTask('New Task', pos.x, pos.y)
+          .then(() => this.render());
+      };
 
     this.boardEl.addEventListener('click', (e) => {
       const target = (e.target as HTMLElement).closest('.vtasks-node') as HTMLElement | null;
@@ -604,19 +617,22 @@ export class BoardView extends ItemView {
       const menu = new Menu();
       const selected = Array.from(this.selectedIds);
       if (selected.length > 1) {
-        menu.addItem((item) =>
-          item
-            .setTitle('Rearrange selected')
-            .onClick(() =>
-              this.controller
-                .rearrangeNodes(selected)
-                .then(() => this.render())
-            )
-        );
+          menu.addItem((item) =>
+            item
+              .setTitle('Rearrange selected')
+              .onClick(() =>
+                this.controller!
+                  .rearrangeNodes(selected)
+                  .then(() => this.render())
+              )
+          );
         menu.addItem((item) => {
           item.setTitle('Align');
           item.setSubmenu((sub: Menu) => {
-            const opts: [string, Parameters<typeof this.controller.alignNodes>[1]][] = [
+            const opts: [
+              string,
+              Parameters<typeof Controller.prototype.alignNodes>[1]
+            ][] = [
               ['Left', 'left'],
               ['Right', 'right'],
               ['Top', 'top'],
@@ -629,7 +645,7 @@ export class BoardView extends ItemView {
                 subItem
                   .setTitle(label)
                   .onClick(() =>
-                    this.controller
+                    this.controller!
                       .alignNodes(selected, type)
                       .then(() => this.render())
                   )
@@ -643,13 +659,15 @@ export class BoardView extends ItemView {
               const n = prompt('Group name', 'Group') || 'Group';
               resolve(n);
             });
-            this.controller.groupNodes(selected, name).then(() => this.render());
+            this.controller!.groupNodes(selected, name).then(() => this.render());
           })
         );
       }
-      if (this.board.nodes[id].type === 'group') {
+      if (this.board!.nodes[id].type === 'group') {
         menu.addItem((item) =>
-          item.setTitle('Ungroup').onClick(() => this.controller.ungroupNode(id).then(() => this.render()))
+          item.setTitle('Ungroup').onClick(() =>
+            this.controller!.ungroupNode(id).then(() => this.render())
+          )
         );
       }
       const colors = this.controller?.settings.backgroundColors || [];
@@ -683,7 +701,7 @@ export class BoardView extends ItemView {
       menu.addItem((item) =>
         item
           .setTitle(checked ? 'Mark not done' : 'Mark done')
-          .onClick(() => this.controller.setCheck(id, !checked).then(() => this.render()))
+          .onClick(() => this.controller!.setCheck(id, !checked).then(() => this.render()))
       );
       menu.showAtMouseEvent(e as MouseEvent);
     });
@@ -707,7 +725,7 @@ export class BoardView extends ItemView {
       if (!first) return;
       if (e.key === ' ') {
         e.preventDefault();
-        this.controller.toggleCheck(first).then(() => this.render());
+        this.controller!.toggleCheck(first).then(() => this.render());
       }
     });
 
@@ -728,7 +746,7 @@ export class BoardView extends ItemView {
       // Prevent the board-level context menu from also opening
       e.stopPropagation();
       const idx = parseInt(edgeEl.getAttr('data-index')!);
-      const edge = this.board.edges[idx];
+      const edge = this.board!.edges[idx];
       if (!edge) return;
       const menu = new Menu();
       const types = ['depends', 'subtask', 'sequence'];
@@ -736,13 +754,13 @@ export class BoardView extends ItemView {
         const title = edge.type === t ? `✔ ${t}` : t;
         menu.addItem((item) =>
           item.setTitle(title).onClick(() => {
-            this.controller.setEdgeType(idx, t).then(() => this.render());
+            this.controller!.setEdgeType(idx, t).then(() => this.render());
           })
         );
       });
       menu.addItem((item) =>
         item.setTitle('Delete connection').onClick(() => {
-          this.controller.deleteEdge(idx).then(() => this.render());
+          this.controller!.deleteEdge(idx).then(() => this.render());
         })
       );
       menu.showAtMouseEvent(e as MouseEvent);
@@ -798,9 +816,9 @@ export class BoardView extends ItemView {
 
   private drawEdges() {
     const toRemove = new Set(this.edgeEls.keys());
-    this.board.edges.forEach((edge, idx) => {
-      const fromNode = this.board.nodes[edge.from];
-      const toNode = this.board.nodes[edge.to];
+    this.board!.edges.forEach((edge, idx) => {
+      const fromNode = this.board!.nodes[edge.from];
+      const toNode = this.board!.nodes[edge.to];
       const els = this.edgeEls.get(idx);
       if (
         (fromNode.group || null) !== this.groupId ||
@@ -885,9 +903,9 @@ export class BoardView extends ItemView {
     const cy = y + h / 2;
     let alignX: number | null = null;
     let alignY: number | null = null;
-    for (const nid in this.board.nodes) {
+    for (const nid in this.board!.nodes) {
       if (nid === id) continue;
-      const n = this.board.nodes[nid];
+      const n = this.board!.nodes[nid];
       if ((n.group || null) !== this.groupId) continue;
       const nw = n.width ?? 120;
       const nh = n.height ?? (n.type === 'group' ? 80 : 40);
@@ -995,8 +1013,8 @@ export class BoardView extends ItemView {
     let maxX = -Infinity;
     let maxY = -Infinity;
     const nodes: { x: number; y: number; w: number; h: number }[] = [];
-    for (const id in this.board.nodes) {
-      const n = this.board.nodes[id];
+    for (const id in this.board!.nodes) {
+      const n = this.board!.nodes[id];
       if ((n.group || null) !== this.groupId) continue;
       const w = n.width ?? 120;
       const h = n.height ?? (n.type === 'group' ? 80 : 40);
@@ -1030,9 +1048,9 @@ export class BoardView extends ItemView {
       rect.addClass('vtasks-mini-node');
       this.minimapSvg.appendChild(rect);
     });
-    this.board.edges.forEach((edge) => {
-      const from = this.board.nodes[edge.from];
-      const to = this.board.nodes[edge.to];
+    this.board!.edges.forEach((edge) => {
+      const from = this.board!.nodes[edge.from];
+      const to = this.board!.nodes[edge.to];
       if ((from.group || null) !== this.groupId || (to.group || null) !== this.groupId) return;
       const fw = from.width ?? 120;
       const fh = from.height ?? (from.type === 'group' ? 80 : 40);
@@ -1089,7 +1107,7 @@ export class BoardView extends ItemView {
         return item.text;
       }
       onChooseItem(item: ParsedTask) {
-        this.view.controller
+        this.view.controller!
           .addExistingTask(item.blockId, pos.x, pos.y)
           .then(() => this.view.render());
       }
