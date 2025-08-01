@@ -368,6 +368,7 @@ export class BoardView extends ItemView {
         const coords = this.getBoardCoords(e as PointerEvent);
         this.selStartX = coords.x;
         this.selStartY = coords.y;
+        (this.boardEl as HTMLElement).setPointerCapture((e as PointerEvent).pointerId);
         this.selectionRect = this.boardEl.createDiv('vtasks-selection');
         this.selectionRect.style.left = this.selStartX + 'px';
         this.selectionRect.style.top = this.selStartY + 'px';
@@ -466,6 +467,7 @@ export class BoardView extends ItemView {
     };
 
     this.boardEl.onpointerup = (e) => {
+      (this.boardEl as HTMLElement).releasePointerCapture((e as PointerEvent).pointerId);
       if (this.resizingId) {
         const id = this.resizingId;
         this.resizingId = null;
@@ -507,7 +509,7 @@ export class BoardView extends ItemView {
         if (!additive) this.clearSelection();
         this.boardEl.querySelectorAll('.vtasks-node').forEach((n) => {
           const r = n.getBoundingClientRect();
-          if (r.left >= rect.left && r.right <= rect.right && r.top >= rect.top && r.bottom <= rect.bottom) {
+          if (r.right >= rect.left && r.left <= rect.right && r.bottom >= rect.top && r.top <= rect.bottom) {
             const id = n.getAttribute('data-id')!;
             this.selectNode(n as HTMLElement, id, additive);
           }
