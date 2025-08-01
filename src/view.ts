@@ -588,6 +588,7 @@ export class BoardView extends ItemView {
       const target = (e.target as HTMLElement).closest('.vtasks-node') as HTMLElement | null;
       if (!target) {
         e.preventDefault();
+        e.stopPropagation();
         const pos = this.getBoardCoords(e as MouseEvent);
         const menu = new Menu();
         menu.addItem((item) =>
@@ -597,6 +598,7 @@ export class BoardView extends ItemView {
         return;
       }
       e.preventDefault();
+      e.stopPropagation();
       const id = target.getAttribute('data-id')!;
       const menu = new Menu();
       const selected = Array.from(this.selectedIds);
