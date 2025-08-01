@@ -278,6 +278,7 @@ export default class Controller {
       .map((id) => ({ id, node: this.board.nodes[id] }))
       .filter((p) => p.node);
     if (!nodes.length) return;
+
     const avgW =
       nodes.reduce((s, p) => s + (p.node.width ?? 120), 0) / nodes.length;
     const avgH =
@@ -286,15 +287,99 @@ export default class Controller {
           s + (p.node.height ?? (p.node.type === 'group' ? 80 : 40)),
         0
       ) / nodes.length;
-    const cols = Math.ceil(Math.sqrt(nodes.length));
+    const spacingX = avgW + 40;
+    const spacingY = avgH + 40;
+
+    const selected = new Set(ids);
+    const children: Record<string, string[]> = {};
+    const inDegree: Record<string, number> = {};
+    ids.forEach((id) => {
+      children[id] = [];
+      inDegree[id] = 0;
+    });
+    this.board.edges.forEach((e) => {
+      if (selected.has(e.from) && selected.has(e.to)) {
+        children[e.from].push(e.to);
+        inDegree[e.to]++;
+      }
+    });
+
+    const queue: string[] = [];
+    const level: Record<string, number> = {};
+    ids.forEach((id) => {
+      if (inDegree[id] === 0) {
+        queue.push(id);
+        level[id] = 0;
+      }
+    });
+
+    const order: string[] = [];
+    while (queue.length) {
+      const id = queue.shift()!;
+      order.push(id);
+      const l = level[id];
+      children[id].forEach((ch) => {
+        inDegree[ch]--;
+        level[ch] = Math.max(level[ch] ?? 0, l + 1);
+        if (inDegree[ch] === 0) queue.push(ch);
+      });
+    }
+    ids.forEach((id) => {
+      if (!order.includes(id)) {
+        order.push(id);
+        level[id] = 0;
+      }
+    });
+
     const startX = Math.min(...nodes.map((p) => p.node.x));
     const startY = Math.min(...nodes.map((p) => p.node.y));
-    nodes.forEach((p, idx) => {
-      const col = idx % cols;
-      const row = Math.floor(idx / cols);
-      p.node.x = startX + col * (avgW + 40);
-      p.node.y = startY + row * (avgH + 40);
-    });
+
+    interface Rect {
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    }
+    const rects: Rect[] = [];
+    for (const [id, n] of Object.entries(this.board.nodes)) {
+      if (selected.has(id)) continue;
+      if (!n) continue;
+      const width = n.width ?? (n.type === 'group' ? 80 : 120);
+      const height = n.height ?? (n.type === 'group' ? 80 : 40);
+      rects.push({ x: n.x, y: n.y, width, height });
+    }
+
+    const overlaps = (a: Rect, b: Rect) =>
+      !(a.x + a.width <= b.x ||
+        b.x + b.width <= a.x ||
+        a.y + a.height <= b.y ||
+        b.y + b.height <= a.y);
+
+    const rowCount: Record<number, number> = {};
+    for (const id of order) {
+      const node = this.board.nodes[id];
+      if (!node) continue;
+      const width = node.width ?? (node.type === 'group' ? 80 : 120);
+      const height = node.height ?? (node.type === 'group' ? 80 : 40);
+      const col = level[id];
+      let row = rowCount[col] || 0;
+      let x = startX + col * spacingX;
+      let y = startY + row * spacingY;
+      let rect = { x, y, width, height } as Rect;
+      let collision = true;
+      while (collision) {
+        collision = rects.some((r) => overlaps(rect, r));
+        if (!collision) break;
+        row += 1;
+        y = startY + row * spacingY;
+        rect = { x, y, width, height };
+      }
+      node.x = x;
+      node.y = y;
+      rects.push(rect);
+      rowCount[col] = row + 1;
+    }
+
     await saveBoard(this.app, this.boardFile, this.board);
   }
 
