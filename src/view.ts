@@ -374,7 +374,7 @@ export class BoardView extends ItemView {
         this.selectionRect = this.boardEl.createDiv('vtasks-selection');
         this.selectionRect.style.left = this.selStartX + 'px';
         this.selectionRect.style.top = this.selStartY + 'px';
-        this.didDragSelect = true;
+        this.didDragSelect = false;
       }
     };
 
@@ -473,6 +473,7 @@ export class BoardView extends ItemView {
         this.selectionRect.style.top = top + 'px';
         this.selectionRect.style.width = width + 'px';
         this.selectionRect.style.height = height + 'px';
+        this.didDragSelect = true;
       }
     };
 
@@ -590,7 +591,7 @@ export class BoardView extends ItemView {
         }
       } else {
         this.finishEditing(true);
-        if (!this.didDragSelect) {
+        if (!this.didDragSelect && !(e as MouseEvent).shiftKey) {
           this.clearSelection();
         }
         this.didDragSelect = false;
