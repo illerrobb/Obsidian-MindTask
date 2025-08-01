@@ -505,13 +505,21 @@ export class BoardView extends ItemView {
         this.drawEdges();
       } else if (this.selectionRect) {
         const rect = this.selectionRect.getBoundingClientRect();
-        const additive = (e as MouseEvent).shiftKey || (e as MouseEvent).metaKey;
-        if (!additive) this.clearSelection();
+        const toggle = (e as MouseEvent).shiftKey || (e as MouseEvent).metaKey;
         this.boardEl.querySelectorAll('.vtasks-node').forEach((n) => {
           const r = n.getBoundingClientRect();
-          if (r.right >= rect.left && r.left <= rect.right && r.bottom >= rect.top && r.top <= rect.bottom) {
+          if (
+            r.right >= rect.left &&
+            r.left <= rect.right &&
+            r.bottom >= rect.top &&
+            r.top <= rect.bottom
+          ) {
             const id = n.getAttribute('data-id')!;
-            this.selectNode(n as HTMLElement, id, additive);
+            if (toggle) {
+              this.selectNode(n as HTMLElement, id, true);
+            } else {
+              this.addToSelection(n as HTMLElement, id);
+            }
           }
         });
         this.selectionRect.remove();
@@ -768,6 +776,14 @@ export class BoardView extends ItemView {
       }
     }
     this.boardEl.focus();
+  }
+
+  private addToSelection(el: HTMLElement, id: string) {
+    if (!this.selectedIds.has(id)) {
+      this.selectedIds.add(id);
+      el.classList.add('selected');
+      this.boardEl.focus();
+    }
   }
 
   private clearSelection() {
