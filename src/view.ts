@@ -347,7 +347,16 @@ export class BoardView extends ItemView {
           // ctrl-click handled in click event
           return;
         }
-        this.selectNode(node, id, (e as PointerEvent).shiftKey || (e as PointerEvent).metaKey);
+        const alreadySelected = this.selectedIds.has(id);
+        const modifier = (e as PointerEvent).shiftKey || (e as PointerEvent).metaKey;
+        if (alreadySelected) {
+          if (modifier) {
+            this.selectNode(node, id, true);
+          }
+          // if already selected and no modifier, keep selection as is
+        } else {
+          this.selectNode(node, id, modifier);
+        }
         this.pointerDownSelected = true;
         this.draggingId = id;
         const coords = this.getBoardCoords(e as PointerEvent);
