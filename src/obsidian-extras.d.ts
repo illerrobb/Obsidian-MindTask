@@ -7,4 +7,8 @@ declare module 'obsidian' {
      */
     commands: any;
   }
+
+  interface MenuItem {
+    setSubmenu(cb: (menu: Menu) => any): this;
+  }
 }

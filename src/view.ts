@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, Menu, FuzzySuggestModal } from 'obsidian';
+import { ItemView, WorkspaceLeaf, Menu, FuzzySuggestModal, MenuItem } from 'obsidian';
 import Controller from './controller';
 import { BoardData } from './boardStore';
 import { ParsedTask } from './parser';
@@ -615,7 +615,7 @@ export class BoardView extends ItemView {
         );
         menu.addItem((item) => {
           item.setTitle('Align');
-          item.setSubmenu((sub) => {
+          item.setSubmenu((sub: Menu) => {
             const opts: [string, Parameters<typeof this.controller.alignNodes>[1]][] = [
               ['Left', 'left'],
               ['Right', 'right'],
@@ -625,7 +625,7 @@ export class BoardView extends ItemView {
               ['Vertical center', 'vcenter'],
             ];
             opts.forEach(([label, type]) => {
-              sub.addItem((subItem) =>
+              sub.addItem((subItem: MenuItem) =>
                 subItem
                   .setTitle(label)
                   .onClick(() =>
@@ -656,9 +656,8 @@ export class BoardView extends ItemView {
 
       menu.addItem((item) => {
         item.setTitle('Color').setIcon('palette');
-        console.log('Available colors:', colors);
-        item.setSubmenu((sub) => {
-          sub.addItem((subItem) =>
+        item.setSubmenu((sub: Menu) => {
+          sub.addItem((subItem: MenuItem) =>
             subItem
               .setTitle('Default')
               .onClick(() => {
@@ -668,7 +667,7 @@ export class BoardView extends ItemView {
           );
 
           colors.forEach((c) => {
-            sub.addItem((subItem) =>
+            sub.addItem((subItem: MenuItem) =>
               subItem
                 .setTitle(c.color)
                 .setIcon('circle')
