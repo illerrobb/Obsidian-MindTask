@@ -628,7 +628,8 @@ export class BoardView extends ItemView {
           );
         menu.addItem((item) => {
           item.setTitle('Align');
-          item.setSubmenu((sub: Menu) => {
+          item.onClick((evt) => {
+            const sub = new Menu();
             const opts: [
               string,
               Parameters<typeof Controller.prototype.alignNodes>[1]
@@ -650,6 +651,10 @@ export class BoardView extends ItemView {
                       .then(() => this.render())
                   )
               );
+            });
+            sub.showAtPosition({
+              x: (evt as MouseEvent).pageX + 5,
+              y: (evt as MouseEvent).pageY,
             });
           });
         });
@@ -674,7 +679,8 @@ export class BoardView extends ItemView {
 
       menu.addItem((item) => {
         item.setTitle('Color').setIcon('palette');
-        item.setSubmenu((sub: Menu) => {
+        item.onClick((evt) => {
+          const sub = new Menu();
           sub.addItem((subItem: MenuItem) =>
             subItem
               .setTitle('Default')
@@ -694,6 +700,10 @@ export class BoardView extends ItemView {
                   this.controller?.setNodeColor(id, c.color).then(() => this.render());
                 })
             );
+          });
+          sub.showAtPosition({
+            x: (evt as MouseEvent).pageX + 5,
+            y: (evt as MouseEvent).pageY,
           });
         });
       });
