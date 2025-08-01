@@ -301,6 +301,7 @@ export class BoardView extends ItemView {
 
   private registerEvents() {
     this.boardEl.onpointerdown = (e) => {
+      if ((e as PointerEvent).button === 2) return;
       this.pointerDownSelected = false;
       if (this.editingId) this.finishEditing(true);
       const resizeEl = (e.target as HTMLElement).closest('.vtasks-resize') as HTMLElement | null;
