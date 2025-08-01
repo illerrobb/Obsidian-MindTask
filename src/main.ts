@@ -147,8 +147,8 @@ export default class MindTaskPlugin extends Plugin {
 
     for (const dep of deps) {
       if (
-        this.board.nodes[dep.from] &&
-        this.board.nodes[dep.to] &&
+        this.board!.nodes[dep.from] &&
+        this.board!.nodes[dep.to] &&
         !this.board.edges.find(
           (e) => e.from === dep.from && e.to === dep.to && e.type === dep.type
         )
@@ -198,8 +198,8 @@ export default class MindTaskPlugin extends Plugin {
 
     this.board.edges = this.board.edges.filter(
       (e) =>
-        (this.tasks.has(e.from) || this.board.nodes[e.from]?.type === 'group') &&
-        (this.tasks.has(e.to) || this.board.nodes[e.to]?.type === 'group')
+        (this.tasks.has(e.from) || this.board!.nodes[e.from]?.type === 'group') &&
+        (this.tasks.has(e.to) || this.board!.nodes[e.to]?.type === 'group')
     );
 
     const existing = this.board.edges.filter((e) =>
