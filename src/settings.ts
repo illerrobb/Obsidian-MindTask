@@ -25,6 +25,10 @@ export interface PluginSettings {
   boardFolder: string;
   /** List of background colors for tasks */
   backgroundColors: ColorOption[];
+  /** Horizontal spacing between nodes when rearranging */
+  rearrangeSpacingX: number;
+  /** Vertical spacing between nodes when rearranging */
+  rearrangeSpacingY: number;
 }
 
 export interface PluginData {
@@ -44,6 +48,8 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     { color: 'blue' },
     { color: 'yellow' },
   ],
+  rearrangeSpacingX: 40,
+  rearrangeSpacingY: 40,
 };
 
 export class SettingsTab extends PluginSettingTab {
@@ -171,6 +177,36 @@ export class SettingsTab extends PluginSettingTab {
             await this.plugin.savePluginData();
           })
       );
+
+    new Setting(containerEl)
+      .setName('Horizontal node spacing')
+      .setDesc('Spacing between sibling nodes when rearranging')
+      .addText((text) => {
+        text.inputEl.type = 'number';
+        text
+          .setPlaceholder('40')
+          .setValue(this.plugin.settings.rearrangeSpacingX.toString())
+          .onChange(async (value) => {
+            const num = parseInt(value) || 0;
+            this.plugin.settings.rearrangeSpacingX = num;
+            await this.plugin.savePluginData();
+          });
+      });
+
+    new Setting(containerEl)
+      .setName('Vertical node spacing')
+      .setDesc('Spacing between levels when rearranging')
+      .addText((text) => {
+        text.inputEl.type = 'number';
+        text
+          .setPlaceholder('40')
+          .setValue(this.plugin.settings.rearrangeSpacingY.toString())
+          .onChange(async (value) => {
+            const num = parseInt(value) || 0;
+            this.plugin.settings.rearrangeSpacingY = num;
+            await this.plugin.savePluginData();
+          });
+      });
 
     containerEl.createEl('h2', { text: 'Background colors' });
     const colorsEl = containerEl.createDiv();
