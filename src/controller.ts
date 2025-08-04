@@ -278,16 +278,8 @@ export default class Controller {
       .filter((p) => p.node);
     if (!nodes.length) return;
 
-    const avgW =
-      nodes.reduce((s, p) => s + (p.node.width ?? 120), 0) / nodes.length;
-    const avgH =
-      nodes.reduce(
-        (s, p) =>
-          s + (p.node.height ?? (p.node.type === 'group' ? 80 : 40)),
-        0
-      ) / nodes.length;
-    const spacingX = avgW + 40;
-    const spacingY = avgH + 40;
+    const spacingX = this.settings.rearrangeSpacingX;
+    const spacingY = this.settings.rearrangeSpacingY;
 
     const selected = new Set(ids);
     const children: Record<string, string[]> = {};
@@ -303,33 +295,6 @@ export default class Controller {
       }
     });
 
-    const queue: string[] = [];
-    const level: Record<string, number> = {};
-    ids.forEach((id) => {
-      if (inDegree[id] === 0) {
-        queue.push(id);
-        level[id] = 0;
-      }
-    });
-
-    const order: string[] = [];
-    while (queue.length) {
-      const id = queue.shift()!;
-      order.push(id);
-      const l = level[id];
-      children[id].forEach((ch) => {
-        inDegree[ch]--;
-        level[ch] = Math.max(level[ch] ?? 0, l + 1);
-        if (inDegree[ch] === 0) queue.push(ch);
-      });
-    }
-    ids.forEach((id) => {
-      if (!order.includes(id)) {
-        order.push(id);
-        level[id] = 0;
-      }
-    });
-
     const startX = Math.min(...nodes.map((p) => p.node.x));
     const startY = Math.min(...nodes.map((p) => p.node.y));
 
@@ -341,8 +306,7 @@ export default class Controller {
     }
     const rects: Rect[] = [];
     for (const [id, n] of Object.entries(this.board.nodes)) {
-      if (selected.has(id)) continue;
-      if (!n) continue;
+      if (selected.has(id) || !n) continue;
       const width = n.width ?? (n.type === 'group' ? 80 : 120);
       const height = n.height ?? (n.type === 'group' ? 80 : 40);
       rects.push({ x: n.x, y: n.y, width, height });
@@ -354,30 +318,58 @@ export default class Controller {
         a.y + a.height <= b.y ||
         b.y + b.height <= a.y);
 
-    const rowCount: Record<number, number> = {};
-    for (const id of order) {
+    const visited = new Set<string>();
+
+    const layout = (id: string, x: number, y: number) => {
+      if (visited.has(id)) return;
+      visited.add(id);
       const node = this.board.nodes[id];
-      if (!node) continue;
+      if (!node) return;
       const width = node.width ?? (node.type === 'group' ? 80 : 120);
       const height = node.height ?? (node.type === 'group' ? 80 : 40);
-      const col = level[id];
-      let row = rowCount[col] || 0;
-      let x = startX + col * spacingX;
-      let y = startY + row * spacingY;
       let rect = { x, y, width, height } as Rect;
-      let collision = true;
-      while (collision) {
-        collision = rects.some((r) => overlaps(rect, r));
-        if (!collision) break;
-        row += 1;
-        y = startY + row * spacingY;
-        rect = { x, y, width, height };
+      while (rects.some((r) => overlaps(rect, r))) {
+        rect.y += spacingY;
       }
-      node.x = x;
-      node.y = y;
+      node.x = rect.x;
+      node.y = rect.y;
       rects.push(rect);
-      rowCount[col] = row + 1;
-    }
+
+      const kids = children[id];
+      if (!kids.length) return;
+
+      const kidWidths = kids.map((ch) => {
+        const n = this.board.nodes[ch];
+        return n ? (n.width ?? (n.type === 'group' ? 80 : 120)) : 0;
+      });
+      const groupWidth =
+        kidWidths.reduce((s, w) => s + w, 0) +
+        (kids.length - 1) * spacingX;
+      let childX = rect.x + width / 2 - groupWidth / 2;
+      const childY = rect.y + height + spacingY;
+      kids.forEach((ch, i) => {
+        layout(ch, childX, childY);
+        childX += kidWidths[i] + spacingX;
+      });
+    };
+
+    const roots = ids.filter((id) => inDegree[id] === 0);
+    let currentX = startX;
+    roots.forEach((r) => {
+      layout(r, currentX, startY);
+      const n = this.board.nodes[r];
+      const w = n.width ?? (n.type === 'group' ? 80 : 120);
+      currentX += w + spacingX;
+    });
+
+    ids.forEach((id) => {
+      if (!visited.has(id)) {
+        layout(id, currentX, startY);
+        const n = this.board.nodes[id];
+        const w = n.width ?? (n.type === 'group' ? 80 : 120);
+        currentX += w + spacingX;
+      }
+    });
 
     await saveBoard(this.app, this.boardFile, this.board);
   }
