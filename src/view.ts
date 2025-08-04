@@ -153,8 +153,8 @@ export class BoardView extends ItemView {
 
     if (this.groupId) {
       const backBtn = controls.createEl('button', { text: 'Back' });
-      backBtn.onclick = () =>
-        this.openGroup(this.board!.nodes[this.groupId!].group || null);
+      const parentId = this.board!.nodes[this.groupId!].group ?? null;
+      backBtn.onclick = () => this.openGroup(parentId);
     }
 
     this.boardEl = this.containerEl.createDiv('vtasks-board');
@@ -1380,7 +1380,8 @@ export class BoardView extends ItemView {
 
 
   private openGroup(id: string | null) {
-    this.groupId = id;
+    // null represents the root level of the board
+    this.groupId = id ?? null;
     this.clearSelection();
     this.render();
   }
