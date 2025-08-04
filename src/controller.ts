@@ -18,20 +18,46 @@ export default class Controller {
     if (!node) return;
     let nx = x;
     let ny = y;
+    const w = node.width ?? 120;
+    const h = node.height ?? (node.type === 'group' ? 80 : 40);
     if (node.lane) {
       const lane = this.board.lanes[node.lane];
       if (lane) {
-        const w = node.width ?? 120;
-        const h = node.height ?? (node.type === 'group' ? 80 : 40);
         nx = Math.max(lane.x, Math.min(nx, lane.x + lane.width - w));
         ny = Math.max(lane.y, Math.min(ny, lane.y + lane.height - h));
       }
+    }
+    if (node.group) {
+      const parent = this.board.nodes[node.group];
+      if (parent && parent.type === 'group') {
+        const pw = parent.width ?? 0;
+        const ph = parent.height ?? 0;
+        nx = Math.max(parent.x, Math.min(nx, parent.x + pw - w));
+        ny = Math.max(parent.y, Math.min(ny, parent.y + ph - h));
+      }
+    }
+    if (node.type === 'group' && node.members) {
+      const dx = nx - node.x;
+      const dy = ny - node.y;
+      node.members.forEach((mid) => {
+        const m = this.board.nodes[mid];
+        if (m) {
+          m.x += dx;
+          m.y += dy;
+        }
+      });
     }
     this.board.nodes[id] = { ...node, x: nx, y: ny } as NodeData;
     await saveBoard(this.app, this.boardFile, this.board);
   }
 
-  async resizeNode(id: string, width: number, height: number) {
+  async resizeNode(
+    id: string,
+    width: number,
+    height: number,
+    prevWidth?: number,
+    prevHeight?: number
+  ) {
     const node = this.board.nodes[id];
     if (!node) return;
     let w = width;
@@ -44,6 +70,30 @@ export default class Controller {
         w = Math.min(w, maxW);
         h = Math.min(h, maxH);
       }
+    }
+    if (node.group) {
+      const parent = this.board.nodes[node.group];
+      if (parent && parent.type === 'group') {
+        const maxW = (parent.width ?? 0) - (node.x - parent.x);
+        const maxH = (parent.height ?? 0) - (node.y - parent.y);
+        w = Math.min(w, maxW);
+        h = Math.min(h, maxH);
+      }
+    }
+    if (node.type === 'group' && node.members) {
+      const oldW = prevWidth ?? node.width ?? w;
+      const oldH = prevHeight ?? node.height ?? h;
+      const sx = oldW ? w / oldW : 1;
+      const sy = oldH ? h / oldH : 1;
+      node.members.forEach((mid) => {
+        const m = this.board.nodes[mid];
+        if (m) {
+          m.x = node.x + (m.x - node.x) * sx;
+          m.y = node.y + (m.y - node.y) * sy;
+          if (m.width) m.width = m.width * sx;
+          if (m.height) m.height = m.height * sy;
+        }
+      });
     }
     this.board.nodes[id] = {
       ...node,
@@ -256,9 +306,31 @@ export default class Controller {
   async groupNodes(ids: string[], name: string) {
     if (!ids.length) return;
     const id = 'g-' + crypto.randomBytes(4).toString('hex');
-    const posX = ids.reduce((s, i) => s + (this.board.nodes[i]?.x || 0), 0) / ids.length;
-    const posY = ids.reduce((s, i) => s + (this.board.nodes[i]?.y || 0), 0) / ids.length;
-    this.board.nodes[id] = { x: posX, y: posY, type: 'group', name, members: ids } as NodeData;
+    let minX = Infinity,
+      minY = Infinity,
+      maxX = -Infinity,
+      maxY = -Infinity;
+    ids.forEach((nid) => {
+      const n = this.board.nodes[nid];
+      if (!n) return;
+      const w = n.width ?? 120;
+      const h = n.height ?? (n.type === 'group' ? 80 : 40);
+      minX = Math.min(minX, n.x);
+      minY = Math.min(minY, n.y);
+      maxX = Math.max(maxX, n.x + w);
+      maxY = Math.max(maxY, n.y + h);
+    });
+    const groupNode: NodeData = {
+      x: minX,
+      y: minY,
+      width: maxX - minX,
+      height: maxY - minY,
+      type: 'group',
+      name,
+      members: ids,
+      collapsed: false,
+    };
+    this.board.nodes[id] = groupNode;
     ids.forEach((nid) => {
       if (this.board.nodes[nid]) {
         (this.board.nodes[nid] as NodeData).group = id;
@@ -271,11 +343,19 @@ export default class Controller {
     const node = this.board.nodes[id];
     if (!node || node.type !== 'group' || !node.members) return;
     node.members.forEach((nid) => {
-      if (this.board.nodes[nid]) {
-        delete (this.board.nodes[nid] as any).group;
+      const child = this.board.nodes[nid];
+      if (child) {
+        delete (child as any).group;
       }
     });
     delete this.board.nodes[id];
+    await saveBoard(this.app, this.boardFile, this.board);
+  }
+
+  async toggleGroupCollapse(id: string) {
+    const node = this.board.nodes[id];
+    if (!node || node.type !== 'group') return;
+    node.collapsed = !node.collapsed;
     await saveBoard(this.app, this.boardFile, this.board);
   }
 
