@@ -48,6 +48,43 @@
   min-width: 120px;
 }
 
+.vtasks-lane {
+  position: absolute;
+  background: var(--background-modifier-border);
+  border: 1px solid var(--background-modifier-border);
+}
+
+.vtasks-lane-header {
+  background: var(--background-secondary);
+  padding: 2px 4px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.vtasks-lane-vertical .vtasks-lane-resize {
+  position: absolute;
+  top: 0;
+  right: -2px;
+  width: 4px;
+  height: 100%;
+  cursor: ew-resize;
+}
+
+.vtasks-lane-horizontal .vtasks-lane-resize {
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 100%;
+  height: 4px;
+  cursor: ns-resize;
+}
+
+.vtasks-mini-lane {
+  fill: rgba(200, 200, 200, 0.3);
+  stroke: var(--background-modifier-border);
+  stroke-width: 1;
+}
+
 .vtasks-text {
   pointer-events: none;
   overflow: hidden;

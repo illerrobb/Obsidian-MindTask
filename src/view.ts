@@ -52,6 +52,14 @@ export class BoardView extends ItemView {
   private resizeStartY = 0;
   private resizeStartNodeX = 0;
   private resizeStartNodeY = 0;
+  private draggingLaneId: string | null = null;
+  private laneDragOffsetX = 0;
+  private laneDragOffsetY = 0;
+  private resizingLaneId: string | null = null;
+  private laneResizeStartWidth = 0;
+  private laneResizeStartHeight = 0;
+  private laneResizeStartX = 0;
+  private laneResizeStartY = 0;
   private groupId: string | null = null;
   private filters: { tags: string[]; folders: string[] };
   private onFilterChange: (tags: string[], folders: string[]) => void;
@@ -152,6 +160,9 @@ export class BoardView extends ItemView {
     this.svgEl.style.position = 'absolute';
     this.svgEl.style.width = '100%';
     this.svgEl.style.height = '100%';
+    for (const lid in this.board.lanes) {
+      this.createLaneElement(lid);
+    }
     for (const id in this.board.nodes) {
       const n = this.board.nodes[id];
       if ((n.group || null) === this.groupId) {
@@ -180,6 +191,13 @@ export class BoardView extends ItemView {
         maxX = Math.max(maxX, n.x + (n.width ?? 120));
         maxY = Math.max(maxY, n.y + (n.height ?? 40));
       }
+      for (const lid in this.board.lanes) {
+        const l = this.board.lanes[lid];
+        minX = Math.min(minX, l.x);
+        minY = Math.min(minY, l.y);
+        maxX = Math.max(maxX, l.x + l.width);
+        maxY = Math.max(maxY, l.y + l.height);
+      }
       const viewW = this.containerEl.clientWidth || window.innerWidth;
       const viewH = this.containerEl.clientHeight || window.innerHeight;
       if (minX === Infinity) {
@@ -197,6 +215,64 @@ export class BoardView extends ItemView {
       this.boardEl.style.transform = `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px) scale(${this.zoom})`;
       this.updateMinimapView();
     }
+  }
+
+  private createLaneElement(id: string) {
+    const lane = this.board!.lanes[id];
+    const laneEl = this.boardEl.createDiv('vtasks-lane');
+    laneEl.setAttr('data-id', id);
+    laneEl.style.left = lane.x + 'px';
+    laneEl.style.top = lane.y + 'px';
+    laneEl.style.width = lane.width + 'px';
+    laneEl.style.height = lane.height + 'px';
+    laneEl.addClass(`vtasks-lane-${lane.orient}`);
+    const header = laneEl.createDiv('vtasks-lane-header');
+    header.textContent = lane.label;
+    header.onpointerdown = (e) => {
+      e.stopPropagation();
+      this.draggingLaneId = id;
+      const coords = this.getBoardCoords(e as PointerEvent);
+      this.laneDragOffsetX = coords.x - lane.x;
+      this.laneDragOffsetY = coords.y - lane.y;
+    };
+    header.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      const menu = new Menu();
+      menu.addItem((item) =>
+        item.setTitle('Rename lane').onClick(async () => {
+          const name = prompt('Lane name', lane.label) || lane.label;
+          await this.controller?.renameLane(id, name);
+          this.render();
+        })
+      );
+      menu.addItem((item) =>
+        item.setTitle('Delete lane').onClick(() => {
+          this.controller?.deleteLane(id).then(() => this.render());
+        })
+      );
+      menu.showAtMouseEvent(e as MouseEvent);
+    });
+    const resize = laneEl.createDiv('vtasks-lane-resize');
+    resize.onpointerdown = (e) => {
+      e.stopPropagation();
+      this.resizingLaneId = id;
+      this.laneResizeStartWidth = lane.width;
+      this.laneResizeStartHeight = lane.height;
+      this.laneResizeStartX = (e as PointerEvent).clientX;
+      this.laneResizeStartY = (e as PointerEvent).clientY;
+    };
+  }
+
+  private updateLaneElement(id: string) {
+    const lane = this.board!.lanes[id];
+    const el = this.boardEl.querySelector(`.vtasks-lane[data-id="${id}"]`) as HTMLElement | null;
+    if (!el) return;
+    el.style.left = lane.x + 'px';
+    el.style.top = lane.y + 'px';
+    el.style.width = lane.width + 'px';
+    el.style.height = lane.height + 'px';
+    const header = el.querySelector('.vtasks-lane-header') as HTMLElement | null;
+    if (header) header.textContent = lane.label;
   }
 
   private createNodeElement(id: string) {
@@ -314,11 +390,29 @@ export class BoardView extends ItemView {
       if ((e as PointerEvent).button === 2) return;
       this.pointerDownSelected = false;
       if (this.editingId) this.finishEditing(true);
+      const laneResize = (e.target as HTMLElement).closest('.vtasks-lane-resize') as HTMLElement | null;
+      const laneHeader = (e.target as HTMLElement).closest('.vtasks-lane-header') as HTMLElement | null;
+      const lane = (e.target as HTMLElement).closest('.vtasks-lane') as HTMLElement | null;
       const resizeEl = (e.target as HTMLElement).closest('.vtasks-resize') as HTMLElement | null;
       const outHandle = (e.target as HTMLElement).closest('.vtasks-handle-out') as HTMLElement | null;
       const inHandle = (e.target as HTMLElement).closest('.vtasks-handle-in') as HTMLElement | null;
       const node = (e.target as HTMLElement).closest('.vtasks-node') as HTMLElement | null;
-      if (resizeEl && node) {
+      if (laneResize && lane) {
+        const id = lane.getAttribute('data-id')!;
+        this.resizingLaneId = id;
+        const ln = this.board!.lanes[id];
+        this.laneResizeStartWidth = ln.width;
+        this.laneResizeStartHeight = ln.height;
+        this.laneResizeStartX = (e as PointerEvent).clientX;
+        this.laneResizeStartY = (e as PointerEvent).clientY;
+      } else if (laneHeader && lane) {
+        const id = lane.getAttribute('data-id')!;
+        this.draggingLaneId = id;
+        const coords = this.getBoardCoords(e as PointerEvent);
+        const ln = this.board!.lanes[id];
+        this.laneDragOffsetX = coords.x - ln.x;
+        this.laneDragOffsetY = coords.y - ln.y;
+      } else if (resizeEl && node) {
         const id = node.getAttribute('data-id')!;
         this.resizingId = id;
         const cls = Array.from(resizeEl.classList).find((c) => c.startsWith('vtasks-resize-'))!;
@@ -397,7 +491,25 @@ export class BoardView extends ItemView {
     };
 
     this.boardEl.onpointermove = (e) => {
-      if (this.resizingId) {
+      if (this.resizingLaneId) {
+        const lane = this.board!.lanes[this.resizingLaneId];
+        const dx = ((e as PointerEvent).clientX - this.laneResizeStartX) / this.zoom;
+        const dy = ((e as PointerEvent).clientY - this.laneResizeStartY) / this.zoom;
+        if (lane.orient === 'vertical') {
+          lane.width = Math.max(20, this.laneResizeStartWidth + dx);
+        } else {
+          lane.height = Math.max(20, this.laneResizeStartHeight + dy);
+        }
+        this.updateLaneElement(this.resizingLaneId);
+        this.drawMinimap();
+      } else if (this.draggingLaneId) {
+        const coords = this.getBoardCoords(e as PointerEvent);
+        const lane = this.board!.lanes[this.draggingLaneId];
+        lane.x = coords.x - this.laneDragOffsetX;
+        lane.y = coords.y - this.laneDragOffsetY;
+        this.updateLaneElement(this.draggingLaneId);
+        this.drawMinimap();
+      } else if (this.resizingId) {
         const id = this.resizingId;
         const nodeEl = this.boardEl.querySelector(`.vtasks-node[data-id="${id}"]`) as HTMLElement;
         const dx = ((e as PointerEvent).clientX - this.resizeStartX) / this.zoom;
@@ -497,12 +609,26 @@ export class BoardView extends ItemView {
 
     this.boardEl.onpointerup = (e) => {
       (this.boardEl as HTMLElement).releasePointerCapture((e as PointerEvent).pointerId);
-      if (this.resizingId) {
+      if (this.resizingLaneId) {
+        const id = this.resizingLaneId;
+        this.resizingLaneId = null;
+        const lane = this.board!.lanes[id];
+        this.controller!.moveLane(id, lane.x, lane.y, lane.width, lane.height);
+        this.drawMinimap();
+      } else if (this.draggingLaneId) {
+        const id = this.draggingLaneId;
+        this.draggingLaneId = null;
+        const lane = this.board!.lanes[id];
+        this.controller!.moveLane(id, lane.x, lane.y, lane.width, lane.height);
+        this.drawMinimap();
+      } else if (this.resizingId) {
         const id = this.resizingId;
         this.resizingId = null;
         const pos = this.board!.nodes[id];
         this.controller!.moveNode(id, pos.x, pos.y);
         this.controller!.resizeNode(id, pos.width ?? 0, pos.height ?? 0);
+        const laneId = this.getLaneForNode(id);
+        this.controller!.assignNodeToLane(id, laneId ?? null);
         this.drawMinimap();
       } else if (this.draggingId) {
         this.draggingId = null;
@@ -511,6 +637,8 @@ export class BoardView extends ItemView {
         this.selectedIds.forEach((id) => {
           const pos = this.board!.nodes[id];
           this.controller!.moveNode(id, pos.x, pos.y);
+          const laneId = this.getLaneForNode(id);
+          this.controller!.assignNodeToLane(id, laneId ?? null);
         });
         this.drawMinimap();
       } else if (this.isBoardDragging) {
@@ -591,7 +719,16 @@ export class BoardView extends ItemView {
         const pos = this.getBoardCoords(e as MouseEvent);
         this.controller!
           .createTask('New Task', pos.x, pos.y)
-          .then(() => this.render());
+          .then((id) => {
+            const laneId = this.getLaneForPosition(pos.x, pos.y);
+            if (laneId) {
+              this.controller!
+                .assignNodeToLane(id, laneId)
+                .then(() => this.render());
+            } else {
+              this.render();
+            }
+          });
       };
 
     this.boardEl.addEventListener('click', (e) => {
@@ -623,6 +760,14 @@ export class BoardView extends ItemView {
         e.stopPropagation();
         const pos = this.getBoardCoords(e as MouseEvent);
         const menu = new Menu();
+        menu.addItem((item) =>
+          item.setTitle('Create lane').onClick(() => {
+            const orient = this.controller?.settings.orientation ?? 'vertical';
+            this.controller!
+              .createLane('Lane', pos.x, pos.y, 300, 300, orient)
+              .then(() => this.render());
+          })
+        );
         menu.addItem((item) =>
           item.setTitle('Add existing task').onClick(() => this.openExistingTaskModal(pos))
         );
@@ -1063,6 +1208,15 @@ export class BoardView extends ItemView {
     let maxX = -Infinity;
     let maxY = -Infinity;
     const nodes: { x: number; y: number; w: number; h: number }[] = [];
+    const lanes: { x: number; y: number; w: number; h: number }[] = [];
+    for (const lid in this.board!.lanes) {
+      const l = this.board!.lanes[lid];
+      lanes.push({ x: l.x, y: l.y, w: l.width, h: l.height });
+      minX = Math.min(minX, l.x);
+      minY = Math.min(minY, l.y);
+      maxX = Math.max(maxX, l.x + l.width);
+      maxY = Math.max(maxY, l.y + l.height);
+    }
     for (const id in this.board!.nodes) {
       const n = this.board!.nodes[id];
       if ((n.group || null) !== this.groupId) continue;
@@ -1074,7 +1228,7 @@ export class BoardView extends ItemView {
       maxX = Math.max(maxX, n.x + w);
       maxY = Math.max(maxY, n.y + h);
     }
-    if (!nodes.length) return;
+    if (!nodes.length && !lanes.length) return;
     const pad = 50;
     minX -= pad;
     minY -= pad;
@@ -1089,6 +1243,15 @@ export class BoardView extends ItemView {
     this.minimapOffsetX = minX;
     this.minimapOffsetY = minY;
     this.minimapSvg.setAttr('viewBox', `0 0 ${mw} ${mh}`);
+    lanes.forEach((l) => {
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rect.setAttr('x', ((l.x - minX) * scale).toString());
+      rect.setAttr('y', ((l.y - minY) * scale).toString());
+      rect.setAttr('width', (l.w * scale).toString());
+      rect.setAttr('height', (l.h * scale).toString());
+      rect.addClass('vtasks-mini-lane');
+      this.minimapSvg.appendChild(rect);
+    });
     nodes.forEach((n) => {
       const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       rect.setAttr('x', ((n.x - minX) * scale).toString());
@@ -1175,6 +1338,32 @@ export class BoardView extends ItemView {
       }
     }
     new TaskModal(this).open();
+  }
+
+  private getLaneForNode(id: string): string | null {
+    const n = this.board!.nodes[id];
+    if (!n) return null;
+    const w = n.width ?? 120;
+    const h = n.height ?? (n.type === 'group' ? 80 : 40);
+    const cx = n.x + w / 2;
+    const cy = n.y + h / 2;
+    for (const lid in this.board!.lanes) {
+      const l = this.board!.lanes[lid];
+      if (cx >= l.x && cx <= l.x + l.width && cy >= l.y && cy <= l.y + l.height) {
+        return lid;
+      }
+    }
+    return null;
+  }
+
+  private getLaneForPosition(x: number, y: number): string | null {
+    for (const lid in this.board!.lanes) {
+      const l = this.board!.lanes[lid];
+      if (x >= l.x && x <= l.x + l.width && y >= l.y && y <= l.y + l.height) {
+        return lid;
+      }
+    }
+    return null;
   }
 
   private getBoardCoords(e: MouseEvent | PointerEvent) {
