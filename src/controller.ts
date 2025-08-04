@@ -13,14 +13,14 @@ export default class Controller {
     public settings: PluginSettings
   ) {}
 
-  async moveNode(id: string, x: number, y: number) {
+  async moveNode(id: string, x: number, y: number, bypassLaneClamp = false) {
     const node = this.board.nodes[id];
     if (!node) return;
     let nx = x;
     let ny = y;
     const w = node.width ?? 120;
     const h = node.height ?? (node.type === 'group' ? 80 : 40);
-    if (node.lane) {
+    if (node.lane && !bypassLaneClamp) {
       const lane = this.board.lanes[node.lane];
       if (lane) {
         nx = Math.max(lane.x, Math.min(nx, lane.x + lane.width - w));
