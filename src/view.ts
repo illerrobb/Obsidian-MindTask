@@ -706,6 +706,8 @@ export class BoardView extends ItemView {
         const id = this.resizingId;
         this.resizingId = null;
         const pos = this.board!.nodes[id];
+        const laneId = this.getLaneForNode(id);
+        this.controller!.assignNodeToLane(id, laneId ?? null);
         this.controller!.moveNode(id, pos.x, pos.y);
         this.controller!.resizeNode(
           id,
@@ -714,8 +716,6 @@ export class BoardView extends ItemView {
           this.resizeStartWidth,
           this.resizeStartHeight
         );
-        const laneId = this.getLaneForNode(id);
-        this.controller!.assignNodeToLane(id, laneId ?? null);
         this.memberResizeStart.clear();
         this.drawMinimap();
       } else if (this.draggingId) {
@@ -724,9 +724,9 @@ export class BoardView extends ItemView {
         this.alignHLine.style.display = 'none';
         this.selectedIds.forEach((id) => {
           const pos = this.board!.nodes[id];
-          this.controller!.moveNode(id, pos.x, pos.y);
           const laneId = this.getLaneForNode(id);
           this.controller!.assignNodeToLane(id, laneId ?? null);
+          this.controller!.moveNode(id, pos.x, pos.y);
         });
         this.drawMinimap();
       } else if (this.isBoardDragging) {
