@@ -5,6 +5,11 @@
   display: block;
 }
 
+.vtasks-filter-bar {
+  position: relative;
+  z-index: 20;
+}
+
 .vtasks-board {
   position: relative;
   width: 100000px;
