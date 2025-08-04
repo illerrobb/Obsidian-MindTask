@@ -313,13 +313,15 @@ export class BoardView extends ItemView {
     offsetY = 0
   ) {
     const pos = this.board!.nodes[id];
+    const defaultColor = 'var(--background-modifier-border)';
     const nodeEl = parent.createDiv('vtasks-node');
     nodeEl.setAttr('data-id', id);
     nodeEl.style.left = pos.x - offsetX + 'px';
     nodeEl.style.top = pos.y - offsetY + 'px';
     if (pos.width) nodeEl.style.width = pos.width + 'px';
     if (pos.height) nodeEl.style.height = pos.height + 'px';
-    if (pos.color) nodeEl.style.backgroundColor = pos.color;
+    nodeEl.style.borderColor = pos.color || defaultColor;
+    if (pos.color && pos.type !== 'group') nodeEl.style.backgroundColor = pos.color;
 
     const orientH = this.controller?.settings.orientation ?? 'vertical';
     const inHandle = nodeEl.createDiv(
@@ -1058,7 +1060,7 @@ export class BoardView extends ItemView {
           )
         );
       }
-      const colors = this.controller?.settings.backgroundColors || [];
+      const colors = ['#ff5555', '#55ff55', '#5555ff', '#ffaa00', '#00aaaa'];
 
       menu.addItem((item) => {
         item.setTitle('Color').setIcon('palette');
@@ -1068,21 +1070,26 @@ export class BoardView extends ItemView {
             subItem
               .setTitle('Default')
               .onClick(() => {
-                target.style.backgroundColor = '';
+                target.style.borderColor = '';
+                if (this.board!.nodes[id].type !== 'group') {
+                  target.style.backgroundColor = '';
+                }
                 this.controller?.setNodeColor(id, null).then(() => this.render());
               })
           );
 
-          colors.forEach((c) => {
-            sub.addItem((subItem: MenuItem) =>
-              subItem
-                .setTitle(c.color)
-                .setIcon('circle')
-                .onClick(() => {
-                  target.style.backgroundColor = c.color;
-                  this.controller?.setNodeColor(id, c.color).then(() => this.render());
-                })
-            );
+          colors.forEach((color) => {
+            sub.addItem((subItem: MenuItem) => {
+              subItem.setTitle(color).setIcon('circle');
+              (subItem as any).iconEl.style.color = color;
+              subItem.onClick(() => {
+                target.style.borderColor = color;
+                if (this.board!.nodes[id].type !== 'group') {
+                  target.style.backgroundColor = color;
+                }
+                this.controller?.setNodeColor(id, color).then(() => this.render());
+              });
+            });
           });
           sub.showAtPosition({
             x: (evt as MouseEvent).pageX + 5,

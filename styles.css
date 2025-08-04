@@ -285,8 +285,8 @@
 
 .vtasks-group-container {
   position: absolute;
-  background: var(--background-secondary);
-  border: 1px solid var(--background-modifier-border);
+  background: transparent;
+  border: 2px dashed var(--background-modifier-border);
   border-radius: 6px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
