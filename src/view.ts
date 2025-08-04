@@ -235,6 +235,8 @@ export class BoardView extends ItemView {
     header.textContent = lane.label;
     header.onpointerdown = (e) => {
       e.stopPropagation();
+      (e as PointerEvent).preventDefault();
+      (this.boardEl as HTMLElement).setPointerCapture((e as PointerEvent).pointerId);
       this.draggingLaneId = id;
       const coords = this.getBoardCoords(e as PointerEvent);
       this.laneDragOffsetX = coords.x - lane.x;
@@ -246,6 +248,7 @@ export class BoardView extends ItemView {
     };
     header.ondblclick = async (e) => {
       e.stopPropagation();
+      (e as PointerEvent).preventDefault();
       const name = prompt('Lane name', lane.label) || lane.label;
       await this.controller?.renameLane(id, name);
       this.render();
@@ -761,7 +764,11 @@ export class BoardView extends ItemView {
         const id = this.resizingId;
         this.resizingId = null;
         const pos = this.board!.nodes[id];
+        const oldLane = pos.lane;
         const laneId = this.getLaneForNode(id);
+        if (laneId && oldLane !== laneId) {
+          this.snapNodeToLane(id, laneId);
+        }
         this.controller!.assignNodeToLane(id, laneId ?? null);
         this.controller!.moveNode(id, pos.x, pos.y);
         this.controller!.resizeNode(
@@ -772,6 +779,7 @@ export class BoardView extends ItemView {
           this.resizeStartHeight
         );
         this.memberResizeStart.clear();
+        this.drawEdges();
         this.drawMinimap();
       } else if (this.draggingId) {
         this.draggingId = null;
@@ -779,10 +787,15 @@ export class BoardView extends ItemView {
         this.alignHLine.style.display = 'none';
         this.selectedIds.forEach((id) => {
           const pos = this.board!.nodes[id];
+          const oldLane = pos.lane;
           const laneId = this.getLaneForNode(id);
+          if (laneId && oldLane !== laneId) {
+            this.snapNodeToLane(id, laneId);
+          }
           this.controller!.assignNodeToLane(id, laneId ?? null);
           this.controller!.moveNode(id, pos.x, pos.y);
         });
+        this.drawEdges();
         this.drawMinimap();
       } else if (this.isBoardDragging) {
         this.isBoardDragging = false;
@@ -861,7 +874,11 @@ export class BoardView extends ItemView {
     );
 
       this.boardEl.ondblclick = (e) => {
-        if ((e.target as HTMLElement).closest('.vtasks-node')) return;
+        if (
+          (e.target as HTMLElement).closest('.vtasks-node') ||
+          (e.target as HTMLElement).closest('.vtasks-lane-header')
+        )
+          return;
         const pos = this.getBoardCoords(e as MouseEvent);
         this.controller!
           .createTask('New Task', pos.x, pos.y)
@@ -1523,6 +1540,33 @@ export class BoardView extends ItemView {
       }
     }
     return null;
+  }
+
+  private snapNodeToLane(id: string, laneId: string) {
+    const node = this.board!.nodes[id];
+    const lane = this.board!.lanes[laneId];
+    if (!node || !lane) return;
+    const width = node.width ?? 120;
+    let bottom = lane.y;
+    for (const nid in this.board!.nodes) {
+      const n = this.board!.nodes[nid];
+      if (n.lane === laneId && nid !== id) {
+        const h = n.height ?? (n.type === 'group' ? 80 : 40);
+        bottom = Math.max(bottom, n.y + h);
+      }
+    }
+    node.x = lane.x + (lane.width - width) / 2;
+    node.y = bottom + this.gridSize;
+    const nodeEl = this.boardEl.querySelector(
+      `.vtasks-node[data-id="${id}"]`
+    ) as HTMLElement | null;
+    if (nodeEl) {
+      const parentId = node.group;
+      const parentX = parentId ? this.board!.nodes[parentId].x : 0;
+      const parentY = parentId ? this.board!.nodes[parentId].y : 0;
+      nodeEl.style.left = node.x - parentX + 'px';
+      nodeEl.style.top = node.y - parentY + 'px';
+    }
   }
 
   private getLaneForPosition(x: number, y: number): string | null {
