@@ -1,4 +1,4 @@
-import { App, normalizePath, TFile, MarkdownView } from 'obsidian';
+import { App, normalizePath, TFile, MarkdownView, WorkspaceLeaf } from 'obsidian';
 import crypto from 'crypto';
 import { BoardData, NodeData, LaneData, saveBoard } from './boardStore';
 import { ParsedTask } from './parser';
@@ -316,6 +316,11 @@ export default class Controller {
   async groupNodes(ids: string[], name = '') {
     if (!ids.length) return;
     const id = 'g-' + crypto.randomBytes(4).toString('hex');
+    const positions: Record<string, { x: number; y: number }> = {};
+    ids.forEach((nid) => {
+      const n = this.board.nodes[nid];
+      if (n) positions[nid] = { x: n.x, y: n.y };
+    });
     let minX = Infinity,
       minY = Infinity,
       maxX = -Infinity,
@@ -342,24 +347,42 @@ export default class Controller {
     if (name) groupNode.name = name;
     this.board.nodes[id] = groupNode;
     ids.forEach((nid) => {
-      if (this.board.nodes[nid]) {
-        (this.board.nodes[nid] as NodeData).group = id;
+      const member = this.board.nodes[nid];
+      if (member) {
+        member.group = id;
+        const pos = positions[nid];
+        if (pos) {
+          member.x = pos.x;
+          member.y = pos.y;
+        }
       }
     });
     await saveBoard(this.app, this.boardFile, this.board);
+    this.refreshView();
   }
 
   async ungroupNode(id: string) {
     const node = this.board.nodes[id];
     if (!node || node.type !== 'group' || !node.members) return;
+    const positions: Record<string, { x: number; y: number }> = {};
+    node.members.forEach((nid) => {
+      const child = this.board.nodes[nid];
+      if (child) positions[nid] = { x: child.x, y: child.y };
+    });
     node.members.forEach((nid) => {
       const child = this.board.nodes[nid];
       if (child) {
         delete (child as any).group;
+        const pos = positions[nid];
+        if (pos) {
+          child.x = pos.x;
+          child.y = pos.y;
+        }
       }
     });
     delete this.board.nodes[id];
     await saveBoard(this.app, this.boardFile, this.board);
+    this.refreshView();
   }
 
   async toggleGroupCollapse(id: string) {
@@ -392,6 +415,15 @@ export default class Controller {
     node.width = maxX - minX + padding * 2;
     node.height = maxY - minY + padding * 2;
     await saveBoard(this.app, this.boardFile, this.board);
+  }
+
+  private refreshView() {
+    this.app.workspace.getLeavesOfType('mind-task').forEach((leaf) => {
+      const view = (leaf as WorkspaceLeaf).view as any;
+      if (view && typeof view.render === 'function') {
+        view.render();
+      }
+    });
   }
 
   private async modifyTaskText(task: ParsedTask, fn: (text: string) => string) {
