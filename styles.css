@@ -110,13 +110,25 @@
   opacity: 1;
 }
 
-.vtasks-handle-in {
+.vtasks-vertical .vtasks-handle-top {
+  top: -5px;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.vtasks-vertical .vtasks-handle-bottom {
+  bottom: -5px;
+  left: 50%;
+  transform: translate(-50%, 50%);
+}
+
+.vtasks-horizontal .vtasks-handle-left {
   left: -5px;
   top: 50%;
   transform: translate(-50%, -50%);
 }
 
-.vtasks-handle-out {
+.vtasks-horizontal .vtasks-handle-right {
   right: -5px;
   top: 50%;
   transform: translate(50%, -50%);
