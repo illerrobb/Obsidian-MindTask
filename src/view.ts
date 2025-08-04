@@ -250,8 +250,9 @@ export class BoardView extends ItemView {
       await this.controller?.renameLane(id, name);
       this.render();
     };
-    header.addEventListener('contextmenu', (e) => {
+    laneEl.addEventListener('contextmenu', (e) => {
       e.preventDefault();
+      e.stopPropagation();
       const menu = new Menu();
       menu.addItem((item) =>
         item.setTitle('Rename lane').onClick(async () => {
@@ -261,9 +262,13 @@ export class BoardView extends ItemView {
         })
       );
       menu.addItem((item) =>
-        item.setTitle('Delete lane').onClick(() => {
-          this.controller?.deleteLane(id).then(() => this.render());
-        })
+        item
+          .setTitle('Delete lane')
+          .setIcon('trash')
+          .setSection('danger')
+          .onClick(() => {
+            this.controller?.deleteLane(id).then(() => this.render());
+          })
       );
       menu.showAtMouseEvent(e as MouseEvent);
     });
@@ -979,25 +984,6 @@ export class BoardView extends ItemView {
           )
         );
       }
-      const toDelete =
-        selected.length > 1 && selected.includes(id) ? selected : [id];
-      if (this.board!.nodes[id].type !== 'group') {
-        menu.addItem((item) =>
-          item
-            .setTitle(
-              toDelete.length > 1 ? 'Delete selected tasks' : 'Delete task'
-            )
-            .setIcon('trash')
-            .onClick(() =>
-              Promise.all(
-                toDelete.map((tid) => this.controller!.deleteTask(tid))
-              ).then(() => {
-                toDelete.forEach((tid) => this.selectedIds.delete(tid));
-                this.render();
-              })
-            )
-        );
-      }
       const colors = this.controller?.settings.backgroundColors || [];
 
       menu.addItem((item) => {
@@ -1030,12 +1016,34 @@ export class BoardView extends ItemView {
           });
         });
       });
+
       const checked = this.tasks.get(id)?.checked ?? false;
       menu.addItem((item) =>
         item
           .setTitle(checked ? 'Mark not done' : 'Mark done')
           .onClick(() => this.controller!.setCheck(id, !checked).then(() => this.render()))
       );
+
+      const toDelete =
+        selected.length > 1 && selected.includes(id) ? selected : [id];
+      if (this.board!.nodes[id].type !== 'group') {
+        menu.addItem((item) =>
+          item
+            .setTitle(
+              toDelete.length > 1 ? 'Delete selected tasks' : 'Delete task'
+            )
+            .setIcon('trash')
+            .setSection('danger')
+            .onClick(() =>
+              Promise.all(
+                toDelete.map((tid) => this.controller!.deleteTask(tid))
+              ).then(() => {
+                toDelete.forEach((tid) => this.selectedIds.delete(tid));
+                this.render();
+              })
+            )
+        );
+      }
       menu.showAtMouseEvent(e as MouseEvent);
     });
 
@@ -1088,9 +1096,13 @@ export class BoardView extends ItemView {
         );
       });
       menu.addItem((item) =>
-        item.setTitle('Delete connection').onClick(() => {
-          this.controller!.deleteEdge(idx).then(() => this.render());
-        })
+        item
+          .setTitle('Delete connection')
+          .setIcon('trash')
+          .setSection('danger')
+          .onClick(() => {
+            this.controller!.deleteEdge(idx).then(() => this.render());
+          })
       );
       menu.showAtMouseEvent(e as MouseEvent);
     });
