@@ -454,7 +454,7 @@ export class BoardView extends ItemView {
       const resizeEl = (e.target as HTMLElement).closest('.vtasks-resize') as HTMLElement | null;
       const outHandle = (e.target as HTMLElement).closest('.vtasks-handle-out') as HTMLElement | null;
       const inHandle = (e.target as HTMLElement).closest('.vtasks-handle-in') as HTMLElement | null;
-      const node = (e.target as HTMLElement).closest('.vtasks-node') as HTMLElement | null;
+      let node = (e.target as HTMLElement).closest('.vtasks-node') as HTMLElement | null;
       if (laneResize && lane) {
         const id = lane.getAttribute('data-id')!;
         this.resizingLaneId = id;
@@ -528,7 +528,17 @@ export class BoardView extends ItemView {
         path.setAttr('d', `M${this.edgeX} ${this.edgeY} C ${this.edgeX} ${this.edgeY} ${this.edgeX} ${this.edgeY} ${this.edgeX} ${this.edgeY}`);
         this.svgEl.appendChild(path);
       } else if (node && !inHandle) {
-        const id = node.getAttribute('data-id')!;
+        let id = node.getAttribute('data-id')!;
+        const parentId = this.board!.nodes[id]?.group;
+        if (parentId && parentId !== this.groupId) {
+          const parentEl = this.boardEl.querySelector(
+            `.vtasks-node[data-id="${parentId}"]`
+          ) as HTMLElement | null;
+          if (parentEl) {
+            node = parentEl;
+            id = parentId;
+          }
+        }
         if ((e as PointerEvent).ctrlKey || (e as PointerEvent).metaKey) {
           // ctrl-click handled in click event
           return;
@@ -549,7 +559,7 @@ export class BoardView extends ItemView {
         this.dragStartX = coords.x;
         this.dragStartY = coords.y;
         this.dragStartPositions.clear();
-        this.selectedIds.forEach((sid) => {
+        this.getDragIds().forEach((sid) => {
           const npos = this.board!.nodes[sid];
           this.dragStartPositions.set(sid, { x: npos.x, y: npos.y });
         });
@@ -706,7 +716,7 @@ export class BoardView extends ItemView {
         const curX = coords.x;
         const curY = coords.y;
         let mainX = 0, mainY = 0, mainW = 0, mainH = 0;
-        this.selectedIds.forEach((id) => {
+        this.getDragIds().forEach((id) => {
           const start = this.dragStartPositions.get(id);
           if (!start) return;
           let x = Math.round((start.x + curX - this.dragStartX) / this.gridSize) * this.gridSize;
@@ -809,6 +819,9 @@ export class BoardView extends ItemView {
           this.controller!.assignNodeToLane(id, laneId ?? null);
           this.controller!.moveNode(id, pos.x, pos.y);
         });
+        if (this.groupId) {
+          this.controller!.fitGroupToMembers(this.groupId);
+        }
         this.drawEdges();
         this.drawMinimap();
       } else if (this.isBoardDragging) {
@@ -843,11 +856,22 @@ export class BoardView extends ItemView {
             r.bottom >= rect.top &&
             r.top <= rect.bottom
           ) {
-            const id = n.getAttribute('data-id')!;
+            let id = n.getAttribute('data-id')!;
+            let el = n as HTMLElement;
+            const parentId = this.board!.nodes[id]?.group;
+            if (parentId && parentId !== this.groupId) {
+              const parentEl = this.boardEl.querySelector(
+                `.vtasks-node[data-id="${parentId}"]`
+              ) as HTMLElement | null;
+              if (parentEl) {
+                id = parentId;
+                el = parentEl;
+              }
+            }
             if (toggle) {
-              this.selectNode(n as HTMLElement, id, true);
+              this.selectNode(el, id, true);
             } else {
-              this.addToSelection(n as HTMLElement, id);
+              this.addToSelection(el, id);
             }
           }
         });
@@ -911,14 +935,25 @@ export class BoardView extends ItemView {
     this.boardEl.addEventListener('click', (e) => {
       const target = (e.target as HTMLElement).closest('.vtasks-node') as HTMLElement | null;
       if (target) {
-        const id = target.getAttribute('data-id')!;
+        let id = target.getAttribute('data-id')!;
+        let el = target;
+        const parentId = this.board!.nodes[id]?.group;
+        if (parentId && parentId !== this.groupId) {
+          const parentEl = this.boardEl.querySelector(
+            `.vtasks-node[data-id="${parentId}"]`
+          ) as HTMLElement | null;
+          if (parentEl) {
+            id = parentId;
+            el = parentEl;
+          }
+        }
         if ((e as MouseEvent).ctrlKey || (e as MouseEvent).metaKey) {
           this.controller?.openTask(id);
           this.pointerDownSelected = false;
           return;
         }
         if (!this.pointerDownSelected) {
-          this.selectNode(target, id, (e as MouseEvent).shiftKey || (e as MouseEvent).metaKey);
+          this.selectNode(el, id, (e as MouseEvent).shiftKey || (e as MouseEvent).metaKey);
         }
       } else {
         this.finishEditing(true);
@@ -953,7 +988,14 @@ export class BoardView extends ItemView {
       }
       e.preventDefault();
       e.stopPropagation();
-      const id = target.getAttribute('data-id')!;
+      let id = target.getAttribute('data-id')!;
+      const parentId = this.board!.nodes[id]?.group;
+      if (parentId && parentId !== this.groupId) {
+        const parentEl = this.boardEl.querySelector(
+          `.vtasks-node[data-id="${parentId}"]`
+        ) as HTMLElement | null;
+        if (parentEl) id = parentId;
+      }
       const menu = new Menu();
       const selected = Array.from(this.selectedIds);
       if (selected.length > 1) {
@@ -1185,6 +1227,20 @@ export class BoardView extends ItemView {
       if (el) el.classList.remove('selected');
     });
     this.selectedIds.clear();
+  }
+
+  private getDragIds(): Set<string> {
+    const ids = new Set<string>();
+    const add = (id: string) => {
+      if (ids.has(id)) return;
+      ids.add(id);
+      const n = this.board!.nodes[id];
+      if (n && n.type === 'group' && n.members) {
+        n.members.forEach((mid) => add(mid));
+      }
+    };
+    this.selectedIds.forEach((sid) => add(sid));
+    return ids;
   }
 
   private drawEdges() {

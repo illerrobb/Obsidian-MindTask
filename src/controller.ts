@@ -369,6 +369,31 @@ export default class Controller {
     await saveBoard(this.app, this.boardFile, this.board);
   }
 
+  async fitGroupToMembers(id: string, padding = 20) {
+    const node = this.board.nodes[id];
+    if (!node || node.type !== 'group' || !node.members) return;
+    let minX = Infinity,
+      minY = Infinity,
+      maxX = -Infinity,
+      maxY = -Infinity;
+    node.members.forEach((mid) => {
+      const m = this.board.nodes[mid];
+      if (!m) return;
+      const w = m.width ?? 120;
+      const h = m.height ?? (m.type === 'group' ? 80 : 40);
+      minX = Math.min(minX, m.x);
+      minY = Math.min(minY, m.y);
+      maxX = Math.max(maxX, m.x + w);
+      maxY = Math.max(maxY, m.y + h);
+    });
+    if (minX === Infinity) return;
+    node.x = minX - padding;
+    node.y = minY - padding;
+    node.width = maxX - minX + padding * 2;
+    node.height = maxY - minY + padding * 2;
+    await saveBoard(this.app, this.boardFile, this.board);
+  }
+
   private async modifyTaskText(task: ParsedTask, fn: (text: string) => string) {
     const lines = (await this.app.vault.read(task.file)).split(/\r?\n/);
     const line = lines[task.line];
