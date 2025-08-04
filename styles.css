@@ -402,3 +402,8 @@
   opacity: 0.7;
   font-size: 0.9em;
 }
+
+/* Style delete items in context menus */
+.menu-item[data-section="danger"] {
+  color: var(--text-error);
+}
