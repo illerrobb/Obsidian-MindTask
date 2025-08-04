@@ -564,15 +564,14 @@ export class BoardView extends ItemView {
       (e) => {
         if (e.ctrlKey || e.metaKey) {
           e.preventDefault();
+          const rect = this.containerEl.getBoundingClientRect();
+          const anchorX = e.clientX - rect.left;
+          const anchorY = e.clientY - rect.top;
           if (e.deltaY < 0) {
-            this.zoom *= 1.1;
+            this.zoomAt(1.1, anchorX, anchorY);
           } else {
-            this.zoom /= 1.1;
+            this.zoomAt(1 / 1.1, anchorX, anchorY);
           }
-          this.zoom = Math.min(Math.max(this.zoom, 0.2), 4);
-          this.boardEl.style.transform = `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px) scale(${this.zoom})`;
-          this.drawEdges();
-          this.updateMinimapView();
         }
       },
       { passive: false }
@@ -729,17 +728,13 @@ export class BoardView extends ItemView {
     this.boardEl.addEventListener('keydown', (e) => {
       const first = Array.from(this.selectedIds)[0];
       if (e.key === '+' || e.key === '=') {
-        this.zoom = Math.min(this.zoom * 1.1, 4);
-        this.boardEl.style.transform = `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px) scale(${this.zoom})`;
-        this.drawEdges();
-        this.updateMinimapView();
+        const rect = this.containerEl.getBoundingClientRect();
+        this.zoomAt(1.1, rect.width / 2, rect.height / 2);
         return;
       }
       if (e.key === '-') {
-        this.zoom = Math.max(this.zoom / 1.1, 0.2);
-        this.boardEl.style.transform = `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px) scale(${this.zoom})`;
-        this.drawEdges();
-        this.updateMinimapView();
+        const rect = this.containerEl.getBoundingClientRect();
+        this.zoomAt(1 / 1.1, rect.width / 2, rect.height / 2);
         return;
       }
       if (!first) return;
@@ -1086,6 +1081,18 @@ export class BoardView extends ItemView {
       path.addClass('vtasks-mini-edge');
       this.minimapSvg.appendChild(path);
     });
+    this.updateMinimapView();
+  }
+
+  private zoomAt(factor: number, anchorX: number, anchorY: number) {
+    const newZoom = Math.min(Math.max(this.zoom * factor, 0.2), 4);
+    const boardX = (anchorX - this.boardOffsetX) / this.zoom;
+    const boardY = (anchorY - this.boardOffsetY) / this.zoom;
+    this.zoom = newZoom;
+    this.boardOffsetX = anchorX - boardX * this.zoom;
+    this.boardOffsetY = anchorY - boardY * this.zoom;
+    this.boardEl.style.transform = `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px) scale(${this.zoom})`;
+    this.drawEdges();
     this.updateMinimapView();
   }
 
