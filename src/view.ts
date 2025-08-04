@@ -535,6 +535,16 @@ export class BoardView extends ItemView {
     };
 
     this.boardEl.onpointermove = (e) => {
+      const coords = this.getBoardCoords(e as PointerEvent);
+      const laneId = this.getLaneForPosition(coords.x, coords.y);
+      this.boardEl.querySelectorAll('.vtasks-lane').forEach((l) => {
+        const el = l as HTMLElement;
+        if (laneId && el.getAttribute('data-id') === laneId) {
+          el.addClass('vtasks-lane-hover');
+        } else {
+          el.removeClass('vtasks-lane-hover');
+        }
+      });
       if (this.resizingLaneId) {
         const lane = this.board!.lanes[this.resizingLaneId];
         const dx = ((e as PointerEvent).clientX - this.laneResizeStartX) / this.zoom;
@@ -547,7 +557,6 @@ export class BoardView extends ItemView {
         this.updateLaneElement(this.resizingLaneId);
         this.drawMinimap();
       } else if (this.draggingLaneId) {
-        const coords = this.getBoardCoords(e as PointerEvent);
         const lane = this.board!.lanes[this.draggingLaneId];
         lane.x = coords.x - this.laneDragOffsetX;
         lane.y = coords.y - this.laneDragOffsetY;
@@ -625,7 +634,6 @@ export class BoardView extends ItemView {
         this.drawEdges();
         this.drawMinimap();
       } else if (this.draggingId) {
-        const coords = this.getBoardCoords(e as PointerEvent);
         const curX = coords.x;
         const curY = coords.y;
         let mainX = 0, mainY = 0, mainW = 0, mainH = 0;
@@ -661,13 +669,11 @@ export class BoardView extends ItemView {
         this.boardEl.style.transform = `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px) scale(${this.zoom})`;
         this.updateMinimapView();
       } else if (this.edgeStart && this.tempEdge) {
-        const coords = this.getBoardCoords(e as PointerEvent);
         const x2 = coords.x;
         const y2 = coords.y;
         const dx = Math.abs(x2 - this.edgeX);
         this.tempEdge.setAttr('d', `M${this.edgeX} ${this.edgeY} C ${this.edgeX + dx / 2} ${this.edgeY}, ${x2 - dx / 2} ${y2}, ${x2} ${y2}`);
       } else if (this.selectionRect) {
-        const coords = this.getBoardCoords(e as PointerEvent);
         const x = coords.x;
         const y = coords.y;
         const left = Math.min(this.selStartX, x);
@@ -776,6 +782,9 @@ export class BoardView extends ItemView {
         this.isBoardDragging = false;
         this.updateMinimapView();
       }
+      this.boardEl
+        .querySelectorAll('.vtasks-lane')
+        .forEach((l) => (l as HTMLElement).removeClass('vtasks-lane-hover'));
     };
 
     this.boardEl.addEventListener(
