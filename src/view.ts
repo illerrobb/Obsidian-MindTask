@@ -684,6 +684,25 @@ export class BoardView extends ItemView {
           )
         );
       }
+      const toDelete =
+        selected.length > 1 && selected.includes(id) ? selected : [id];
+      if (this.board!.nodes[id].type !== 'group') {
+        menu.addItem((item) =>
+          item
+            .setTitle(
+              toDelete.length > 1 ? 'Delete selected tasks' : 'Delete task'
+            )
+            .setIcon('trash')
+            .onClick(() =>
+              Promise.all(
+                toDelete.map((tid) => this.controller!.deleteTask(tid))
+              ).then(() => {
+                toDelete.forEach((tid) => this.selectedIds.delete(tid));
+                this.render();
+              })
+            )
+        );
+      }
       const colors = this.controller?.settings.backgroundColors || [];
 
       menu.addItem((item) => {

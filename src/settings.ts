@@ -21,6 +21,8 @@ export interface PluginSettings {
   folderPaths: string[];
   /** Use ^id block anchors rather than [id:: ] inline fields */
   useBlockId: boolean;
+  /** Delete tasks from files instead of marking them as [-] */
+  deletePermanently: boolean;
   /** Folder to store board files */
   boardFolder: string;
   /** List of background colors for tasks */
@@ -41,6 +43,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   tagFilters: [],
   folderPaths: [],
   useBlockId: true,
+  deletePermanently: false,
   boardFolder: '',
   backgroundColors: [
     { color: 'red' },
@@ -174,6 +177,18 @@ export class SettingsTab extends PluginSettingTab {
           .setValue(this.plugin.settings.useBlockId)
           .onChange(async (value) => {
             this.plugin.settings.useBlockId = value;
+            await this.plugin.savePluginData();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName('Delete tasks permanently')
+      .setDesc('When disabled, tasks are marked as [-] instead of removed')
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.deletePermanently)
+          .onChange(async (value) => {
+            this.plugin.settings.deletePermanently = value;
             await this.plugin.savePluginData();
           })
       );

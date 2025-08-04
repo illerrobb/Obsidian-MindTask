@@ -126,6 +126,39 @@ export default class Controller {
     });
   }
 
+  async deleteTask(id: string) {
+    const task = this.tasks.get(id);
+    if (task) {
+      const lines = (await this.app.vault.read(task.file)).split(/\r?\n/);
+      const line = lines[task.line];
+      const m = line.match(/^(\s*)- \[( |x)\] (.*)/);
+      if (m) {
+        if (this.settings.deletePermanently) {
+          lines.splice(task.line, 1);
+          for (const other of this.tasks.values()) {
+            if (other.file === task.file && other.line > task.line) other.line--;
+          }
+        } else {
+          lines[task.line] = `${m[1]}- [-] ${m[3]}`;
+        }
+        await this.app.vault.modify(task.file, lines.join('\n'));
+      }
+      this.tasks.delete(id);
+    }
+    // Remove node and any edges referencing it
+    delete this.board.nodes[id];
+    this.board.edges = this.board.edges.filter(
+      (e) => e.from !== id && e.to !== id
+    );
+    // Remove from groups
+    Object.values(this.board.nodes).forEach((n) => {
+      if (n?.type === 'group' && n.members) {
+        n.members = n.members.filter((m) => m !== id);
+      }
+    });
+    await saveBoard(this.app, this.boardFile, this.board);
+  }
+
   async setNodeColor(id: string, color: string | null) {
     if (!this.board.nodes[id]) return;
     const data: NodeData = { ...this.board.nodes[id] } as NodeData;
