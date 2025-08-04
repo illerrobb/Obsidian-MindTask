@@ -66,22 +66,40 @@
   cursor: pointer;
 }
 
-.vtasks-lane-vertical .vtasks-lane-resize {
+.vtasks-lane-resize {
   position: absolute;
-  top: 0;
-  right: -2px;
-  width: 4px;
-  height: 100%;
-  cursor: ew-resize;
 }
 
-.vtasks-lane-horizontal .vtasks-lane-resize {
-  position: absolute;
+.vtasks-lane-resize-n,
+.vtasks-lane-resize-s {
   left: 0;
-  bottom: -2px;
   width: 100%;
   height: 4px;
   cursor: ns-resize;
+}
+
+.vtasks-lane-resize-n {
+  top: -2px;
+}
+
+.vtasks-lane-resize-s {
+  bottom: -2px;
+}
+
+.vtasks-lane-resize-e,
+.vtasks-lane-resize-w {
+  top: 0;
+  height: 100%;
+  width: 4px;
+  cursor: ew-resize;
+}
+
+.vtasks-lane-resize-e {
+  right: -2px;
+}
+
+.vtasks-lane-resize-w {
+  left: -2px;
 }
 
 .vtasks-mini-lane {
