@@ -331,7 +331,9 @@ export class BoardView extends ItemView {
     if (pos.type === 'group' && pos.collapsed === false) {
       nodeEl.addClass('vtasks-group-container');
       const header = nodeEl.createDiv('vtasks-group-header');
-      header.createSpan({ text: pos.name || 'Group' });
+      if (pos.name) {
+        header.createSpan({ text: pos.name });
+      }
       const icon = header.createDiv('vtasks-group-toggle');
       icon.textContent = '▾';
       icon.onpointerdown = (e) => e.stopPropagation();
@@ -352,7 +354,9 @@ export class BoardView extends ItemView {
       const metaEl = nodeEl.createDiv('vtasks-meta');
       if (pos.type === 'group') {
         nodeEl.addClass('vtasks-group');
-        textEl.textContent = pos.name || 'Group';
+        if (pos.name) {
+          textEl.textContent = pos.name;
+        }
         const count = pos.members?.length || 0;
         const preview = nodeEl.createDiv('vtasks-group-preview');
         for (let i = 0; i < Math.min(4, count); i++) {
@@ -1043,13 +1047,10 @@ export class BoardView extends ItemView {
           });
         });
         menu.addItem((item) =>
-          item.setTitle('Group selected').onClick(async () => {
-            const name = await this.promptString('Group name', 'Group');
-            if (name) {
-              this.controller!
-                .groupNodes(selected, name)
-                .then(() => this.render());
-            }
+          item.setTitle('Group selected').onClick(() => {
+            this.controller!
+              .groupNodes(selected)
+              .then(() => this.render());
           })
         );
       }

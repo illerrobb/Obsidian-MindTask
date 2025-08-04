@@ -313,7 +313,7 @@ export default class Controller {
     await saveBoard(this.app, this.boardFile, this.board);
   }
 
-  async groupNodes(ids: string[], name: string) {
+  async groupNodes(ids: string[], name = '') {
     if (!ids.length) return;
     const id = 'g-' + crypto.randomBytes(4).toString('hex');
     let minX = Infinity,
@@ -336,10 +336,10 @@ export default class Controller {
       width: maxX - minX,
       height: maxY - minY,
       type: 'group',
-      name,
       members: ids,
       collapsed: false,
     };
+    if (name) groupNode.name = name;
     this.board.nodes[id] = groupNode;
     ids.forEach((nid) => {
       if (this.board.nodes[nid]) {
