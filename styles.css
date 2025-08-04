@@ -54,6 +54,11 @@
   border: 1px solid var(--background-modifier-border);
 }
 
+.vtasks-lane-hover {
+  background: var(--background-modifier-hover);
+  border-color: var(--color-accent);
+}
+
 .vtasks-lane-header {
   background: var(--background-secondary);
   padding: 2px 4px;
