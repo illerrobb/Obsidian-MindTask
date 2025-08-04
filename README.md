@@ -1,97 +1,99 @@
 # MindTask
 
-MindTask è un plugin sperimentale per Obsidian che ti permette di visualizzare e organizzare i task Markdown su una lavagna interattiva. Ogni attività del tuo vault può essere trascinata, collegata e raggruppata per mantenere sempre sotto controllo il flusso di lavoro.
+**MindTask** is an experimental plugin for Obsidian that lets you visualize and organize Markdown tasks on an interactive board. Every task in your vault can be dragged, connected, and grouped to keep your workflow always under control.
 
-![Anteprima della lavagna](docs/img/board-overview.png) <!-- TODO: aggiungere screenshot/gif -->
+![Board preview](docs/img/board-overview.png) <!-- TODO: add screenshot/gif -->
 
-## Funzionalità principali
+## Key Features
 
-- **Visualizzazione a lavagna**: ogni task diventa un nodo trascinabile.
-- **Posizioni e connessioni persistenti** salvate in file `*.vtasks.json` accanto alle note.
-- **Relazioni tra task** (dipendenza, sotto-attività, sequenza) modificabili dal menu contestuale.
-- **Raggruppamento** di più task in box comprimibili tramite selezione rettangolare.
-- **Minimappa** per orientarsi rapidamente.
-- **Pan e zoom fluidi** con mouse e scorciatoie da tastiera.
-- **Colorazione automatica** dei nodi basata su tag o metadati.
-- **Personalizzazioni** attraverso un pannello impostazioni dedicato.
+* **Board view**: each task becomes a draggable node.
+* **Persistent positions and connections**, saved in `*.vtasks.json` files next to your notes.
+* **Relationships between tasks** (dependency, subtask, sequence), editable via context menu.
+* **Grouping** of multiple tasks into collapsible boxes using rectangular selection.
+* **Mini-map** for quick navigation.
+* **Smooth pan and zoom** with mouse and keyboard shortcuts.
+* **Automatic node coloring** based on tags or metadata.
+* **Customizations** through a dedicated settings panel.
 
-<!-- TODO: aggiungere GIF dimostrative per ciascuna funzionalità -->
+<!-- TODO: add demo GIFs for each feature -->
 
-## Installazione
+## Installation
 
-### Dalla community plugin (quando disponibile)
-1. In Obsidian vai su **Settings → Community plugins**.
-2. Disattiva la *safe mode* se richiesto.
-3. Cerca **MindTask** nell'elenco e installa il plugin.
-4. Attivalo per iniziare a usarlo.
+### From the community plugins (when available)
 
-### Installazione manuale
+1. In Obsidian, go to **Settings → Community plugins**.
+2. Disable *safe mode* if prompted.
+3. Search for **MindTask** in the list and install the plugin.
+4. Enable it to start using it.
 
-1. Clona o scarica questo repository.
-2. Esegui `npm install` e `npm run build`.
-3. Copia `manifest.json`, `main.js` e `styles.css` dalla cartella `dist/` nella directory dei plugin di Obsidian.
-4. Riavvia Obsidian e abilita MindTask dalle impostazioni.
+### Manual installation
 
-![Installazione](docs/img/install.gif) <!-- TODO: inserire gif di installazione -->
+1. Clone or download this repository.
+2. Run `npm install` and then `npm run build`.
+3. Copy `manifest.json`, `main.js`, and `styles.css` from the `dist/` folder into your Obsidian plugins directory.
+4. Restart Obsidian and enable **MindTask** from the settings.
 
-## Utilizzo
+![Installation](docs/img/install.gif) <!-- TODO: insert installation gif -->
 
-1. Lancia il comando **MindTask: Apri board** dal Command Palette.
-2. Muovi i nodi per organizzare le attività con il mouse.
-3. Clic destro su un nodo o su un bordo per accedere al menu contestuale.
-4. Seleziona più task trascinando un rettangolo e raggruppali in un box comprimibile.
+## Usage
 
-### Navigazione
+1. Launch the **MindTask: Open board** command from the Command Palette.
+2. Drag nodes with your mouse to organize tasks.
+3. Right-click on a node or connection to access the context menu.
+4. Select multiple tasks with a rectangular selection and group them into a collapsible box.
 
-- **Pan**: trascina con il pulsante centrale oppure `Ctrl` + trascinamento.
-- **Zoom**: `Ctrl` + rotellina o tasti `+`/`-`.
-- **Minimappa**: clicca o trascina all'interno per spostarti rapidamente.
+### Navigation
 
-### Relazioni tra task
+* **Pan**: drag with middle mouse button or `Ctrl` + drag.
+* **Zoom**: `Ctrl` + scroll wheel or `+`/`-` keys.
+* **Mini-map**: click or drag inside it to move around quickly.
 
-Le relazioni sono memorizzate tramite campi Dataview inline che fanno riferimento all'ID del task di destinazione:
+### Task Relationships
+
+Relationships are stored using inline Dataview fields that reference the target task’s ID:
 
 ```markdown
-[dependsOn:: id]   # il task corrente dipende da un altro
-[subtaskOf:: id]   # il task corrente è una sotto-attività
-[after:: id]       # il task corrente deve seguire un altro
+[dependsOn:: id]   # current task depends on another
+[subtaskOf:: id]   # current task is a subtask of another
+[after:: id]       # current task must come after another
 ```
 
-![Relazioni tra task](docs/img/links.png) <!-- TODO: immagine relazioni -->
+![Task relationships](docs/img/links.png) <!-- TODO: task links image -->
 
-## Impostazioni
+## Settings
 
-- **Identificatori dei task**:
-  - `^id` come anchor di blocco (predefinito).
-  - `[id:: id]` come campo inline.
-- **Percorso board**: scegli dove salvare il file `.vtasks.json`; le cartelle mancanti vengono create automaticamente.
-- **Colori e etichette**: associa un colore a tag o metadati per evidenziare automaticamente i nodi.
+* **Task identifiers**:
 
-![Impostazioni](docs/img/settings.png) <!-- TODO: screenshot impostazioni -->
+  * `^id` as block anchor (default).
+  * `[id:: id]` as an inline field.
+* **Board path**: choose where to save the `.vtasks.json` file; missing folders will be created automatically.
+* **Colors and labels**: assign colors to tags or metadata to automatically highlight nodes.
 
-## Sviluppo
+![Settings](docs/img/settings.png) <!-- TODO: settings screenshot -->
 
-Per contribuire:
+## Development
+
+To contribute:
 
 ```bash
 npm install
 npm run build
 ```
 
-Struttura del codice:
+Code structure:
 
-- `src/parser.ts` – analizza i file e garantisce ID univoci.
-- `src/boardStore.ts` – salva e carica lo stato della lavagna.
-- `src/controller.ts` – azioni di alto livello come creazione di task e connessioni.
-- `src/view.ts` – rendering SVG della lavagna.
-- `src/main.ts` – entry point del plugin.
+* `src/parser.ts` – parses files and ensures unique IDs.
+* `src/boardStore.ts` – saves and loads board state.
+* `src/controller.ts` – high-level actions like task creation and linking.
+* `src/view.ts` – SVG rendering of the board.
+* `src/main.ts` – plugin entry point.
 
-![Workflow di sviluppo](docs/img/dev.gif) <!-- TODO: gif development -->
+![Development workflow](docs/img/dev.gif) <!-- TODO: development gif -->
 
-## Stato del progetto
+## Project Status
 
-MindTask è ancora in fase iniziale; aspettati cambiamenti e possibili bug. Ogni contributo o suggerimento è benvenuto.
+MindTask is still in an early stage; expect changes and possible bugs. Any contributions or suggestions are welcome.
 
-## Licenza
+## License
 
-Distribuito sotto licenza MIT. Vedi [LICENSE](LICENSE) per maggiori dettagli.
+Distributed under the MIT License. See [LICENSE](LICENSE) for details.
