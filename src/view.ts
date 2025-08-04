@@ -134,6 +134,10 @@ export class BoardView extends ItemView {
     }
 
     this.boardEl = this.containerEl.createDiv('vtasks-board');
+    const orient = this.controller?.settings.orientation ?? 'vertical';
+    this.boardEl.addClass(
+      orient === 'horizontal' ? 'vtasks-horizontal' : 'vtasks-vertical'
+    );
     this.boardEl.tabIndex = 0;
     this.boardEl.style.transform = `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px) scale(${this.zoom})`;
     this.alignVLine = this.boardEl.createDiv('vtasks-align-line vtasks-align-v');
@@ -205,7 +209,10 @@ export class BoardView extends ItemView {
     if (pos.height) nodeEl.style.height = pos.height + 'px';
     if (pos.color) nodeEl.style.backgroundColor = pos.color;
 
-    const inHandle = nodeEl.createDiv('vtasks-handle vtasks-handle-in');
+    const orientH = this.controller?.settings.orientation ?? 'vertical';
+    const inHandle = nodeEl.createDiv(
+      `vtasks-handle vtasks-handle-in vtasks-handle-${orientH === 'vertical' ? 'top' : 'left'}`
+    );
     const textEl = nodeEl.createDiv('vtasks-text');
     const metaEl = nodeEl.createDiv('vtasks-meta');
     if (pos.type === 'group') {
@@ -271,7 +278,9 @@ export class BoardView extends ItemView {
       tags.forEach((t) => tagsEl.createSpan({ text: t, cls: 'vtasks-tag' }));
       if (task?.checked) nodeEl.addClass('done');
     }
-    const outHandle = nodeEl.createDiv('vtasks-handle vtasks-handle-out');
+    const outHandle = nodeEl.createDiv(
+      `vtasks-handle vtasks-handle-out vtasks-handle-${orientH === 'vertical' ? 'bottom' : 'right'}`
+    );
 
     const dirs = ['n', 'e', 's', 'w', 'ne', 'nw', 'se', 'sw'];
     dirs.forEach((d) => nodeEl.createDiv(`vtasks-resize vtasks-resize-${d}`));
@@ -882,8 +891,15 @@ export class BoardView extends ItemView {
       const y1 = (fr.top - boardRect.top + fr.height / 2) / this.zoom;
       const x2 = (tr.left - boardRect.left + tr.width / 2) / this.zoom;
       const y2 = (tr.top - boardRect.top + tr.height / 2) / this.zoom;
-      const dx = Math.abs(x2 - x1);
-      const d = `M${x1} ${y1} C ${x1 + dx / 2} ${y1}, ${x2 - dx / 2} ${y2}, ${x2} ${y2}`;
+      const orientD = this.controller?.settings.orientation ?? 'vertical';
+      let d: string;
+      if (orientD === 'horizontal') {
+        const dx = Math.abs(x2 - x1);
+        d = `M${x1} ${y1} C ${x1 + dx / 2} ${y1}, ${x2 - dx / 2} ${y2}, ${x2} ${y2}`;
+      } else {
+        const dy = Math.abs(y2 - y1);
+        d = `M${x1} ${y1} C ${x1} ${y1 + dy / 2}, ${x2} ${y2 - dy / 2}, ${x2} ${y2}`;
+      }
       toRemove.delete(idx);
       let current = els;
       if (!current) {
