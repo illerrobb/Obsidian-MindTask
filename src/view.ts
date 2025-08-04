@@ -57,6 +57,7 @@ export class BoardView extends ItemView {
   private draggingLaneId: string | null = null;
   private laneDragOffsetX = 0;
   private laneDragOffsetY = 0;
+  private laneDragNodeIds: string[] = [];
   private resizingLaneId: string | null = null;
   private laneResizeStartWidth = 0;
   private laneResizeStartHeight = 0;
@@ -238,6 +239,16 @@ export class BoardView extends ItemView {
       const coords = this.getBoardCoords(e as PointerEvent);
       this.laneDragOffsetX = coords.x - lane.x;
       this.laneDragOffsetY = coords.y - lane.y;
+      this.laneDragNodeIds = [];
+      for (const nid in this.board!.nodes) {
+        if (this.board!.nodes[nid].lane === id) this.laneDragNodeIds.push(nid);
+      }
+    };
+    header.ondblclick = async (e) => {
+      e.stopPropagation();
+      const name = prompt('Lane name', lane.label) || lane.label;
+      await this.controller?.renameLane(id, name);
+      this.render();
     };
     header.addEventListener('contextmenu', (e) => {
       e.preventDefault();
@@ -443,6 +454,10 @@ export class BoardView extends ItemView {
         const ln = this.board!.lanes[id];
         this.laneDragOffsetX = coords.x - ln.x;
         this.laneDragOffsetY = coords.y - ln.y;
+        this.laneDragNodeIds = [];
+        for (const nid in this.board!.nodes) {
+          if (this.board!.nodes[nid].lane === id) this.laneDragNodeIds.push(nid);
+        }
       } else if (resizeEl && node) {
         const id = node.getAttribute('data-id')!;
         this.resizingId = id;
@@ -569,9 +584,30 @@ export class BoardView extends ItemView {
         this.drawMinimap();
       } else if (this.draggingLaneId) {
         const lane = this.board!.lanes[this.draggingLaneId];
-        lane.x = coords.x - this.laneDragOffsetX;
-        lane.y = coords.y - this.laneDragOffsetY;
+        const newX = coords.x - this.laneDragOffsetX;
+        const newY = coords.y - this.laneDragOffsetY;
+        const dx = newX - lane.x;
+        const dy = newY - lane.y;
+        lane.x = newX;
+        lane.y = newY;
         this.updateLaneElement(this.draggingLaneId);
+        this.laneDragNodeIds.forEach((nid) => {
+          const n = this.board!.nodes[nid];
+          if (!n) return;
+          n.x += dx;
+          n.y += dy;
+          const nodeEl = this.boardEl.querySelector(
+            `.vtasks-node[data-id="${nid}"]`
+          ) as HTMLElement | null;
+          if (nodeEl) {
+            const parentId = n.group;
+            const parentX = parentId ? this.board!.nodes[parentId].x : 0;
+            const parentY = parentId ? this.board!.nodes[parentId].y : 0;
+            nodeEl.style.left = n.x - parentX + 'px';
+            nodeEl.style.top = n.y - parentY + 'px';
+          }
+        });
+        this.drawEdges();
         this.drawMinimap();
       } else if (this.resizingId) {
         const id = this.resizingId;
@@ -713,7 +749,9 @@ export class BoardView extends ItemView {
         this.draggingLaneId = null;
         const lane = this.board!.lanes[id];
         this.controller!.moveLane(id, lane.x, lane.y, lane.width, lane.height);
+        this.drawEdges();
         this.drawMinimap();
+        this.laneDragNodeIds = [];
       } else if (this.resizingId) {
         const id = this.resizingId;
         this.resizingId = null;

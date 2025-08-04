@@ -127,10 +127,20 @@ export default class Controller {
   ) {
     const lane = this.board.lanes[id];
     if (!lane) return;
+    const dx = x - lane.x;
+    const dy = y - lane.y;
     lane.x = x;
     lane.y = y;
     if (width !== undefined) lane.width = width;
     if (height !== undefined) lane.height = height;
+    if (dx || dy) {
+      Object.values(this.board.nodes).forEach((n) => {
+        if (n.lane === id) {
+          n.x += dx;
+          n.y += dy;
+        }
+      });
+    }
     await saveBoard(this.app, this.boardFile, this.board);
   }
 
