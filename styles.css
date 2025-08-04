@@ -136,7 +136,8 @@
 }
 
 .vtasks-edges {
-  pointer-events: auto;
+  /* Allow lanes beneath to receive drag events while edges remain clickable */
+  pointer-events: none;
   z-index: 2;
 }
 
