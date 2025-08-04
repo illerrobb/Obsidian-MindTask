@@ -46,6 +46,7 @@
   border-radius: 4px;
   overflow: visible;
   min-width: 120px;
+  z-index: 3;
 }
 
 .vtasks-lane {
@@ -54,6 +55,7 @@
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 4px;
   transition: background 0.2s ease, border-color 0.2s ease;
+  z-index: 1;
 }
 
 .vtasks-lane-hover {
@@ -134,6 +136,7 @@
 
 .vtasks-edges {
   pointer-events: auto;
+  z-index: 2;
 }
 
 .vtasks-edge {
