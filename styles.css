@@ -70,7 +70,8 @@
   font-size: 0.9em;
   color: var(--text-normal);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
-  cursor: pointer;
+  cursor: move;
+  user-select: none;
   transition: background 0.2s ease, color 0.2s ease;
 }
 
