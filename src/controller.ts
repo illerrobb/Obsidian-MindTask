@@ -1,6 +1,6 @@
 import { App, normalizePath, TFile, MarkdownView } from 'obsidian';
 import crypto from 'crypto';
-import { BoardData, NodeData, saveBoard } from './boardStore';
+import { BoardData, NodeData, LaneData, saveBoard } from './boardStore';
 import { ParsedTask } from './parser';
 import { PluginSettings } from './settings';
 
@@ -14,18 +14,100 @@ export default class Controller {
   ) {}
 
   async moveNode(id: string, x: number, y: number) {
-    if (!this.board.nodes[id]) return;
-    this.board.nodes[id] = { ...this.board.nodes[id], x, y } as NodeData;
+    const node = this.board.nodes[id];
+    if (!node) return;
+    let nx = x;
+    let ny = y;
+    if (node.lane) {
+      const lane = this.board.lanes[node.lane];
+      if (lane) {
+        const w = node.width ?? 120;
+        const h = node.height ?? (node.type === 'group' ? 80 : 40);
+        nx = Math.max(lane.x, Math.min(nx, lane.x + lane.width - w));
+        ny = Math.max(lane.y, Math.min(ny, lane.y + lane.height - h));
+      }
+    }
+    this.board.nodes[id] = { ...node, x: nx, y: ny } as NodeData;
     await saveBoard(this.app, this.boardFile, this.board);
   }
 
   async resizeNode(id: string, width: number, height: number) {
-    if (!this.board.nodes[id]) return;
+    const node = this.board.nodes[id];
+    if (!node) return;
+    let w = width;
+    let h = height;
+    if (node.lane) {
+      const lane = this.board.lanes[node.lane];
+      if (lane) {
+        const maxW = lane.width - (node.x - lane.x);
+        const maxH = lane.height - (node.y - lane.y);
+        w = Math.min(w, maxW);
+        h = Math.min(h, maxH);
+      }
+    }
     this.board.nodes[id] = {
-      ...this.board.nodes[id],
-      width,
-      height,
+      ...node,
+      width: w,
+      height: h,
     } as NodeData;
+    await saveBoard(this.app, this.boardFile, this.board);
+  }
+
+  async createLane(
+    label: string,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    orient: 'vertical' | 'horizontal'
+  ) {
+    const id = 'l-' + crypto.randomBytes(4).toString('hex');
+    const lane: LaneData = { id, label, x, y, width, height, orient };
+    this.board.lanes[id] = lane;
+    await saveBoard(this.app, this.boardFile, this.board);
+    return id;
+  }
+
+  async moveLane(
+    id: string,
+    x: number,
+    y: number,
+    width?: number,
+    height?: number
+  ) {
+    const lane = this.board.lanes[id];
+    if (!lane) return;
+    lane.x = x;
+    lane.y = y;
+    if (width !== undefined) lane.width = width;
+    if (height !== undefined) lane.height = height;
+    await saveBoard(this.app, this.boardFile, this.board);
+  }
+
+  async renameLane(id: string, label: string) {
+    const lane = this.board.lanes[id];
+    if (!lane) return;
+    lane.label = label;
+    await saveBoard(this.app, this.boardFile, this.board);
+  }
+
+  async deleteLane(id: string) {
+    if (!this.board.lanes[id]) return;
+    delete this.board.lanes[id];
+    Object.values(this.board.nodes).forEach((n) => {
+      if (n.lane === id) delete n.lane;
+    });
+    await saveBoard(this.app, this.boardFile, this.board);
+  }
+
+  async assignNodeToLane(id: string, lane: string | null) {
+    const node = this.board.nodes[id];
+    if (!node) return;
+    if (lane) {
+      node.lane = lane;
+    } else {
+      delete node.lane;
+    }
     await saveBoard(this.app, this.boardFile, this.board);
   }
 

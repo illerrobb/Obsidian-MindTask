@@ -1,5 +1,15 @@
 import { App, normalizePath, TFile } from 'obsidian';
 
+export interface LaneData {
+  id: string;
+  label: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  orient: 'vertical' | 'horizontal';
+}
+
 export interface NodeData {
   x: number;
   y: number;
@@ -10,12 +20,14 @@ export interface NodeData {
   name?: string;
   members?: string[];
   group?: string;
+  lane?: string;
 }
 
 export interface BoardData {
   version: number;
   nodes: Record<string, NodeData>;
   edges: { from: string; to: string; type: string }[];
+  lanes: Record<string, LaneData>;
 }
 
 const CURRENT_VERSION = 1;
@@ -23,9 +35,11 @@ const CURRENT_VERSION = 1;
 export async function loadBoard(app: App, file: TFile): Promise<BoardData> {
   try {
     const text = await app.vault.read(file);
-    return JSON.parse(text);
+    const data = JSON.parse(text) as BoardData;
+    if (!data.lanes) data.lanes = {};
+    return data;
   } catch (e) {
-    return { version: CURRENT_VERSION, nodes: {}, edges: [] };
+    return { version: CURRENT_VERSION, nodes: {}, edges: [], lanes: {} };
   }
 }
 
@@ -53,7 +67,7 @@ export async function getBoardFile(app: App, path: string): Promise<TFile> {
     try {
       await app.vault.create(
         normalized,
-        JSON.stringify({ version: CURRENT_VERSION, nodes: {}, edges: [] }, null, 2)
+        JSON.stringify({ version: CURRENT_VERSION, nodes: {}, edges: [], lanes: {} }, null, 2)
       );
     } catch (err: any) {
       if (err?.message?.includes('already exists')) {
