@@ -1,4 +1,14 @@
-import { ItemView, WorkspaceLeaf, Menu, FuzzySuggestModal, MenuItem } from 'obsidian';
+import {
+  ItemView,
+  WorkspaceLeaf,
+  Menu,
+  FuzzySuggestModal,
+  MenuItem,
+  Modal,
+  Setting,
+  TextComponent,
+  App,
+} from 'obsidian';
 import Controller from './controller';
 import { BoardData } from './boardStore';
 import { ParsedTask } from './parser';
@@ -249,9 +259,11 @@ export class BoardView extends ItemView {
     header.ondblclick = async (e) => {
       e.stopPropagation();
       (e as PointerEvent).preventDefault();
-      const name = prompt('Lane name', lane.label) || lane.label;
-      await this.controller?.renameLane(id, name);
-      this.render();
+      const name = await this.promptString('Lane name', lane.label);
+      if (name) {
+        await this.controller?.renameLane(id, name);
+        this.render();
+      }
     };
     laneEl.addEventListener('contextmenu', (e) => {
       e.preventDefault();
@@ -259,9 +271,11 @@ export class BoardView extends ItemView {
       const menu = new Menu();
       menu.addItem((item) =>
         item.setTitle('Rename lane').onClick(async () => {
-          const name = prompt('Lane name', lane.label) || lane.label;
-          await this.controller?.renameLane(id, name);
-          this.render();
+          const name = await this.promptString('Lane name', lane.label);
+          if (name) {
+            await this.controller?.renameLane(id, name);
+            this.render();
+          }
         })
       );
       menu.addItem((item) =>
@@ -986,11 +1000,12 @@ export class BoardView extends ItemView {
         });
         menu.addItem((item) =>
           item.setTitle('Group selected').onClick(async () => {
-            const name = await new Promise<string>((resolve) => {
-              const n = prompt('Group name', 'Group') || 'Group';
-              resolve(n);
-            });
-            this.controller!.groupNodes(selected, name).then(() => this.render());
+            const name = await this.promptString('Group name', 'Group');
+            if (name) {
+              this.controller!
+                .groupNodes(selected, name)
+                .then(() => this.render());
+            }
           })
         );
       }
@@ -1524,6 +1539,49 @@ export class BoardView extends ItemView {
       }
     }
     new TaskModal(this).open();
+  }
+
+  private async promptString(
+    title: string,
+    value: string
+  ): Promise<string | null> {
+    return new Promise((resolve) => {
+      const modal = new (class extends Modal {
+        input!: TextComponent;
+        constructor(app: App) {
+          super(app);
+        }
+        onOpen() {
+          const { contentEl } = this;
+          contentEl.createEl('h2', { text: title });
+          new Setting(contentEl).addText((t) => {
+            this.input = t.setValue(value);
+            this.input.inputEl.select();
+          });
+          new Setting(contentEl)
+            .addButton((btn) =>
+              btn.setButtonText('OK').setCta().onClick(() => {
+                const v = this.input.getValue().trim() || value;
+                resolve(v);
+                this.close();
+              })
+            )
+            .addExtraButton((btn) =>
+              btn
+                .setIcon('cross')
+                .setTooltip('Cancel')
+                .onClick(() => {
+                  resolve(null);
+                  this.close();
+                })
+            );
+        }
+        onClose() {
+          this.contentEl.empty();
+        }
+      })(this.app);
+      modal.open();
+    });
   }
 
   private getLaneForNode(id: string): string | null {
