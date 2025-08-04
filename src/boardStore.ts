@@ -21,6 +21,7 @@ export interface NodeData {
   members?: string[];
   group?: string;
   lane?: string;
+  collapsed?: boolean;
 }
 
 export interface BoardData {

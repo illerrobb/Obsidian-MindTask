@@ -52,6 +52,8 @@ export class BoardView extends ItemView {
   private resizeStartY = 0;
   private resizeStartNodeX = 0;
   private resizeStartNodeY = 0;
+  private memberResizeStart: Map<string, { x: number; y: number; width?: number; height?: number }> =
+    new Map();
   private draggingLaneId: string | null = null;
   private laneDragOffsetX = 0;
   private laneDragOffsetY = 0;
@@ -275,12 +277,17 @@ export class BoardView extends ItemView {
     if (header) header.textContent = lane.label;
   }
 
-  private createNodeElement(id: string) {
+  private createNodeElement(
+    id: string,
+    parent: HTMLElement = this.boardEl,
+    offsetX = 0,
+    offsetY = 0
+  ) {
     const pos = this.board!.nodes[id];
-    const nodeEl = this.boardEl.createDiv('vtasks-node');
+    const nodeEl = parent.createDiv('vtasks-node');
     nodeEl.setAttr('data-id', id);
-    nodeEl.style.left = pos.x + 'px';
-    nodeEl.style.top = pos.y + 'px';
+    nodeEl.style.left = pos.x - offsetX + 'px';
+    nodeEl.style.top = pos.y - offsetY + 'px';
     if (pos.width) nodeEl.style.width = pos.width + 'px';
     if (pos.height) nodeEl.style.height = pos.height + 'px';
     if (pos.color) nodeEl.style.backgroundColor = pos.color;
@@ -289,70 +296,92 @@ export class BoardView extends ItemView {
     const inHandle = nodeEl.createDiv(
       `vtasks-handle vtasks-handle-in vtasks-handle-${orientH === 'vertical' ? 'top' : 'left'}`
     );
-    const textEl = nodeEl.createDiv('vtasks-text');
-    const metaEl = nodeEl.createDiv('vtasks-meta');
-    if (pos.type === 'group') {
-      nodeEl.addClass('vtasks-group');
-      textEl.textContent = pos.name || 'Group';
-      const count = pos.members?.length || 0;
-      const preview = nodeEl.createDiv('vtasks-group-preview');
-      for (let i = 0; i < Math.min(4, count); i++) {
-        preview.createDiv('vtasks-group-box');
+
+    if (pos.type === 'group' && pos.collapsed === false) {
+      nodeEl.addClass('vtasks-group-container');
+      const header = nodeEl.createDiv('vtasks-group-header');
+      header.createSpan({ text: pos.name || 'Group' });
+      const icon = header.createDiv('vtasks-group-toggle');
+      icon.textContent = '▾';
+      icon.onpointerdown = (e) => e.stopPropagation();
+      icon.onclick = (e) => {
+        e.stopPropagation();
+        this.controller?.toggleGroupCollapse(id).then(() => this.render());
+      };
+      const body = nodeEl.createDiv('vtasks-group-body');
+      if (pos.members) {
+        pos.members.forEach((mid) => {
+          if (this.board!.nodes[mid]) {
+            this.createNodeElement(mid, body, pos.x, pos.y);
+          }
+        });
       }
-      const num = nodeEl.createDiv('vtasks-group-count');
-      num.textContent = String(count);
     } else {
-      const task = this.tasks.get(id);
-      let text = task?.text ?? id;
-      const metas: { key: string; val: string }[] = [];
-      const tags: string[] = [];
-      text = text.replace(/\[(\w+)::\s*([^\]]+)\]/g, (m, key, val) => {
-        if (!['dependsOn', 'subtaskOf', 'after'].includes(key)) metas.push({ key, val: val.trim() });
-        return '';
-      });
-      text = text.replace(/\b(\w+)::\s*((?:\[\[[^\]]+\]\]|[^\n])*?)(?=\s+\w+::|\s+#|$)/g, (m, key, val) => {
-        if (!['dependsOn', 'subtaskOf', 'after'].includes(key)) metas.push({ key, val: val.trim() });
-        return '';
-      });
-      text = text.replace(/#(\S+)/g, (_, t) => {
-        tags.push('#' + t);
-        return '';
-      });
-      const idMatch = text.trim().match(/\^[\w-]+$/);
-      if (idMatch) {
-        metas.push({ key: 'ID', val: idMatch[0].slice(1) });
-        text = text.replace(/\^[\w-]+$/, '');
-      }
-      textEl.textContent = text.trim();
-      metas.forEach((m) => {
-        if (m.key === 'completed') {
-          metaEl.createSpan({ text: m.val, cls: 'vtasks-tag-completed' });
-        } else {
-          metaEl.createSpan({ text: `${m.key}:${m.val}` });
+      const textEl = nodeEl.createDiv('vtasks-text');
+      const metaEl = nodeEl.createDiv('vtasks-meta');
+      if (pos.type === 'group') {
+        nodeEl.addClass('vtasks-group');
+        textEl.textContent = pos.name || 'Group';
+        const count = pos.members?.length || 0;
+        const preview = nodeEl.createDiv('vtasks-group-preview');
+        for (let i = 0; i < Math.min(4, count); i++) {
+          preview.createDiv('vtasks-group-box');
         }
-      });
-      if (!pos.color) {
-        const rules = this.controller?.settings.backgroundColors ?? [];
-        for (const r of rules) {
-          if (!r.label) continue;
-          if (r.label.includes('::')) {
-            const [k, v] = r.label.split('::').map((s) => s.trim());
-            if (metas.some((m) => m.key === k && m.val === v)) {
-              nodeEl.style.backgroundColor = r.color;
-              break;
-            }
+        const num = nodeEl.createDiv('vtasks-group-count');
+        num.textContent = String(count);
+      } else {
+        const task = this.tasks.get(id);
+        let text = task?.text ?? id;
+        const metas: { key: string; val: string }[] = [];
+        const tags: string[] = [];
+        text = text.replace(/\[(\w+)::\s*([^\]]+)\]/g, (m, key, val) => {
+          if (!['dependsOn', 'subtaskOf', 'after'].includes(key)) metas.push({ key, val: val.trim() });
+          return '';
+        });
+        text = text.replace(/\b(\w+)::\s*((?:\[\[[^\]]+\]\]|[^\n])*?)(?=\s+\w+::|\s+#|$)/g, (m, key, val) => {
+          if (!['dependsOn', 'subtaskOf', 'after'].includes(key)) metas.push({ key, val: val.trim() });
+          return '';
+        });
+        text = text.replace(/#(\S+)/g, (_, t) => {
+          tags.push('#' + t);
+          return '';
+        });
+        const idMatch = text.trim().match(/\^[\w-]+$/);
+        if (idMatch) {
+          metas.push({ key: 'ID', val: idMatch[0].slice(1) });
+          text = text.replace(/\^[\w-]+$/, '');
+        }
+        textEl.textContent = text.trim();
+        metas.forEach((m) => {
+          if (m.key === 'completed') {
+            metaEl.createSpan({ text: m.val, cls: 'vtasks-tag-completed' });
           } else {
-            const lbl = r.label.replace(/^#/, '');
-            if (tags.includes('#' + lbl)) {
-              nodeEl.style.backgroundColor = r.color;
-              break;
+            metaEl.createSpan({ text: `${m.key}:${m.val}` });
+          }
+        });
+        if (!pos.color) {
+          const rules = this.controller?.settings.backgroundColors ?? [];
+          for (const r of rules) {
+            if (!r.label) continue;
+            if (r.label.includes('::')) {
+              const [k, v] = r.label.split('::').map((s) => s.trim());
+              if (metas.some((m) => m.key === k && m.val === v)) {
+                nodeEl.style.backgroundColor = r.color;
+                break;
+              }
+            } else {
+              const lbl = r.label.replace(/^#/, '');
+              if (tags.includes('#' + lbl)) {
+                nodeEl.style.backgroundColor = r.color;
+                break;
+              }
             }
           }
         }
+        const tagsEl = metaEl.createDiv('vtasks-tags');
+        tags.forEach((t) => tagsEl.createSpan({ text: t, cls: 'vtasks-tag' }));
+        if (task?.checked) nodeEl.addClass('done');
       }
-      const tagsEl = metaEl.createDiv('vtasks-tags');
-      tags.forEach((t) => tagsEl.createSpan({ text: t, cls: 'vtasks-tag' }));
-      if (task?.checked) nodeEl.addClass('done');
     }
     const outHandle = nodeEl.createDiv(
       `vtasks-handle vtasks-handle-out vtasks-handle-${orientH === 'vertical' ? 'bottom' : 'right'}`
@@ -429,6 +458,21 @@ export class BoardView extends ItemView {
           width: rect.width / this.zoom,
           height: rect.height / this.zoom,
         };
+        const nd = this.board!.nodes[id];
+        if (nd.type === 'group' && nd.members) {
+          this.memberResizeStart.clear();
+          nd.members.forEach((mid) => {
+            const m = this.board!.nodes[mid];
+            if (m) {
+              this.memberResizeStart.set(mid, {
+                x: m.x,
+                y: m.y,
+                width: m.width,
+                height: m.height,
+              });
+            }
+          });
+        }
       } else if (outHandle && node) {
         const id = node.getAttribute('data-id')!;
         this.edgeStart = id;
@@ -541,8 +585,34 @@ export class BoardView extends ItemView {
         height = Math.max(20, height);
         nodeEl.style.width = width + 'px';
         nodeEl.style.height = height + 'px';
-        nodeEl.style.left = x + 'px';
-        nodeEl.style.top = y + 'px';
+        const parentId = this.board!.nodes[id].group;
+        const parentX = parentId ? this.board!.nodes[parentId].x : 0;
+        const parentY = parentId ? this.board!.nodes[parentId].y : 0;
+        nodeEl.style.left = x - parentX + 'px';
+        nodeEl.style.top = y - parentY + 'px';
+        const nodeData = this.board!.nodes[id];
+        if (nodeData.type === 'group' && nodeData.members && this.memberResizeStart.size) {
+          const sx = width / this.resizeStartWidth;
+          const sy = height / this.resizeStartHeight;
+          nodeData.members.forEach((mid) => {
+            const start = this.memberResizeStart.get(mid);
+            const child = this.board!.nodes[mid];
+            if (!start || !child) return;
+            child.x = nodeData.x + (start.x - this.resizeStartNodeX) * sx;
+            child.y = nodeData.y + (start.y - this.resizeStartNodeY) * sy;
+            if (start.width) child.width = start.width * sx;
+            if (start.height) child.height = start.height * sy;
+            const childEl = this.boardEl.querySelector(
+              `.vtasks-node[data-id="${mid}"]`
+            ) as HTMLElement | null;
+            if (childEl) {
+              childEl.style.left = child.x - nodeData.x + 'px';
+              childEl.style.top = child.y - nodeData.y + 'px';
+              if (child.width) childEl.style.width = child.width + 'px';
+              if (child.height) childEl.style.height = child.height + 'px';
+            }
+          });
+        }
         this.showAlignmentGuides(id, x, y, width, height);
         this.board!.nodes[id] = {
           ...this.board!.nodes[id],
@@ -565,9 +635,14 @@ export class BoardView extends ItemView {
           let x = Math.round((start.x + curX - this.dragStartX) / this.gridSize) * this.gridSize;
           let y = Math.round((start.y + curY - this.dragStartY) / this.gridSize) * this.gridSize;
 
-          const nodeEl = this.boardEl.querySelector(`.vtasks-node[data-id="${id}"]`) as HTMLElement;
-          nodeEl.style.left = x + 'px';
-          nodeEl.style.top = y + 'px';
+          const nodeEl = this.boardEl.querySelector(
+            `.vtasks-node[data-id="${id}"]`
+          ) as HTMLElement;
+          const parentId = this.board!.nodes[id].group;
+          const parentX = parentId ? this.board!.nodes[parentId].x : 0;
+          const parentY = parentId ? this.board!.nodes[parentId].y : 0;
+          nodeEl.style.left = x - parentX + 'px';
+          nodeEl.style.top = y - parentY + 'px';
           this.board!.nodes[id] = { ...this.board!.nodes[id], x, y };
           if (id === this.draggingId) {
             const w = this.board!.nodes[id].width ?? 120;
@@ -626,9 +701,16 @@ export class BoardView extends ItemView {
         this.resizingId = null;
         const pos = this.board!.nodes[id];
         this.controller!.moveNode(id, pos.x, pos.y);
-        this.controller!.resizeNode(id, pos.width ?? 0, pos.height ?? 0);
+        this.controller!.resizeNode(
+          id,
+          pos.width ?? 0,
+          pos.height ?? 0,
+          this.resizeStartWidth,
+          this.resizeStartHeight
+        );
         const laneId = this.getLaneForNode(id);
         this.controller!.assignNodeToLane(id, laneId ?? null);
+        this.memberResizeStart.clear();
         this.drawMinimap();
       } else if (this.draggingId) {
         this.draggingId = null;
@@ -1217,9 +1299,9 @@ export class BoardView extends ItemView {
       maxX = Math.max(maxX, l.x + l.width);
       maxY = Math.max(maxY, l.y + l.height);
     }
-    for (const id in this.board!.nodes) {
-      const n = this.board!.nodes[id];
-      if ((n.group || null) !== this.groupId) continue;
+    const addNode = (nid: string) => {
+      const n = this.board!.nodes[nid];
+      if (!n) return;
       const w = n.width ?? 120;
       const h = n.height ?? (n.type === 'group' ? 80 : 40);
       nodes.push({ x: n.x, y: n.y, w, h });
@@ -1227,6 +1309,13 @@ export class BoardView extends ItemView {
       minY = Math.min(minY, n.y);
       maxX = Math.max(maxX, n.x + w);
       maxY = Math.max(maxY, n.y + h);
+      if (n.type === 'group' && n.collapsed === false && n.members) {
+        n.members.forEach(addNode);
+      }
+    };
+    for (const id in this.board!.nodes) {
+      const n = this.board!.nodes[id];
+      if ((n.group || null) === this.groupId) addNode(id);
     }
     if (!nodes.length && !lanes.length) return;
     const pad = 50;
@@ -1261,10 +1350,19 @@ export class BoardView extends ItemView {
       rect.addClass('vtasks-mini-node');
       this.minimapSvg.appendChild(rect);
     });
+    const isVisible = (nid: string): boolean => {
+      const n = this.board!.nodes[nid];
+      if (!n) return false;
+      if ((n.group || null) === this.groupId) return true;
+      if (!n.group) return false;
+      const parent = this.board!.nodes[n.group];
+      if (parent && parent.collapsed === false) return isVisible(n.group);
+      return false;
+    };
     this.board!.edges.forEach((edge) => {
       const from = this.board!.nodes[edge.from];
       const to = this.board!.nodes[edge.to];
-      if ((from.group || null) !== this.groupId || (to.group || null) !== this.groupId) return;
+      if (!isVisible(edge.from) || !isVisible(edge.to)) return;
       const fw = from.width ?? 120;
       const fh = from.height ?? (from.type === 'group' ? 80 : 40);
       const tw = to.width ?? 120;
