@@ -31,12 +31,6 @@
   right: 0;
 }
 
-.vtasks-breadcrumb {
-  margin-left: 8px;
-  font-size: 0.8em;
-  color: var(--text-muted);
-}
-
 .vtasks-board-title {
   font-weight: bold;
   cursor: pointer;
