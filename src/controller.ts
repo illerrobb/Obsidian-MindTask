@@ -152,6 +152,16 @@ export default class Controller {
     await saveBoard(this.app, this.boardFile, this.board);
   }
 
+  async setLaneOrientation(
+    id: string,
+    orient: 'vertical' | 'horizontal'
+  ) {
+    const lane = this.board.lanes[id];
+    if (!lane) return;
+    lane.orient = orient;
+    await saveBoard(this.app, this.boardFile, this.board);
+  }
+
   async deleteLane(id: string) {
     if (!this.board.lanes[id]) return;
     delete this.board.lanes[id];
