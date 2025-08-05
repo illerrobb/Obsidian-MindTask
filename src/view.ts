@@ -878,7 +878,19 @@ export class BoardView extends ItemView {
         if (this.groupId) {
           this.controller!
             .fitGroupToMembers(this.groupId)
-            .then(() => this.updateGroupFocus());
+            .then(() => {
+              const g = this.board!.nodes[this.groupId!];
+              if (g) {
+                const rect = this.containerEl.getBoundingClientRect();
+                const centerX = g.x + (g.width ?? 0) / 2;
+                const centerY = g.y + (g.height ?? 0) / 2;
+                this.boardOffsetX = rect.width / 2 - centerX * this.zoom;
+                this.boardOffsetY = rect.height / 2 - centerY * this.zoom;
+                this.boardEl.style.transform = `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px) scale(${this.zoom})`;
+                this.updateGroupFocus();
+                this.updateMinimapView();
+              }
+            });
         }
         this.drawEdges();
         this.drawMinimap();
