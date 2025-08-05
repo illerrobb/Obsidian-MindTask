@@ -79,6 +79,7 @@ export class BoardView extends ItemView {
   private laneResizeStartLaneX = 0;
   private laneResizeStartLaneY = 0;
   private groupId: string | null = null;
+  private groupStack: { id: string | null; offsetX: number; offsetY: number; zoom: number }[] = [];
   private groupFocusEl: HTMLElement | null = null;
   private onTitleChange: (title: string) => void;
 
@@ -124,11 +125,12 @@ export class BoardView extends ItemView {
     this.containerEl.addClass('vtasks-container');
     const topBar = this.containerEl.createDiv('vtasks-top-bar');
     const left = topBar.createDiv('vtasks-top-left');
-    if (this.groupId) {
+    if (this.groupStack.length > 0) {
       const backBtn = left.createEl('button', { text: 'Back' });
-      const parentId = this.board!.nodes[this.groupId!].group ?? null;
-      backBtn.onclick = () => this.openGroup(parentId);
+      backBtn.onclick = () => this.goBack();
     }
+    const breadcrumbEl = left.createDiv('vtasks-breadcrumb');
+    breadcrumbEl.setText(this.getBreadcrumb());
     const titleEl = topBar.createDiv('vtasks-board-title');
     titleEl.setText(this.board.title || 'Board');
     titleEl.onclick = () => this.editTitle(titleEl);
@@ -1554,8 +1556,15 @@ export class BoardView extends ItemView {
   }
 
 
-  private openGroup(id: string | null) {
-    // null represents the root level of the board
+  private openGroup(id: string | null, push = true) {
+    if (push && this.groupId !== id) {
+      this.groupStack.push({
+        id: this.groupId,
+        offsetX: this.boardOffsetX,
+        offsetY: this.boardOffsetY,
+        zoom: this.zoom,
+      });
+    }
     if (id) {
       const g = this.board!.nodes[id];
       if (g) {
@@ -1570,6 +1579,33 @@ export class BoardView extends ItemView {
     this.groupId = id ?? null;
     this.clearSelection();
     this.render();
+  }
+
+  private goBack() {
+    const prev = this.groupStack.pop();
+    if (!prev) return;
+    this.groupId = prev.id;
+    this.boardOffsetX = prev.offsetX;
+    this.boardOffsetY = prev.offsetY;
+    this.zoom = prev.zoom;
+    this.clearSelection();
+    this.render();
+  }
+
+  private getBreadcrumb(): string {
+    if (!this.board) return '';
+    const names: string[] = ['Home'];
+    for (const s of this.groupStack) {
+      if (s.id) {
+        const n = this.board.nodes[s.id];
+        names.push(n?.name || 'Group');
+      }
+    }
+    if (this.groupId) {
+      const n = this.board.nodes[this.groupId];
+      names.push(n?.name || 'Group');
+    }
+    return names.join(' / ');
   }
 
   private updateGroupFocus() {
