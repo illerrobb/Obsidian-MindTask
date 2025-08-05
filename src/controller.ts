@@ -17,8 +17,9 @@ export default class Controller {
   async moveNode(id: string, x: number, y: number, bypassLaneClamp = false) {
     const node = this.board.nodes[id];
     if (!node) return;
-    let nx = x;
-    let ny = y;
+    const parentAbs = node.group ? this.getAbsolutePosition(node.group) : { x: 0, y: 0 };
+    let nx = node.group ? x + parentAbs.x : x;
+    let ny = node.group ? y + parentAbs.y : y;
     const w = node.width ?? 120;
     const h = node.height ?? (node.type === 'group' ? 80 : 40);
     if (node.lane && !bypassLaneClamp) {
@@ -33,22 +34,13 @@ export default class Controller {
       if (parent && parent.type === 'group') {
         const pw = parent.width ?? 0;
         const ph = parent.height ?? 0;
-        nx = Math.max(parent.x, Math.min(nx, parent.x + pw - w));
-        ny = Math.max(parent.y, Math.min(ny, parent.y + ph - h));
+        nx = Math.max(parentAbs.x, Math.min(nx, parentAbs.x + pw - w));
+        ny = Math.max(parentAbs.y, Math.min(ny, parentAbs.y + ph - h));
       }
     }
-    if (node.type === 'group' && node.members) {
-      const dx = nx - node.x;
-      const dy = ny - node.y;
-      node.members.forEach((mid) => {
-        const m = this.board.nodes[mid];
-        if (m) {
-          m.x += dx;
-          m.y += dy;
-        }
-      });
-    }
-    this.board.nodes[id] = { ...node, x: nx, y: ny } as NodeData;
+    const storedX = node.group ? nx - parentAbs.x : nx;
+    const storedY = node.group ? ny - parentAbs.y : ny;
+    this.board.nodes[id] = { ...node, x: storedX, y: storedY } as NodeData;
     await saveBoard(this.app, this.boardFile, this.board);
   }
 
@@ -63,11 +55,14 @@ export default class Controller {
     if (!node) return;
     let w = width;
     let h = height;
+    const parentAbs = node.group ? this.getAbsolutePosition(node.group) : { x: 0, y: 0 };
+    const absX = node.group ? node.x + parentAbs.x : node.x;
+    const absY = node.group ? node.y + parentAbs.y : node.y;
     if (node.lane) {
       const lane = this.board.lanes[node.lane];
       if (lane) {
-        const maxW = lane.width - (node.x - lane.x);
-        const maxH = lane.height - (node.y - lane.y);
+        const maxW = lane.width - (absX - lane.x);
+        const maxH = lane.height - (absY - lane.y);
         w = Math.min(w, maxW);
         h = Math.min(h, maxH);
       }
@@ -75,8 +70,8 @@ export default class Controller {
     if (node.group) {
       const parent = this.board.nodes[node.group];
       if (parent && parent.type === 'group') {
-        const maxW = (parent.width ?? 0) - (node.x - parent.x);
-        const maxH = (parent.height ?? 0) - (node.y - parent.y);
+        const maxW = (parent.width ?? 0) - node.x;
+        const maxH = (parent.height ?? 0) - node.y;
         w = Math.min(w, maxW);
         h = Math.min(h, maxH);
       }
@@ -89,8 +84,8 @@ export default class Controller {
       node.members.forEach((mid) => {
         const m = this.board.nodes[mid];
         if (m) {
-          m.x = node.x + (m.x - node.x) * sx;
-          m.y = node.y + (m.y - node.y) * sy;
+          m.x = m.x * sx;
+          m.y = m.y * sy;
           if (m.width) m.width = m.width * sx;
           if (m.height) m.height = m.height * sy;
         }
@@ -324,22 +319,22 @@ export default class Controller {
     const id = 'g-' + crypto.randomBytes(4).toString('hex');
     const positions: Record<string, { x: number; y: number }> = {};
     ids.forEach((nid) => {
-      const n = this.board.nodes[nid];
-      if (n) positions[nid] = { x: n.x, y: n.y };
+      positions[nid] = this.getAbsolutePosition(nid);
     });
     let minX = Infinity,
       minY = Infinity,
       maxX = -Infinity,
       maxY = -Infinity;
     ids.forEach((nid) => {
+      const p = positions[nid];
       const n = this.board.nodes[nid];
-      if (!n) return;
+      if (!p || !n) return;
       const w = n.width ?? 120;
       const h = n.height ?? (n.type === 'group' ? 80 : 40);
-      minX = Math.min(minX, n.x);
-      minY = Math.min(minY, n.y);
-      maxX = Math.max(maxX, n.x + w);
-      maxY = Math.max(maxY, n.y + h);
+      minX = Math.min(minX, p.x);
+      minY = Math.min(minY, p.y);
+      maxX = Math.max(maxX, p.x + w);
+      maxY = Math.max(maxY, p.y + h);
     });
     const groupNode: NodeData = {
       x: minX,
@@ -357,10 +352,8 @@ export default class Controller {
       if (member) {
         member.group = id;
         const pos = positions[nid];
-        if (pos) {
-          member.x = pos.x;
-          member.y = pos.y;
-        }
+        member.x = pos.x - minX;
+        member.y = pos.y - minY;
       }
     });
     await saveBoard(this.app, this.boardFile, this.board);
@@ -370,20 +363,13 @@ export default class Controller {
   async ungroupNode(id: string) {
     const node = this.board.nodes[id];
     if (!node || node.type !== 'group' || !node.members) return;
-    const positions: Record<string, { x: number; y: number }> = {};
-    node.members.forEach((nid) => {
-      const child = this.board.nodes[nid];
-      if (child) positions[nid] = { x: child.x, y: child.y };
-    });
+    const groupAbs = this.getAbsolutePosition(id);
     node.members.forEach((nid) => {
       const child = this.board.nodes[nid];
       if (child) {
         delete (child as any).group;
-        const pos = positions[nid];
-        if (pos) {
-          child.x = pos.x;
-          child.y = pos.y;
-        }
+        child.x = groupAbs.x + child.x;
+        child.y = groupAbs.y + child.y;
       }
     });
     delete this.board.nodes[id];
@@ -421,6 +407,20 @@ export default class Controller {
     node.width = maxX - minX + padding * 2;
     node.height = maxY - minY + padding * 2;
     await saveBoard(this.app, this.boardFile, this.board);
+  }
+
+  private getAbsolutePosition(id: string): { x: number; y: number } {
+    let x = 0,
+      y = 0;
+    let cur: string | undefined = id;
+    while (cur) {
+      const n: NodeData | undefined = this.board.nodes[cur];
+      if (!n) break;
+      x += n.x;
+      y += n.y;
+      cur = n.group;
+    }
+    return { x, y };
   }
 
   private refreshView() {
