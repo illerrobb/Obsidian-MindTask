@@ -138,12 +138,17 @@ export default class MindTaskPlugin extends Plugin {
       .replace(/\.mtask$/, '');
     this.activeBoard = { name: base, path };
     await this.loadBoardData(path);
-    const view = this.app.workspace.getActiveViewOfType(BoardView);
+    let view = this.app.workspace.getActiveViewOfType(BoardView);
     if (view && this.board && this.controller) {
       view.updateData(this.board, this.tasks, this.controller);
     } else {
       const leaf = this.app.workspace.activeLeaf ?? this.app.workspace.getLeaf(true);
       await leaf.setViewState({ type: VIEW_TYPE_BOARD, active: true });
+      // After creating the leaf, ensure the view is updated with board data
+      view = this.app.workspace.getActiveViewOfType(BoardView);
+      if (view && this.board && this.controller) {
+        view.updateData(this.board, this.tasks, this.controller);
+      }
     }
   }
 
