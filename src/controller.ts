@@ -1,8 +1,9 @@
-import { App, normalizePath, TFile, MarkdownView, WorkspaceLeaf } from 'obsidian';
+import { App, normalizePath, TFile, WorkspaceLeaf } from 'obsidian';
 import crypto from 'crypto';
 import { BoardData, NodeData, LaneData, saveBoard } from './boardStore';
 import { ParsedTask } from './parser';
 import { PluginSettings } from './settings';
+import { openTaskEditModal } from './taskEditModal';
 
 export default class Controller {
   constructor(
@@ -223,18 +224,13 @@ export default class Controller {
   async editTask(id: string) {
     const task = this.tasks.get(id);
     if (!task) return;
-    await this.app.workspace.openLinkText(
-      `${task.file.path}#^${task.blockId}`,
-      '',
-      false
-    );
-    const view = this.app.workspace.getActiveViewOfType(MarkdownView);
-    if (!view) return;
-    view.editor.setCursor({ line: task.line, ch: 0 });
-    const cmdMgr = (this.app as any).commands;
-    if (cmdMgr?.commands['obsidian-tasks-plugin:edit-task']) {
-      await cmdMgr.executeCommandById('obsidian-tasks-plugin:edit-task');
+    const result = await openTaskEditModal(this.app, task, this.settings);
+    if (!result) return;
+    await this.modifyTaskText(task, () => result.text);
+    if (result.checked !== task.checked) {
+      await this.setCheck(id, result.checked);
     }
+    this.refreshView();
   }
 
   async toggleCheck(id: string) {
