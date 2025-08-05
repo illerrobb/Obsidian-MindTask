@@ -7,7 +7,7 @@
 ## Key Features
 
 * **Board view**: each task becomes a draggable node.
-* **Persistent positions and connections**, saved in `*.vtasks.json` files next to your notes.
+* **Persistent positions and connections**, saved in `*.mtask` files next to your notes.
 * **Relationships between tasks** (dependency, subtask, sequence), editable via context menu.
 * **Grouping** of multiple tasks into collapsible boxes using rectangular selection.
 * **Mini-map** for quick navigation.
@@ -66,7 +66,7 @@ Relationships are stored using inline Dataview fields that reference the target 
 
   * `^id` as block anchor (default).
   * `[id:: id]` as an inline field.
-* **Board path**: choose where to save the `.vtasks.json` file; missing folders will be created automatically.
+* **Board path**: choose where to save the `.mtask` file; missing folders will be created automatically.
 * **Colors and labels**: assign colors to tags or metadata to automatically highlight nodes.
 
 ![Settings](docs/img/settings.png) <!-- TODO: settings screenshot -->
