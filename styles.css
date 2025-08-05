@@ -402,6 +402,8 @@
 .vtasks-group-body {
   position: relative;
   padding: 4px;
+  overflow: visible;
+  box-sizing: border-box;
 }
 
 .vtasks-group-toggle {
