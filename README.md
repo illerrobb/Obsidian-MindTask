@@ -1,6 +1,6 @@
 # MindTask
 
-**MindTask** is an experimental plugin for Obsidian that lets you visualize and organize Markdown tasks on an interactive board. Every task in your vault can be dragged, connected, and grouped to keep your workflow always under control.
+**MindTask** is an experimental plugin for Obsidian that lets you visualize and organize Markdown tasks on an interactive board. Every task in your vault can be dragged and connected to keep your workflow always under control.
 
 ![Board preview](docs/img/board-overview.png) <!-- TODO: add screenshot/gif -->
 
@@ -9,7 +9,6 @@
 * **Board view**: each task becomes a draggable node.
 * **Persistent positions and connections**, saved in `*.mtask` files next to your notes.
 * **Relationships between tasks** (dependency, subtask, sequence), editable via context menu.
-* **Grouping** of multiple tasks into collapsible boxes using rectangular selection.
 * **Mini-map** for quick navigation.
 * **Smooth pan and zoom** with mouse and keyboard shortcuts.
 * **Automatic node coloring** based on tags or metadata.
@@ -40,7 +39,6 @@
 1. Launch the **MindTask: Open board** command from the Command Palette.
 2. Drag nodes with your mouse to organize tasks.
 3. Right-click on a node or connection to access the context menu.
-4. Select multiple tasks with a rectangular selection and group them into a collapsible box.
 
 ### Navigation
 

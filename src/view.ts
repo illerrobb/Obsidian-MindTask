@@ -124,11 +124,6 @@ export class BoardView extends ItemView {
     this.containerEl.addClass('vtasks-container');
     const topBar = this.containerEl.createDiv('vtasks-top-bar');
     const left = topBar.createDiv('vtasks-top-left');
-    if (this.groupId) {
-      const backBtn = left.createEl('button', { text: 'Back' });
-      const parentId = this.board!.nodes[this.groupId!].group ?? null;
-      backBtn.onclick = () => this.openGroup(parentId);
-    }
     const titleEl = topBar.createDiv('vtasks-board-title');
     titleEl.setText(this.board.title || 'Board');
     titleEl.onclick = () => this.editTitle(titleEl);
@@ -165,40 +160,10 @@ export class BoardView extends ItemView {
     }
     const nodeElements: Record<string, HTMLElement> = {};
     for (const id in this.board.nodes) {
-      const n = this.board.nodes[id];
-      if (this.groupId && id === this.groupId) continue;
       const el = this.createNodeElement(id);
       nodeElements[id] = el;
-      if (this.groupId && (n.group || null) !== this.groupId) {
-        el.style.pointerEvents = 'none';
-        el.style.opacity = '0.3';
-        el.style.filter = 'blur(1px)';
-      }
     }
     this.drawEdges();
-    if (this.groupId) {
-      const g = this.board.nodes[this.groupId];
-      this.groupFocusEl = this.boardEl.createDiv('vtasks-group-focus');
-      this.groupFocusEl.style.position = 'absolute';
-      this.groupFocusEl.style.boxShadow = '0 0 0 9999px rgba(0, 0, 0, 0.5)';
-      this.groupFocusEl.style.pointerEvents = 'none';
-      this.groupFocusEl.style.border = '2px dashed var(--background-modifier-border)';
-      this.groupFocusEl.style.borderRadius = '6px';
-      this.updateGroupFocus();
-      if (g.members) {
-        g.members.forEach((mid) => {
-          const el = nodeElements[mid];
-          if (el) {
-            el.style.pointerEvents = '';
-            el.style.zIndex = '10';
-            el.style.opacity = '';
-            el.style.filter = '';
-          }
-        });
-      }
-    } else {
-      this.groupFocusEl = null;
-    }
     this.minimapEl = this.containerEl.createDiv('vtasks-minimap');
     this.minimapSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     this.minimapEl.appendChild(this.minimapSvg);
@@ -354,107 +319,66 @@ export class BoardView extends ItemView {
     if (pos.width) nodeEl.style.width = pos.width + 'px';
     if (pos.height) nodeEl.style.height = pos.height + 'px';
     nodeEl.style.borderColor = pos.color || defaultColor;
-    if (pos.color && pos.type !== 'group') nodeEl.style.backgroundColor = pos.color;
+    if (pos.color) nodeEl.style.backgroundColor = pos.color;
 
     const orientH = this.controller?.settings.orientation ?? 'vertical';
-    const inHandle = nodeEl.createDiv(
+    nodeEl.createDiv(
       `vtasks-handle vtasks-handle-in vtasks-handle-${orientH === 'vertical' ? 'top' : 'left'}`
     );
 
-    if (pos.type === 'group' && pos.collapsed === false) {
-      nodeEl.addClass('vtasks-group-container');
-      const header = nodeEl.createDiv('vtasks-group-header');
-      if (pos.name) {
-        header.createSpan({ text: pos.name });
-      }
-      const icon = header.createDiv('vtasks-group-toggle');
-      icon.textContent = '▾';
-      icon.onpointerdown = (e) => e.stopPropagation();
-      icon.onclick = (e) => {
-        e.stopPropagation();
-        this.controller?.toggleGroupCollapse(id).then(() => this.render());
-      };
-      const body = nodeEl.createDiv('vtasks-group-body');
-      if (pos.members) {
-        const headerHeight = header.offsetHeight;
-        const style = window.getComputedStyle(body);
-        const padX = parseFloat(style.paddingLeft) || 0;
-        const padY = parseFloat(style.paddingTop) || 0;
-        pos.members.forEach((mid) => {
-          if (this.board!.nodes[mid]) {
-            this.createNodeElement(mid, body, pos.x + padX, pos.y + headerHeight + padY);
-          }
-        });
-      }
-    } else {
-      const textEl = nodeEl.createDiv('vtasks-text');
-      const metaEl = nodeEl.createDiv('vtasks-meta');
-      if (pos.type === 'group') {
-        nodeEl.addClass('vtasks-group');
-        if (pos.name) {
-          textEl.textContent = pos.name;
-        }
-        const count = pos.members?.length || 0;
-        const preview = nodeEl.createDiv('vtasks-group-preview');
-        for (let i = 0; i < Math.min(4, count); i++) {
-          preview.createDiv('vtasks-group-box');
-        }
-        const num = nodeEl.createDiv('vtasks-group-count');
-        num.textContent = String(count);
+    const textEl = nodeEl.createDiv('vtasks-text');
+    const metaEl = nodeEl.createDiv('vtasks-meta');
+    const task = this.tasks.get(id);
+    let text = task?.text ?? id;
+    const metas: { key: string; val: string }[] = [];
+    const tags: string[] = [];
+    text = text.replace(/\[(\w+)::\s*([^\]]+)\]/g, (m, key, val) => {
+      if (!['dependsOn', 'subtaskOf', 'after'].includes(key)) metas.push({ key, val: val.trim() });
+      return '';
+    });
+    text = text.replace(/\b(\w+)::\s*((?:\[\[[^\]]+\]\]|[^\n])*?)(?=\s+\w+::|\s+#|$)/g, (m, key, val) => {
+      if (!['dependsOn', 'subtaskOf', 'after'].includes(key)) metas.push({ key, val: val.trim() });
+      return '';
+    });
+    text = text.replace(/#(\S+)/g, (_, t) => {
+      tags.push('#' + t);
+      return '';
+    });
+    const idMatch = text.trim().match(/\^[\w-]+$/);
+    if (idMatch) {
+      metas.push({ key: 'ID', val: idMatch[0].slice(1) });
+      text = text.replace(/\^[\w-]+$/, '');
+    }
+    textEl.textContent = text.trim();
+    metas.forEach((m) => {
+      if (m.key === 'completed') {
+        metaEl.createSpan({ text: m.val, cls: 'vtasks-tag-completed' });
       } else {
-        const task = this.tasks.get(id);
-        let text = task?.text ?? id;
-        const metas: { key: string; val: string }[] = [];
-        const tags: string[] = [];
-        text = text.replace(/\[(\w+)::\s*([^\]]+)\]/g, (m, key, val) => {
-          if (!['dependsOn', 'subtaskOf', 'after'].includes(key)) metas.push({ key, val: val.trim() });
-          return '';
-        });
-        text = text.replace(/\b(\w+)::\s*((?:\[\[[^\]]+\]\]|[^\n])*?)(?=\s+\w+::|\s+#|$)/g, (m, key, val) => {
-          if (!['dependsOn', 'subtaskOf', 'after'].includes(key)) metas.push({ key, val: val.trim() });
-          return '';
-        });
-        text = text.replace(/#(\S+)/g, (_, t) => {
-          tags.push('#' + t);
-          return '';
-        });
-        const idMatch = text.trim().match(/\^[\w-]+$/);
-        if (idMatch) {
-          metas.push({ key: 'ID', val: idMatch[0].slice(1) });
-          text = text.replace(/\^[\w-]+$/, '');
-        }
-        textEl.textContent = text.trim();
-        metas.forEach((m) => {
-          if (m.key === 'completed') {
-            metaEl.createSpan({ text: m.val, cls: 'vtasks-tag-completed' });
-          } else {
-            metaEl.createSpan({ text: `${m.key}:${m.val}` });
+        metaEl.createSpan({ text: `${m.key}:${m.val}` });
+      }
+    });
+    if (!pos.color) {
+      const rules = this.controller?.settings.backgroundColors ?? [];
+      for (const r of rules) {
+        if (!r.label) continue;
+        if (r.label.includes('::')) {
+          const [k, v] = r.label.split('::').map((s) => s.trim());
+          if (metas.some((m) => m.key === k && m.val === v)) {
+            nodeEl.style.backgroundColor = r.color;
+            break;
           }
-        });
-        if (!pos.color) {
-          const rules = this.controller?.settings.backgroundColors ?? [];
-          for (const r of rules) {
-            if (!r.label) continue;
-            if (r.label.includes('::')) {
-              const [k, v] = r.label.split('::').map((s) => s.trim());
-              if (metas.some((m) => m.key === k && m.val === v)) {
-                nodeEl.style.backgroundColor = r.color;
-                break;
-              }
-            } else {
-              const lbl = r.label.replace(/^#/, '');
-              if (tags.includes('#' + lbl)) {
-                nodeEl.style.backgroundColor = r.color;
-                break;
-              }
-            }
+        } else {
+          const lbl = r.label.replace(/^#/, '');
+          if (tags.includes('#' + lbl)) {
+            nodeEl.style.backgroundColor = r.color;
+            break;
           }
         }
-        const tagsEl = metaEl.createDiv('vtasks-tags');
-        tags.forEach((t) => tagsEl.createSpan({ text: t, cls: 'vtasks-tag' }));
-        if (task?.checked) nodeEl.addClass('done');
       }
     }
+    const tagsEl = metaEl.createDiv('vtasks-tags');
+    tags.forEach((t) => tagsEl.createSpan({ text: t, cls: 'vtasks-tag' }));
+    if (task?.checked) nodeEl.addClass('done');
     const outHandle = nodeEl.createDiv(
       `vtasks-handle vtasks-handle-out vtasks-handle-${orientH === 'vertical' ? 'bottom' : 'right'}`
     );
@@ -864,11 +788,6 @@ export class BoardView extends ItemView {
           this.controller!.assignNodeToLane(id, laneId ?? null);
           this.controller!.moveNode(id, pos.x, pos.y);
         });
-        if (this.groupId) {
-          this.controller!
-            .fitGroupToMembers(this.groupId)
-            .then(() => this.updateGroupFocus());
-        }
         this.drawEdges();
         this.drawMinimap();
       } else if (this.isBoardDragging) {
@@ -1096,20 +1015,6 @@ export class BoardView extends ItemView {
             });
           });
         });
-        menu.addItem((item) =>
-          item.setTitle('Group selected').onClick(() => {
-            this.controller!
-              .groupNodes(selected)
-              .then(() => this.render());
-          })
-        );
-      }
-      if (this.board!.nodes[id].type === 'group') {
-        menu.addItem((item) =>
-          item.setTitle('Ungroup').onClick(() =>
-            this.controller!.ungroupNode(id).then(() => this.render())
-          )
-        );
       }
       const colors = ['#ff5555', '#55ff55', '#5555ff', '#ffaa00', '#00aaaa'];
 
