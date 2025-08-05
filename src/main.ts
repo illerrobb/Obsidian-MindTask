@@ -21,7 +21,7 @@ export default class MindTaskPlugin extends Plugin {
       const root = leaf.view.containerEl;
       root
         .querySelectorAll<HTMLElement>(
-          '.nav-file-title[data-path$=".vtasks.json"] .nav-file-title-content'
+          '.nav-file-title[data-path$=".mtask"] .nav-file-title-content'
         )
         .forEach((el) => {
           const title = el.textContent || '';
@@ -33,7 +33,7 @@ export default class MindTaskPlugin extends Plugin {
           const base = path
             .split('/')
             .pop()!
-            .replace(/\.vtasks\.json$/, '');
+            .replace(/\.mtask$/, '');
           el.textContent = base;
           parent.classList.add('mindtask-file');
           parent.onmousedown = (evt) => {
@@ -96,12 +96,12 @@ export default class MindTaskPlugin extends Plugin {
         (title) => this.renameActiveBoard(title)
       )
     );
-    this.registerExtensions(['vtasks.json'], VIEW_TYPE_BOARD);
+    this.registerExtensions(['mtask'], VIEW_TYPE_BOARD);
     this.observeExplorer();
 
     this.registerEvent(
       this.app.workspace.on('file-open', async (file) => {
-        if (!file || !file.path.endsWith('.vtasks.json')) return;
+        if (!file || !file.path.endsWith('.mtask')) return;
         await this.openBoardFile(file.path);
       })
     );
@@ -135,7 +135,7 @@ export default class MindTaskPlugin extends Plugin {
     const base = path
       .split('/')
       .pop()!
-      .replace(/\.vtasks\.json$/, '');
+      .replace(/\.mtask$/, '');
     this.activeBoard = { name: base, path };
     await this.loadBoardData(path);
     const view = this.app.workspace.getActiveViewOfType(BoardView);
@@ -318,8 +318,8 @@ export default class MindTaskPlugin extends Plugin {
                   .replace(/^-|-$/g, '');
                 const folder = this.plugin.settings.boardFolder.trim();
                 const path = folder
-                  ? `${folder.replace(/\/$/, '')}/${slug}.vtasks.json`
-                  : `${slug}.vtasks.json`;
+                  ? `${folder.replace(/\/$/, '')}/${slug}.mtask`
+                  : `${slug}.mtask`;
                 const info: BoardInfo = { name, path };
                 this.plugin.boards.push(info);
                 await getBoardFile(this.plugin.app, path);

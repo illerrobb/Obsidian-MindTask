@@ -83,7 +83,7 @@ export class SettingsTab extends PluginSettingTab {
         )
         .addText((text) =>
           text
-            .setPlaceholder('tasks.vtasks.json')
+            .setPlaceholder('tasks.mtask')
             .setValue(b.path)
             .onChange(async (v) => {
               b.path = v.trim();
@@ -108,7 +108,7 @@ export class SettingsTab extends PluginSettingTab {
           .setButtonText('Add board')
           .setCta()
           .onClick(async () => {
-            this.plugin.boards.push({ name: 'New Board', path: 'tasks.vtasks.json' });
+            this.plugin.boards.push({ name: 'New Board', path: 'tasks.mtask' });
             await this.plugin.savePluginData();
             this.display();
           })
