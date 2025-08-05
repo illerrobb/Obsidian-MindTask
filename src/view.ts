@@ -381,11 +381,13 @@ export class BoardView extends ItemView {
         this.controller?.toggleGroupCollapse(id).then(() => this.render());
       };
       const body = nodeEl.createDiv('vtasks-group-body');
+      const headerHeight = header.offsetHeight;
+      const style = window.getComputedStyle(body);
+      const padX = parseFloat(style.paddingLeft) || 0;
+      const padY = parseFloat(style.paddingTop) || 0;
+      body.style.width = (pos.width ?? 0) - padX * 2 + 'px';
+      body.style.height = (pos.height ?? 0) - headerHeight - padY * 2 + 'px';
       if (pos.members) {
-        const headerHeight = header.offsetHeight;
-        const style = window.getComputedStyle(body);
-        const padX = parseFloat(style.paddingLeft) || 0;
-        const padY = parseFloat(style.paddingTop) || 0;
         pos.members.forEach((mid) => {
           if (this.board!.nodes[mid]) {
             this.createNodeElement(mid, body, pos.x + padX, pos.y + headerHeight + padY);
