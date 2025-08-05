@@ -20,33 +20,13 @@ export default class Controller {
     let nx = x;
     let ny = y;
     const w = node.width ?? 120;
-    const h = node.height ?? (node.type === 'group' ? 80 : 40);
+    const h = node.height ?? 40;
     if (node.lane && !bypassLaneClamp) {
       const lane = this.board.lanes[node.lane];
       if (lane) {
         nx = Math.max(lane.x, Math.min(nx, lane.x + lane.width - w));
         ny = Math.max(lane.y, Math.min(ny, lane.y + lane.height - h));
       }
-    }
-    if (node.group) {
-      const parent = this.board.nodes[node.group];
-      if (parent && parent.type === 'group') {
-        const pw = parent.width ?? 0;
-        const ph = parent.height ?? 0;
-        nx = Math.max(parent.x, Math.min(nx, parent.x + pw - w));
-        ny = Math.max(parent.y, Math.min(ny, parent.y + ph - h));
-      }
-    }
-    if (node.type === 'group' && node.members) {
-      const dx = nx - node.x;
-      const dy = ny - node.y;
-      node.members.forEach((mid) => {
-        const m = this.board.nodes[mid];
-        if (m) {
-          m.x += dx;
-          m.y += dy;
-        }
-      });
     }
     this.board.nodes[id] = { ...node, x: nx, y: ny } as NodeData;
     await saveBoard(this.app, this.boardFile, this.board);
@@ -72,30 +52,6 @@ export default class Controller {
         h = Math.min(h, maxH);
       }
     }
-    if (node.group) {
-      const parent = this.board.nodes[node.group];
-      if (parent && parent.type === 'group') {
-        const maxW = (parent.width ?? 0) - (node.x - parent.x);
-        const maxH = (parent.height ?? 0) - (node.y - parent.y);
-        w = Math.min(w, maxW);
-        h = Math.min(h, maxH);
-      }
-    }
-    if (node.type === 'group' && node.members) {
-      const oldW = prevWidth ?? node.width ?? w;
-      const oldH = prevHeight ?? node.height ?? h;
-      const sx = oldW ? w / oldW : 1;
-      const sy = oldH ? h / oldH : 1;
-      node.members.forEach((mid) => {
-        const m = this.board.nodes[mid];
-        if (m) {
-          m.x = node.x + (m.x - node.x) * sx;
-          m.y = node.y + (m.y - node.y) * sy;
-          if (m.width) m.width = m.width * sx;
-          if (m.height) m.height = m.height * sy;
-        }
-      });
-    }
     this.board.nodes[id] = {
       ...node,
       width: w,
@@ -103,6 +59,14 @@ export default class Controller {
     } as NodeData;
     await saveBoard(this.app, this.boardFile, this.board);
   }
+
+  async groupNodes(ids: string[], name = '') {}
+
+  async ungroupNode(id: string) {}
+
+  async toggleGroupCollapse(id: string) {}
+
+  async fitGroupToMembers(id: string, padding = 20) {}
 
   async createLane(
     label: string,
@@ -298,12 +262,6 @@ export default class Controller {
     this.board.edges = this.board.edges.filter(
       (e) => e.from !== id && e.to !== id
     );
-    // Remove from groups
-    Object.values(this.board.nodes).forEach((n) => {
-      if (n?.type === 'group' && n.members) {
-        n.members = n.members.filter((m) => m !== id);
-      }
-    });
     await saveBoard(this.app, this.boardFile, this.board);
   }
 
@@ -316,110 +274,6 @@ export default class Controller {
       delete (data as any).color;
     }
     this.board.nodes[id] = data;
-    await saveBoard(this.app, this.boardFile, this.board);
-  }
-
-  async groupNodes(ids: string[], name = '') {
-    if (!ids.length) return;
-    const id = 'g-' + crypto.randomBytes(4).toString('hex');
-    const positions: Record<string, { x: number; y: number }> = {};
-    ids.forEach((nid) => {
-      const n = this.board.nodes[nid];
-      if (n) positions[nid] = { x: n.x, y: n.y };
-    });
-    let minX = Infinity,
-      minY = Infinity,
-      maxX = -Infinity,
-      maxY = -Infinity;
-    ids.forEach((nid) => {
-      const n = this.board.nodes[nid];
-      if (!n) return;
-      const w = n.width ?? 120;
-      const h = n.height ?? (n.type === 'group' ? 80 : 40);
-      minX = Math.min(minX, n.x);
-      minY = Math.min(minY, n.y);
-      maxX = Math.max(maxX, n.x + w);
-      maxY = Math.max(maxY, n.y + h);
-    });
-    const groupNode: NodeData = {
-      x: minX,
-      y: minY,
-      width: maxX - minX,
-      height: maxY - minY,
-      type: 'group',
-      members: ids,
-      collapsed: false,
-    };
-    if (name) groupNode.name = name;
-    this.board.nodes[id] = groupNode;
-    ids.forEach((nid) => {
-      const member = this.board.nodes[nid];
-      if (member) {
-        member.group = id;
-        const pos = positions[nid];
-        if (pos) {
-          member.x = pos.x;
-          member.y = pos.y;
-        }
-      }
-    });
-    await saveBoard(this.app, this.boardFile, this.board);
-    this.refreshView();
-  }
-
-  async ungroupNode(id: string) {
-    const node = this.board.nodes[id];
-    if (!node || node.type !== 'group' || !node.members) return;
-    const positions: Record<string, { x: number; y: number }> = {};
-    node.members.forEach((nid) => {
-      const child = this.board.nodes[nid];
-      if (child) positions[nid] = { x: child.x, y: child.y };
-    });
-    node.members.forEach((nid) => {
-      const child = this.board.nodes[nid];
-      if (child) {
-        delete (child as any).group;
-        const pos = positions[nid];
-        if (pos) {
-          child.x = pos.x;
-          child.y = pos.y;
-        }
-      }
-    });
-    delete this.board.nodes[id];
-    await saveBoard(this.app, this.boardFile, this.board);
-    this.refreshView();
-  }
-
-  async toggleGroupCollapse(id: string) {
-    const node = this.board.nodes[id];
-    if (!node || node.type !== 'group') return;
-    node.collapsed = !node.collapsed;
-    await saveBoard(this.app, this.boardFile, this.board);
-  }
-
-  async fitGroupToMembers(id: string, padding = 20) {
-    const node = this.board.nodes[id];
-    if (!node || node.type !== 'group' || !node.members) return;
-    let minX = Infinity,
-      minY = Infinity,
-      maxX = -Infinity,
-      maxY = -Infinity;
-    node.members.forEach((mid) => {
-      const m = this.board.nodes[mid];
-      if (!m) return;
-      const w = m.width ?? 120;
-      const h = m.height ?? (m.type === 'group' ? 80 : 40);
-      minX = Math.min(minX, m.x);
-      minY = Math.min(minY, m.y);
-      maxX = Math.max(maxX, m.x + w);
-      maxY = Math.max(maxY, m.y + h);
-    });
-    if (minX === Infinity) return;
-    node.x = minX - padding;
-    node.y = minY - padding;
-    node.width = maxX - minX + padding * 2;
-    node.height = maxY - minY + padding * 2;
     await saveBoard(this.app, this.boardFile, this.board);
   }
 
@@ -568,13 +422,9 @@ export default class Controller {
       }
     };
     const getSizeA = (n: any) =>
-      orient === 'vertical'
-        ? n.width ?? (n.type === 'group' ? 80 : 120)
-        : n.height ?? (n.type === 'group' ? 80 : 40);
+      orient === 'vertical' ? n.width ?? 120 : n.height ?? 40;
     const getSizeB = (n: any) =>
-      orient === 'vertical'
-        ? n.height ?? (n.type === 'group' ? 80 : 40)
-        : n.width ?? (n.type === 'group' ? 80 : 120);
+      orient === 'vertical' ? n.height ?? 40 : n.width ?? 120;
 
     const selected = new Set(ids);
     const children: Record<string, string[]> = {};
@@ -678,9 +528,7 @@ export default class Controller {
       .filter((p) => p.node);
     if (!nodes.length) return;
     const widths = nodes.map((p) => p.node.width ?? 120);
-    const heights = nodes.map((p) =>
-      p.node.height ?? (p.node.type === 'group' ? 80 : 40)
-    );
+    const heights = nodes.map((p) => p.node.height ?? 40);
     switch (type) {
       case 'left': {
         const x = Math.min(...nodes.map((p) => p.node.x));

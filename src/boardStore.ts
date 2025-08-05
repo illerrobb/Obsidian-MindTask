@@ -16,12 +16,8 @@ export interface NodeData {
   width?: number;
   height?: number;
   color?: string;
-  type?: 'group';
-  name?: string;
-  members?: string[];
-  group?: string;
   lane?: string;
-  collapsed?: boolean;
+  [key: string]: any;
 }
 
 export interface BoardData {
