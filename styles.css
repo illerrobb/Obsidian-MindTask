@@ -148,6 +148,26 @@
   transition: background 0.2s ease, color 0.2s ease;
 }
 
+.vtasks-lane-horizontal {
+  display: flex;
+}
+
+.vtasks-lane-horizontal .vtasks-lane-header {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  height: 100%;
+  width: 32px;
+  padding: 8px 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid #ddd;
+}
+
+.vtasks-lane-vertical .vtasks-lane-header {
+  width: 100%;
+}
+
 .vtasks-lane-header:hover {
   background: var(--background-modifier-hover);
 }

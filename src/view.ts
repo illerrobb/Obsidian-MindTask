@@ -22,6 +22,7 @@ export class BoardView extends ItemView {
   private alignVLine!: HTMLElement;
   private alignHLine!: HTMLElement;
   private readonly gridSize = 20;
+  private readonly laneHeaderSize = 32;
   private selectedIds: Set<string> = new Set();
   private draggingId: string | null = null;
   private dragOffsetX = 0;
@@ -222,6 +223,12 @@ export class BoardView extends ItemView {
     laneEl.style.height = lane.height + 'px';
     const header = laneEl.createDiv('vtasks-lane-header');
     header.textContent = lane.label;
+    if (lane.orient === 'horizontal') {
+      laneEl.addClass('vtasks-lane-horizontal');
+      header.addClass('vtasks-lane-header-horizontal');
+    } else {
+      laneEl.addClass('vtasks-lane-vertical');
+    }
     header.onpointerdown = (e) => {
       e.stopPropagation();
       (e as PointerEvent).preventDefault();
@@ -248,6 +255,18 @@ export class BoardView extends ItemView {
       e.preventDefault();
       e.stopPropagation();
       const menu = new Menu();
+      if ((e.target as HTMLElement).closest('.vtasks-lane-header')) {
+        menu.addItem((item) =>
+          item.setTitle('Toggle orientation').onClick(async () => {
+            const newOrient =
+              lane.orient === 'vertical' ? 'horizontal' : 'vertical';
+            await this.controller?.setLaneOrientation(id, newOrient);
+            await this.reflowLane(id);
+            this.render();
+          })
+        );
+        menu.addSeparator();
+      }
       menu.addItem((item) =>
         item.setTitle('Rename lane').onClick(async () => {
           const name = await this.promptString('Lane name', lane.label);
@@ -282,7 +301,12 @@ export class BoardView extends ItemView {
     el.style.width = lane.width + 'px';
     el.style.height = lane.height + 'px';
     const header = el.querySelector('.vtasks-lane-header') as HTMLElement | null;
-    if (header) header.textContent = lane.label;
+    el.toggleClass('vtasks-lane-horizontal', lane.orient === 'horizontal');
+    el.toggleClass('vtasks-lane-vertical', lane.orient === 'vertical');
+    if (header) {
+      header.textContent = lane.label;
+      header.toggleClass('vtasks-lane-header-horizontal', lane.orient === 'horizontal');
+    }
   }
 
   private createNodeElement(
@@ -1744,21 +1768,72 @@ export class BoardView extends ItemView {
     return null;
   }
 
+  private async reflowLane(laneId: string) {
+    const lane = this.board!.lanes[laneId];
+    if (!lane) return;
+    const nodes = Object.keys(this.board!.nodes)
+      .filter((nid) => this.board!.nodes[nid].lane === laneId)
+      .sort((a, b) => {
+        const an = this.board!.nodes[a];
+        const bn = this.board!.nodes[b];
+        return lane.orient === 'vertical' ? an.y - bn.y : an.x - bn.x;
+      });
+    const spacing = this.gridSize * 2;
+    if (lane.orient === 'vertical') {
+      let y = lane.y + this.laneHeaderSize + spacing;
+      for (const id of nodes) {
+        const n = this.board!.nodes[id];
+        const w = n.width ?? 120;
+        const h = n.height ?? (n.type === 'group' ? 80 : 40);
+        n.x = lane.x + (lane.width - w) / 2;
+        n.y = y;
+        await this.controller?.moveNode(id, n.x, n.y);
+        y += h + spacing;
+      }
+    } else {
+      let x = lane.x + this.laneHeaderSize + spacing;
+      for (const id of nodes) {
+        const n = this.board!.nodes[id];
+        const w = n.width ?? 120;
+        const h = n.height ?? (n.type === 'group' ? 80 : 40);
+        n.y = lane.y + (lane.height - h) / 2;
+        n.x = x;
+        await this.controller?.moveNode(id, n.x, n.y);
+        x += w + spacing;
+      }
+    }
+  }
+
   private snapNodeToLane(id: string, laneId: string) {
     const node = this.board!.nodes[id];
     const lane = this.board!.lanes[laneId];
     if (!node || !lane) return;
     const width = node.width ?? 120;
-    let bottom = lane.y;
-    for (const nid in this.board!.nodes) {
-      const n = this.board!.nodes[nid];
-      if (n.lane === laneId && nid !== id) {
-        const h = n.height ?? (n.type === 'group' ? 80 : 40);
-        bottom = Math.max(bottom, n.y + h);
+    const height = node.height ?? (node.type === 'group' ? 80 : 40);
+    const spacing = this.gridSize * 2;
+    if (lane.orient === 'vertical') {
+      let bottom = lane.y + this.laneHeaderSize;
+      for (const nid in this.board!.nodes) {
+        const n = this.board!.nodes[nid];
+        if (n.lane === laneId && nid !== id) {
+          const h = n.height ?? (n.type === 'group' ? 80 : 40);
+          bottom = Math.max(bottom, n.y + h);
+        }
       }
+      node.x = lane.x + (lane.width - width) / 2;
+      node.y = bottom + spacing;
+    } else {
+      let right = lane.x + this.laneHeaderSize;
+      for (const nid in this.board!.nodes) {
+        const n = this.board!.nodes[nid];
+        if (n.lane === laneId && nid !== id) {
+          const w = n.width ?? 120;
+          right = Math.max(right, n.x + w);
+        }
+      }
+      node.y = lane.y + (lane.height - height) / 2;
+      node.x = right + spacing;
     }
-    node.x = lane.x + (lane.width - width) / 2;
-    node.y = bottom + this.gridSize;
     const nodeEl = this.boardEl.querySelector(
       `.vtasks-node[data-id="${id}"]`
     ) as HTMLElement | null;
