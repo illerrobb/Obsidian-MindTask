@@ -79,6 +79,7 @@ export class BoardView extends ItemView {
   private laneResizeStartLaneX = 0;
   private laneResizeStartLaneY = 0;
   private groupId: string | null = null;
+  private groupFocusEl: HTMLElement | null = null;
   private onTitleChange: (title: string) => void;
 
   constructor(
@@ -162,13 +163,42 @@ export class BoardView extends ItemView {
     for (const lid in this.board.lanes) {
       this.createLaneElement(lid);
     }
+    const nodeElements: Record<string, HTMLElement> = {};
     for (const id in this.board.nodes) {
       const n = this.board.nodes[id];
-      if ((n.group || null) === this.groupId) {
-        this.createNodeElement(id);
+      if (this.groupId && id === this.groupId) continue;
+      const el = this.createNodeElement(id);
+      nodeElements[id] = el;
+      if (this.groupId && (n.group || null) !== this.groupId) {
+        el.style.pointerEvents = 'none';
+        el.style.opacity = '0.3';
+        el.style.filter = 'blur(1px)';
       }
     }
     this.drawEdges();
+    if (this.groupId) {
+      const g = this.board.nodes[this.groupId];
+      this.groupFocusEl = this.boardEl.createDiv('vtasks-group-focus');
+      this.groupFocusEl.style.position = 'absolute';
+      this.groupFocusEl.style.boxShadow = '0 0 0 9999px rgba(0, 0, 0, 0.5)';
+      this.groupFocusEl.style.pointerEvents = 'none';
+      this.groupFocusEl.style.border = '2px dashed var(--background-modifier-border)';
+      this.groupFocusEl.style.borderRadius = '6px';
+      this.updateGroupFocus();
+      if (g.members) {
+        g.members.forEach((mid) => {
+          const el = nodeElements[mid];
+          if (el) {
+            el.style.pointerEvents = '';
+            el.style.zIndex = '10';
+            el.style.opacity = '';
+            el.style.filter = '';
+          }
+        });
+      }
+    } else {
+      this.groupFocusEl = null;
+    }
     this.minimapEl = this.containerEl.createDiv('vtasks-minimap');
     this.minimapSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     this.minimapEl.appendChild(this.minimapSvg);
@@ -314,7 +344,7 @@ export class BoardView extends ItemView {
     parent: HTMLElement = this.boardEl,
     offsetX = 0,
     offsetY = 0
-  ) {
+  ): HTMLElement {
     const pos = this.board!.nodes[id];
     const defaultColor = 'var(--background-modifier-border)';
     const nodeEl = parent.createDiv('vtasks-node');
@@ -346,9 +376,13 @@ export class BoardView extends ItemView {
       };
       const body = nodeEl.createDiv('vtasks-group-body');
       if (pos.members) {
+        const headerHeight = header.offsetHeight;
+        const style = window.getComputedStyle(body);
+        const padX = parseFloat(style.paddingLeft) || 0;
+        const padY = parseFloat(style.paddingTop) || 0;
         pos.members.forEach((mid) => {
           if (this.board!.nodes[mid]) {
-            this.createNodeElement(mid, body, pos.x, pos.y);
+            this.createNodeElement(mid, body, pos.x + padX, pos.y + headerHeight + padY);
           }
         });
       }
@@ -450,6 +484,8 @@ export class BoardView extends ItemView {
         this.controller?.editTask(id);
       }
     });
+
+    return nodeEl;
   }
 
   private registerEvents() {
@@ -829,7 +865,9 @@ export class BoardView extends ItemView {
           this.controller!.moveNode(id, pos.x, pos.y);
         });
         if (this.groupId) {
-          this.controller!.fitGroupToMembers(this.groupId);
+          this.controller!
+            .fitGroupToMembers(this.groupId)
+            .then(() => this.updateGroupFocus());
         }
         this.drawEdges();
         this.drawMinimap();
@@ -927,6 +965,15 @@ export class BoardView extends ItemView {
         )
           return;
         const pos = this.getBoardCoords(e as MouseEvent);
+        if (this.groupId) {
+          const g = this.board!.nodes[this.groupId];
+          const w = g.width ?? 0;
+          const h = g.height ?? 0;
+          if (pos.x < g.x || pos.x > g.x + w || pos.y < g.y || pos.y > g.y + h) {
+            this.openGroup(null);
+            return;
+          }
+        }
         this.controller!
           .createTask('New Task', pos.x, pos.y)
           .then((id) => {
@@ -1448,9 +1495,31 @@ export class BoardView extends ItemView {
 
   private openGroup(id: string | null) {
     // null represents the root level of the board
+    if (id) {
+      const g = this.board!.nodes[id];
+      if (g) {
+        const rect = this.containerEl.getBoundingClientRect();
+        const centerX = g.x + (g.width ?? 0) / 2;
+        const centerY = g.y + (g.height ?? 0) / 2;
+        this.boardOffsetX = rect.width / 2 - centerX * this.zoom;
+        this.boardOffsetY = rect.height / 2 - centerY * this.zoom;
+      }
+    }
     this.groupId = id ?? null;
     this.clearSelection();
     this.render();
+  }
+
+  private updateGroupFocus() {
+    if (!this.groupId || !this.groupFocusEl) return;
+    const g = this.board!.nodes[this.groupId];
+    if (!g) return;
+    const w = g.width ?? 0;
+    const h = g.height ?? 0;
+    this.groupFocusEl.style.left = g.x + 'px';
+    this.groupFocusEl.style.top = g.y + 'px';
+    this.groupFocusEl.style.width = w + 'px';
+    this.groupFocusEl.style.height = h + 'px';
   }
 
   private drawMinimap() {
