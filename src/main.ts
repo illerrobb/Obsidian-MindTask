@@ -93,7 +93,8 @@ export default class MindTaskPlugin extends Plugin {
         this.controller,
         this.board,
         this.tasks,
-        (title) => this.renameActiveBoard(title)
+        (title) => this.renameActiveBoard(title),
+        this
       )
     );
     this.registerExtensions(['mtask'], VIEW_TYPE_BOARD);
@@ -131,7 +132,7 @@ export default class MindTaskPlugin extends Plugin {
     await leaf.setViewState({ type: VIEW_TYPE_BOARD, active: true });
   }
 
-  private async openBoardFile(path: string) {
+  async openBoardFile(path: string) {
     const base = path
       .split('/')
       .pop()!

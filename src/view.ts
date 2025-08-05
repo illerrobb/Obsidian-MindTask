@@ -9,7 +9,9 @@ import {
   TextComponent,
   App,
   setIcon,
+  TFile,
 } from 'obsidian';
+import type MindTaskPlugin from './main';
 import Controller from './controller';
 import { BoardData } from './boardStore';
 import { ParsedTask } from './parser';
@@ -87,7 +89,8 @@ export class BoardView extends ItemView {
     private controller: Controller | null,
     private board: BoardData | null,
     private tasks: Map<string, ParsedTask>,
-    onTitleChange: (title: string) => void
+    onTitleChange: (title: string) => void,
+    private plugin: MindTaskPlugin
   ) {
     super(leaf);
     this.onTitleChange = onTitleChange;
@@ -328,6 +331,33 @@ export class BoardView extends ItemView {
 
     const textEl = nodeEl.createDiv('vtasks-text');
     const metaEl = nodeEl.createDiv('vtasks-meta');
+
+    if (pos.type === 'board') {
+      textEl.setText(pos.name || id);
+      metaEl.createSpan({ text: `${pos.taskCount ?? 0} tasks` });
+      if (pos.lastModified) {
+        metaEl.createSpan({ text: new Date(pos.lastModified).toLocaleDateString() });
+      }
+      nodeEl.addClass('vtasks-board-card');
+      const outHandle = nodeEl.createDiv(
+        `vtasks-handle vtasks-handle-out vtasks-handle-${orientH === 'vertical' ? 'bottom' : 'right'}`
+      );
+      const dirs = ['n', 'e', 's', 'w', 'ne', 'nw', 'se', 'sw'];
+      dirs.forEach((d) => nodeEl.createDiv(`vtasks-resize vtasks-resize-${d}`));
+      new ResizeObserver(() => {
+        this.drawEdges();
+        this.updateOverflow(nodeEl);
+      }).observe(nodeEl);
+      this.updateOverflow(nodeEl);
+      nodeEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if ((pos as any).boardPath) {
+          this.plugin.openBoardFile((pos as any).boardPath);
+        }
+      });
+      return nodeEl;
+    }
+
     const task = this.tasks.get(id);
     let text = task?.text ?? id;
     const metas: { key: string; val: string }[] = [];
@@ -413,6 +443,51 @@ export class BoardView extends ItemView {
   }
 
   private registerEvents() {
+    this.boardEl.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      this.boardEl.addClass('drag-over');
+    });
+    this.boardEl.addEventListener('dragleave', () => {
+      this.boardEl.removeClass('drag-over');
+    });
+    this.boardEl.addEventListener('drop', async (e: DragEvent) => {
+      e.preventDefault();
+      this.boardEl.removeClass('drag-over');
+      const files = e.dataTransfer?.files;
+      if (!files) return;
+      const pos = this.getBoardCoords(e);
+      let offset = 0;
+      let added = false;
+      for (const file of Array.from(files)) {
+        if (file.name.endsWith('.mtask')) {
+          const basePath = (this.app.vault.adapter as any).basePath || '';
+          let rel = (file as any).path;
+          if (rel.startsWith(basePath)) rel = rel.slice(basePath.length + 1);
+          const tfile = this.app.vault.getAbstractFileByPath(rel) as TFile;
+          if (!tfile) continue;
+          let count = 0;
+          try {
+            const data = JSON.parse(await this.app.vault.read(tfile));
+            count = Object.keys(data.nodes || {}).length;
+          } catch {}
+          const info = {
+            name: file.name.replace(/\.mtask$/, ''),
+            lastModified: file.lastModified,
+            taskCount: count,
+            path: rel,
+          };
+          const id = await this.controller?.addBoardCard(info, pos.x + offset, pos.y + offset);
+          if (id) {
+            const laneId = this.getLaneForPosition(pos.x + offset, pos.y + offset);
+            if (laneId) await this.controller?.assignNodeToLane(id, laneId);
+            added = true;
+            offset += 20;
+          }
+        }
+      }
+      if (added) this.render();
+    });
+
     this.boardEl.onpointerdown = (e) => {
       if ((e as PointerEvent).button === 2) return;
       this.pointerDownSelected = false;
@@ -469,7 +544,7 @@ export class BoardView extends ItemView {
         const nd = this.board!.nodes[id];
         if (nd.type === 'group' && nd.members) {
           this.memberResizeStart.clear();
-          nd.members.forEach((mid) => {
+          nd.members.forEach((mid: string) => {
             const m = this.board!.nodes[mid];
             if (m) {
               this.memberResizeStart.set(mid, {
@@ -651,7 +726,7 @@ export class BoardView extends ItemView {
         if (nodeData.type === 'group' && nodeData.members && this.memberResizeStart.size) {
           const sx = width / this.resizeStartWidth;
           const sy = height / this.resizeStartHeight;
-          nodeData.members.forEach((mid) => {
+          nodeData.members.forEach((mid: string) => {
             const start = this.memberResizeStart.get(mid);
             const child = this.board!.nodes[mid];
             if (!start || !child) return;
@@ -1199,7 +1274,7 @@ export class BoardView extends ItemView {
       ids.add(id);
       const n = this.board!.nodes[id];
       if (n && n.type === 'group' && n.members) {
-        n.members.forEach((mid) => add(mid));
+        n.members.forEach((mid: string) => add(mid));
       }
     };
     this.selectedIds.forEach((sid) => add(sid));

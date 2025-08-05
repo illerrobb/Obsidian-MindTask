@@ -456,3 +456,20 @@
 .menu-item[data-section="danger"] {
   color: var(--text-error);
 }
+
+.vtasks-board.drag-over {
+  background: #e0f7fa;
+}
+
+.vtasks-board-card {
+  border: 2px solid #888;
+  border-radius: 8px;
+  padding: 12px;
+  background: #f5f5f5;
+  cursor: pointer;
+  transition: box-shadow 0.2s;
+}
+
+.vtasks-board-card:hover {
+  box-shadow: 0 2px 8px #aaa;
+}
