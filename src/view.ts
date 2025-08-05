@@ -11,7 +11,7 @@ import {
   setIcon,
 } from 'obsidian';
 import Controller from './controller';
-import { BoardData, NodeData } from './boardStore';
+import { BoardData } from './boardStore';
 import { ParsedTask } from './parser';
 
 export const VIEW_TYPE_BOARD = 'mind-task';
@@ -348,8 +348,6 @@ export class BoardView extends ItemView {
   private createNodeElement(
     id: string,
     parent: HTMLElement = this.boardEl,
-    parentAbsX = 0,
-    parentAbsY = 0,
     offsetX = 0,
     offsetY = 0
   ): HTMLElement {
@@ -357,10 +355,8 @@ export class BoardView extends ItemView {
     const defaultColor = 'var(--background-modifier-border)';
     const nodeEl = parent.createDiv('vtasks-node');
     nodeEl.setAttr('data-id', id);
-    const absX = parentAbsX + pos.x;
-    const absY = parentAbsY + pos.y;
-    nodeEl.style.left = absX - (parentAbsX + offsetX) + 'px';
-    nodeEl.style.top = absY - (parentAbsY + offsetY) + 'px';
+    nodeEl.style.left = pos.x - offsetX + 'px';
+    nodeEl.style.top = pos.y - offsetY + 'px';
     if (pos.width) nodeEl.style.width = pos.width + 'px';
     if (pos.height) nodeEl.style.height = pos.height + 'px';
     nodeEl.style.borderColor = pos.color || defaultColor;
@@ -394,7 +390,7 @@ export class BoardView extends ItemView {
       if (pos.members) {
         pos.members.forEach((mid) => {
           if (this.board!.nodes[mid]) {
-            this.createNodeElement(mid, body, absX, absY, padX, headerHeight + padY);
+            this.createNodeElement(mid, body, pos.x + padX, pos.y + headerHeight + padY);
           }
         });
       }
@@ -698,9 +694,11 @@ export class BoardView extends ItemView {
             `.vtasks-node[data-id="${nid}"]`
           ) as HTMLElement | null;
           if (nodeEl) {
-            const { offsetX, offsetY } = this.getParentOffset(nodeEl);
-            nodeEl.style.left = n.x - offsetX + 'px';
-            nodeEl.style.top = n.y - offsetY + 'px';
+            const parentId = n.group;
+            const parentX = parentId ? this.board!.nodes[parentId].x : 0;
+            const parentY = parentId ? this.board!.nodes[parentId].y : 0;
+            nodeEl.style.left = n.x - parentX + 'px';
+            nodeEl.style.top = n.y - parentY + 'px';
           }
         });
         this.drawEdges();
@@ -752,9 +750,11 @@ export class BoardView extends ItemView {
         height = Math.max(20, height);
         nodeEl.style.width = width + 'px';
         nodeEl.style.height = height + 'px';
-        const { offsetX: pOffX, offsetY: pOffY } = this.getParentOffset(nodeEl);
-        nodeEl.style.left = x - pOffX + 'px';
-        nodeEl.style.top = y - pOffY + 'px';
+        const parentId = this.board!.nodes[id].group;
+        const parentX = parentId ? this.board!.nodes[parentId].x : 0;
+        const parentY = parentId ? this.board!.nodes[parentId].y : 0;
+        nodeEl.style.left = x - parentX + 'px';
+        nodeEl.style.top = y - parentY + 'px';
         const nodeData = this.board!.nodes[id];
         if (nodeData.type === 'group' && nodeData.members && this.memberResizeStart.size) {
           const sx = width / this.resizeStartWidth;
@@ -763,17 +763,16 @@ export class BoardView extends ItemView {
             const start = this.memberResizeStart.get(mid);
             const child = this.board!.nodes[mid];
             if (!start || !child) return;
-            child.x = start.x * sx;
-            child.y = start.y * sy;
+            child.x = nodeData.x + (start.x - this.resizeStartNodeX) * sx;
+            child.y = nodeData.y + (start.y - this.resizeStartNodeY) * sy;
             if (start.width) child.width = start.width * sx;
             if (start.height) child.height = start.height * sy;
             const childEl = this.boardEl.querySelector(
               `.vtasks-node[data-id="${mid}"]`
             ) as HTMLElement | null;
             if (childEl) {
-              const { offsetX, offsetY } = this.getParentOffset(childEl);
-              childEl.style.left = child.x - offsetX + 'px';
-              childEl.style.top = child.y - offsetY + 'px';
+              childEl.style.left = child.x - nodeData.x + 'px';
+              childEl.style.top = child.y - nodeData.y + 'px';
               if (child.width) childEl.style.width = child.width + 'px';
               if (child.height) childEl.style.height = child.height + 'px';
             }
@@ -808,9 +807,11 @@ export class BoardView extends ItemView {
           const nodeEl = this.boardEl.querySelector(
             `.vtasks-node[data-id="${id}"]`
           ) as HTMLElement;
-          const { offsetX, offsetY } = this.getParentOffset(nodeEl);
-          nodeEl.style.left = x - offsetX + 'px';
-          nodeEl.style.top = y - offsetY + 'px';
+          const parentId = node.group;
+          const parentX = parentId ? this.board!.nodes[parentId].x : 0;
+          const parentY = parentId ? this.board!.nodes[parentId].y : 0;
+          nodeEl.style.left = x - parentX + 'px';
+          nodeEl.style.top = y - parentY + 'px';
           this.board!.nodes[id] = { ...node, x, y };
           if (id === this.draggingId) {
             const w = this.board!.nodes[id].width ?? 120;
@@ -912,9 +913,8 @@ export class BoardView extends ItemView {
               const g = this.board!.nodes[this.groupId!];
               if (g) {
                 const rect = this.containerEl.getBoundingClientRect();
-                const abs = this.getNodeAbsolute(this.groupId!);
-                const centerX = abs.x + (g.width ?? 0) / 2;
-                const centerY = abs.y + (g.height ?? 0) / 2;
+                const centerX = g.x + (g.width ?? 0) / 2;
+                const centerY = g.y + (g.height ?? 0) / 2;
                 this.boardOffsetX = rect.width / 2 - centerX * this.zoom;
                 this.boardOffsetY = rect.height / 2 - centerY * this.zoom;
                 this.boardEl.style.transform = `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px) scale(${this.zoom})`;
@@ -1447,11 +1447,8 @@ export class BoardView extends ItemView {
 
   private showAlignmentGuides(id: string, x: number, y: number, w: number, h: number) {
     const threshold = 5;
-    const base = this.groupId ? this.getNodeAbsolute(this.groupId) : { x: 0, y: 0 };
-    const absX = base.x + x;
-    const absY = base.y + y;
-    const cx = absX + w / 2;
-    const cy = absY + h / 2;
+    const cx = x + w / 2;
+    const cy = y + h / 2;
     let alignX: number | null = null;
     let alignY: number | null = null;
     for (const nid in this.board!.nodes) {
@@ -1460,19 +1457,18 @@ export class BoardView extends ItemView {
       if ((n.group || null) !== this.groupId) continue;
       const nw = n.width ?? 120;
       const nh = n.height ?? (n.type === 'group' ? 80 : 40);
-      const abs = this.getNodeAbsolute(nid);
-      const ncx = abs.x + nw / 2;
-      const ncy = abs.y + nh / 2;
-      const xs = [abs.x, abs.x + nw, ncx];
-      const ys = [abs.y, abs.y + nh, ncy];
+      const ncx = n.x + nw / 2;
+      const ncy = n.y + nh / 2;
+      const xs = [n.x, n.x + nw, ncx];
+      const ys = [n.y, n.y + nh, ncy];
       xs.forEach((xx) => {
-        if (Math.abs(xx - absX) <= threshold) alignX = xx;
-        if (Math.abs(xx - (absX + w)) <= threshold) alignX = xx;
+        if (Math.abs(xx - x) <= threshold) alignX = xx;
+        if (Math.abs(xx - (x + w)) <= threshold) alignX = xx;
         if (Math.abs(xx - cx) <= threshold) alignX = xx;
       });
       ys.forEach((yy) => {
-        if (Math.abs(yy - absY) <= threshold) alignY = yy;
-        if (Math.abs(yy - (absY + h)) <= threshold) alignY = yy;
+        if (Math.abs(yy - y) <= threshold) alignY = yy;
+        if (Math.abs(yy - (y + h)) <= threshold) alignY = yy;
         if (Math.abs(yy - cy) <= threshold) alignY = yy;
       });
     }
@@ -1557,9 +1553,8 @@ export class BoardView extends ItemView {
       const g = this.board!.nodes[id];
       if (g) {
         const rect = this.containerEl.getBoundingClientRect();
-        const abs = this.getNodeAbsolute(id);
-        const centerX = abs.x + (g.width ?? 0) / 2;
-        const centerY = abs.y + (g.height ?? 0) / 2;
+        const centerX = g.x + (g.width ?? 0) / 2;
+        const centerY = g.y + (g.height ?? 0) / 2;
         this.boardOffsetX = rect.width / 2 - centerX * this.zoom;
         this.boardOffsetY = rect.height / 2 - centerY * this.zoom;
       }
@@ -1575,9 +1570,8 @@ export class BoardView extends ItemView {
     if (!g) return;
     const w = g.width ?? 0;
     const h = g.height ?? 0;
-    const abs = this.getNodeAbsolute(this.groupId);
-    this.groupFocusEl.style.left = abs.x + 'px';
-    this.groupFocusEl.style.top = abs.y + 'px';
+    this.groupFocusEl.style.left = g.x + 'px';
+    this.groupFocusEl.style.top = g.y + 'px';
     this.groupFocusEl.style.width = w + 'px';
     this.groupFocusEl.style.height = h + 'px';
   }
@@ -1599,25 +1593,23 @@ export class BoardView extends ItemView {
       maxX = Math.max(maxX, l.x + l.width);
       maxY = Math.max(maxY, l.y + l.height);
     }
-    const addNode = (nid: string, baseX = 0, baseY = 0) => {
+    const addNode = (nid: string) => {
       const n = this.board!.nodes[nid];
       if (!n) return;
       const w = n.width ?? 120;
       const h = n.height ?? (n.type === 'group' ? 80 : 40);
-      const absX = baseX + n.x;
-      const absY = baseY + n.y;
-      nodes.push({ x: absX, y: absY, w, h });
-      minX = Math.min(minX, absX);
-      minY = Math.min(minY, absY);
-      maxX = Math.max(maxX, absX + w);
-      maxY = Math.max(maxY, absY + h);
+      nodes.push({ x: n.x, y: n.y, w, h });
+      minX = Math.min(minX, n.x);
+      minY = Math.min(minY, n.y);
+      maxX = Math.max(maxX, n.x + w);
+      maxY = Math.max(maxY, n.y + h);
       if (n.type === 'group' && n.collapsed === false && n.members) {
-        n.members.forEach((mid) => addNode(mid, absX, absY));
+        n.members.forEach(addNode);
       }
     };
     for (const id in this.board!.nodes) {
       const n = this.board!.nodes[id];
-      if ((n.group || null) === this.groupId) addNode(id, 0, 0);
+      if ((n.group || null) === this.groupId) addNode(id);
     }
     if (!nodes.length && !lanes.length) return;
     const pad = 50;
@@ -1669,12 +1661,10 @@ export class BoardView extends ItemView {
       const fh = from.height ?? (from.type === 'group' ? 80 : 40);
       const tw = to.width ?? 120;
       const th = to.height ?? (to.type === 'group' ? 80 : 40);
-      const fpos = this.getNodeAbsolute(edge.from);
-      const tpos = this.getNodeAbsolute(edge.to);
-      const x1 = (fpos.x + fw / 2 - minX) * scale;
-      const y1 = (fpos.y + fh / 2 - minY) * scale;
-      const x2 = (tpos.x + tw / 2 - minX) * scale;
-      const y2 = (tpos.y + th / 2 - minY) * scale;
+      const x1 = (from.x + fw / 2 - minX) * scale;
+      const y1 = (from.y + fh / 2 - minY) * scale;
+      const x2 = (to.x + tw / 2 - minX) * scale;
+      const y2 = (to.y + th / 2 - minY) * scale;
       const dx = Math.abs(x2 - x1);
       const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
       path.setAttr('d', `M${x1} ${y1} C ${x1 + dx / 2} ${y1}, ${x2 - dx / 2} ${y2}, ${x2} ${y2}`);
@@ -1709,11 +1699,10 @@ export class BoardView extends ItemView {
       maxY = -Infinity;
     for (const id in this.board.nodes) {
       const n = this.board.nodes[id];
-      const pos = this.getNodeAbsolute(id);
-      minX = Math.min(minX, pos.x);
-      minY = Math.min(minY, pos.y);
-      maxX = Math.max(maxX, pos.x + (n.width ?? 120));
-      maxY = Math.max(maxY, pos.y + (n.height ?? 40));
+      minX = Math.min(minX, n.x);
+      minY = Math.min(minY, n.y);
+      maxX = Math.max(maxX, n.x + (n.width ?? 120));
+      maxY = Math.max(maxY, n.y + (n.height ?? 40));
     }
     for (const lid in this.board.lanes) {
       const l = this.board.lanes[lid];
@@ -1743,11 +1732,10 @@ export class BoardView extends ItemView {
       maxY = -Infinity;
     for (const id in this.board.nodes) {
       const n = this.board.nodes[id];
-      const pos = this.getNodeAbsolute(id);
-      minX = Math.min(minX, pos.x);
-      minY = Math.min(minY, pos.y);
-      maxX = Math.max(maxX, pos.x + (n.width ?? 120));
-      maxY = Math.max(maxY, pos.y + (n.height ?? 40));
+      minX = Math.min(minX, n.x);
+      minY = Math.min(minY, n.y);
+      maxX = Math.max(maxX, n.x + (n.width ?? 120));
+      maxY = Math.max(maxY, n.y + (n.height ?? 40));
     }
     for (const lid in this.board.lanes) {
       const l = this.board.lanes[lid];
@@ -1892,9 +1880,8 @@ export class BoardView extends ItemView {
     if (!n) return null;
     const w = n.width ?? 120;
     const h = n.height ?? (n.type === 'group' ? 80 : 40);
-    const abs = this.getNodeAbsolute(id);
-    const cx = abs.x + w / 2;
-    const cy = abs.y + h / 2;
+    const cx = n.x + w / 2;
+    const cy = n.y + h / 2;
     for (const lid in this.board!.lanes) {
       const l = this.board!.lanes[lid];
       if (cx >= l.x && cx <= l.x + l.width && cy >= l.y && cy <= l.y + l.height) {
@@ -1953,8 +1940,7 @@ export class BoardView extends ItemView {
         const n = this.board!.nodes[nid];
         if (n.lane === laneId && nid !== id) {
           const h = n.height ?? (n.type === 'group' ? 80 : 40);
-          const pos = this.getNodeAbsolute(nid);
-          bottom = Math.max(bottom, pos.y + h);
+          bottom = Math.max(bottom, n.y + h);
         }
       }
       node.x = lane.x + (lane.width - width) / 2;
@@ -1965,25 +1951,21 @@ export class BoardView extends ItemView {
         const n = this.board!.nodes[nid];
         if (n.lane === laneId && nid !== id) {
           const w = n.width ?? 120;
-          const pos = this.getNodeAbsolute(nid);
-          right = Math.max(right, pos.x + w);
+          right = Math.max(right, n.x + w);
         }
       }
       node.y = lane.y + (lane.height - height) / 2;
       node.x = right + spacing;
     }
-    if (node.group) {
-      const parentAbs = this.getNodeAbsolute(node.group);
-      node.x -= parentAbs.x;
-      node.y -= parentAbs.y;
-    }
     const nodeEl = this.boardEl.querySelector(
       `.vtasks-node[data-id="${id}"]`
     ) as HTMLElement | null;
     if (nodeEl) {
-      const { offsetX, offsetY } = this.getParentOffset(nodeEl);
-      nodeEl.style.left = node.x - offsetX + 'px';
-      nodeEl.style.top = node.y - offsetY + 'px';
+      const parentId = node.group;
+      const parentX = parentId ? this.board!.nodes[parentId].x : 0;
+      const parentY = parentId ? this.board!.nodes[parentId].y : 0;
+      nodeEl.style.left = node.x - parentX + 'px';
+      nodeEl.style.top = node.y - parentY + 'px';
     }
   }
 
@@ -2003,32 +1985,5 @@ export class BoardView extends ItemView {
       x: (e.clientX - rect.left) / this.zoom,
       y: (e.clientY - rect.top) / this.zoom,
     };
-  }
-
-  private getParentOffset(el: HTMLElement): { offsetX: number; offsetY: number } {
-    const parent = el.parentElement as HTMLElement | null;
-    if (!parent) return { offsetX: 0, offsetY: 0 };
-    const style = window.getComputedStyle(parent);
-    const padX = parseFloat(style.paddingLeft) || 0;
-    let padY = parseFloat(style.paddingTop) || 0;
-    if (parent.hasClass('vtasks-group-body')) {
-      const header = parent.previousElementSibling as HTMLElement | null;
-      if (header) padY += header.offsetHeight;
-    }
-    return { offsetX: padX, offsetY: padY };
-  }
-
-  private getNodeAbsolute(id: string): { x: number; y: number } {
-    let x = 0,
-      y = 0;
-    let cur: string | undefined = id;
-    while (cur) {
-      const n: NodeData | undefined = this.board!.nodes[cur];
-      if (!n) break;
-      x += n.x;
-      y += n.y;
-      cur = n.group;
-    }
-    return { x, y };
   }
 }
