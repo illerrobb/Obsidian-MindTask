@@ -858,11 +858,6 @@ export class BoardView extends ItemView {
           this.resizeStartWidth,
           this.resizeStartHeight
         );
-        if (this.groupId) {
-          this.controller!
-            .fitGroupToMembers(this.groupId)
-            .then(() => this.updateGroupFocus());
-        }
         this.memberResizeStart.clear();
         this.drawEdges();
         this.drawMinimap();
