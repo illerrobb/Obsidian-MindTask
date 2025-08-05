@@ -8,6 +8,7 @@ import {
   Setting,
   TextComponent,
   App,
+  setIcon,
 } from 'obsidian';
 import Controller from './controller';
 import { BoardData } from './boardStore';
@@ -77,20 +78,17 @@ export class BoardView extends ItemView {
   private laneResizeStartLaneX = 0;
   private laneResizeStartLaneY = 0;
   private groupId: string | null = null;
-  private filters: { tags: string[]; folders: string[] };
-  private onFilterChange: (tags: string[], folders: string[]) => void;
+  private onTitleChange: (title: string) => void;
 
   constructor(
     leaf: WorkspaceLeaf,
     private controller: Controller | null,
     private board: BoardData | null,
     private tasks: Map<string, ParsedTask>,
-    filters: { tags: string[]; folders: string[] },
-    onFilterChange: (tags: string[], folders: string[]) => void
+    onTitleChange: (title: string) => void
   ) {
     super(leaf);
-    this.filters = filters;
-    this.onFilterChange = onFilterChange;
+    this.onTitleChange = onTitleChange;
   }
 
   getViewType() {
@@ -110,13 +108,11 @@ export class BoardView extends ItemView {
   updateData(
     board: BoardData,
     tasks: Map<string, ParsedTask>,
-    controller: Controller,
-    filters: { tags: string[]; folders: string[] }
+    controller: Controller
   ) {
     this.board = board;
     this.tasks = tasks;
     this.controller = controller;
-    this.filters = filters;
     this.render();
   }
 
@@ -124,38 +120,24 @@ export class BoardView extends ItemView {
     if (!this.board) return;
     this.containerEl.empty();
     this.containerEl.addClass('vtasks-container');
-    const controls = this.containerEl.createDiv('vtasks-filter-bar');
-    const tagInput = controls.createEl('input', {
-      type: 'text',
-      placeholder: 'tags'
-    });
-    tagInput.value = this.filters.tags.join(', ');
-    tagInput.onchange = () => {
-      this.filters.tags = tagInput.value
-        .split(',')
-        .map((t) => t.trim().replace(/^#/, ''))
-        .filter((t) => t.length > 0);
-      this.onFilterChange(this.filters.tags, this.filters.folders);
-    };
-
-    const folderInput = controls.createEl('input', {
-      type: 'text',
-      placeholder: 'folders'
-    });
-    folderInput.value = this.filters.folders.join(', ');
-    folderInput.onchange = () => {
-      this.filters.folders = folderInput.value
-        .split(',')
-        .map((f) => f.trim())
-        .filter((f) => f.length > 0);
-      this.onFilterChange(this.filters.tags, this.filters.folders);
-    };
-
+    const topBar = this.containerEl.createDiv('vtasks-top-bar');
+    const left = topBar.createDiv('vtasks-top-left');
     if (this.groupId) {
-      const backBtn = controls.createEl('button', { text: 'Back' });
+      const backBtn = left.createEl('button', { text: 'Back' });
       const parentId = this.board!.nodes[this.groupId!].group ?? null;
       backBtn.onclick = () => this.openGroup(parentId);
     }
+    const titleEl = topBar.createDiv('vtasks-board-title');
+    titleEl.setText(this.board.title || 'Board');
+    titleEl.onclick = () => this.editTitle(titleEl);
+    const right = topBar.createDiv('vtasks-top-right');
+    const settingsBtn = right.createDiv('vtasks-top-button');
+    setIcon(settingsBtn, 'settings');
+    settingsBtn.setAttr('title', 'Board settings');
+    settingsBtn.onclick = () => {
+      (this.app as any).setting.open();
+      (this.app as any).setting.openTabById('mind-task');
+    };
 
     this.boardEl = this.containerEl.createDiv('vtasks-board');
     const orient = this.controller?.settings.orientation ?? 'vertical';
@@ -192,44 +174,41 @@ export class BoardView extends ItemView {
     this.minimapView = this.minimapEl.createDiv('vtasks-mini-view');
     this.drawMinimap();
     this.updateMinimapView();
+
+    const toolbar = this.containerEl.createDiv('vtasks-toolbar');
+    const zoomSection = toolbar.createDiv('vtasks-toolbar-section');
+
+    const zoomInBtn = zoomSection.createEl('button');
+    setIcon(zoomInBtn, 'zoom-in');
+    zoomInBtn.setAttr('title', 'Zoom in');
+    zoomInBtn.onclick = () => {
+      const rect = this.containerEl.getBoundingClientRect();
+      this.zoomAt(1.1, rect.width / 2, rect.height / 2);
+    };
+
+    const zoomOutBtn = zoomSection.createEl('button');
+    setIcon(zoomOutBtn, 'zoom-out');
+    zoomOutBtn.setAttr('title', 'Zoom out');
+    zoomOutBtn.onclick = () => {
+      const rect = this.containerEl.getBoundingClientRect();
+      this.zoomAt(1 / 1.1, rect.width / 2, rect.height / 2);
+    };
+
+    const resetBtn = zoomSection.createEl('button');
+    setIcon(resetBtn, 'refresh-ccw');
+    resetBtn.setAttr('title', 'Reset zoom');
+    resetBtn.onclick = () => this.resetZoom();
+
+    const fitBtn = zoomSection.createEl('button');
+    setIcon(fitBtn, 'maximize');
+    fitBtn.setAttr('title', 'Zoom to fit');
+    fitBtn.onclick = () => this.zoomToFit();
+
     this.registerEvents();
 
     // Center the board only if no panning has occurred yet
     if (this.boardOffsetX === 0 && this.boardOffsetY === 0) {
-      let minX = Infinity,
-        minY = Infinity,
-        maxX = -Infinity,
-        maxY = -Infinity;
-      for (const id in this.board.nodes) {
-        const n = this.board.nodes[id];
-        minX = Math.min(minX, n.x);
-        minY = Math.min(minY, n.y);
-        maxX = Math.max(maxX, n.x + (n.width ?? 120));
-        maxY = Math.max(maxY, n.y + (n.height ?? 40));
-      }
-      for (const lid in this.board.lanes) {
-        const l = this.board.lanes[lid];
-        minX = Math.min(minX, l.x);
-        minY = Math.min(minY, l.y);
-        maxX = Math.max(maxX, l.x + l.width);
-        maxY = Math.max(maxY, l.y + l.height);
-      }
-      const viewW = this.containerEl.clientWidth || window.innerWidth;
-      const viewH = this.containerEl.clientHeight || window.innerHeight;
-      if (minX === Infinity) {
-        // No nodes: center the empty 100000x100000 board
-        this.boardOffsetX = viewW / 2 - 50000 * this.zoom;
-        this.boardOffsetY = viewH / 2 - 50000 * this.zoom;
-      } else {
-        const boardW = maxX - minX;
-        const boardH = maxY - minY;
-        this.boardOffsetX =
-          (viewW - boardW * this.zoom) / 2 - minX * this.zoom;
-        this.boardOffsetY =
-          (viewH - boardH * this.zoom) / 2 - minY * this.zoom;
-      }
-      this.boardEl.style.transform = `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px) scale(${this.zoom})`;
-      this.updateMinimapView();
+      this.centerBoard();
     }
   }
 
@@ -1558,6 +1537,106 @@ export class BoardView extends ItemView {
     this.boardEl.style.transform = `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px) scale(${this.zoom})`;
     this.drawEdges();
     this.updateMinimapView();
+  }
+
+  private resetZoom() {
+    this.zoom = 1;
+    this.centerBoard();
+  }
+
+  private zoomToFit() {
+    if (!this.board) return;
+    let minX = Infinity,
+      minY = Infinity,
+      maxX = -Infinity,
+      maxY = -Infinity;
+    for (const id in this.board.nodes) {
+      const n = this.board.nodes[id];
+      minX = Math.min(minX, n.x);
+      minY = Math.min(minY, n.y);
+      maxX = Math.max(maxX, n.x + (n.width ?? 120));
+      maxY = Math.max(maxY, n.y + (n.height ?? 40));
+    }
+    for (const lid in this.board.lanes) {
+      const l = this.board.lanes[lid];
+      minX = Math.min(minX, l.x);
+      minY = Math.min(minY, l.y);
+      maxX = Math.max(maxX, l.x + l.width);
+      maxY = Math.max(maxY, l.y + l.height);
+    }
+    if (minX === Infinity) {
+      this.resetZoom();
+      return;
+    }
+    const viewW = this.containerEl.clientWidth || window.innerWidth;
+    const viewH = this.containerEl.clientHeight || window.innerHeight;
+    const boardW = maxX - minX;
+    const boardH = maxY - minY;
+    const scale = Math.min(viewW / boardW, viewH / boardH);
+    this.zoom = Math.min(Math.max(scale, 0.2), 4);
+    this.centerBoard();
+  }
+
+  private centerBoard() {
+    if (!this.board) return;
+    let minX = Infinity,
+      minY = Infinity,
+      maxX = -Infinity,
+      maxY = -Infinity;
+    for (const id in this.board.nodes) {
+      const n = this.board.nodes[id];
+      minX = Math.min(minX, n.x);
+      minY = Math.min(minY, n.y);
+      maxX = Math.max(maxX, n.x + (n.width ?? 120));
+      maxY = Math.max(maxY, n.y + (n.height ?? 40));
+    }
+    for (const lid in this.board.lanes) {
+      const l = this.board.lanes[lid];
+      minX = Math.min(minX, l.x);
+      minY = Math.min(minY, l.y);
+      maxX = Math.max(maxX, l.x + l.width);
+      maxY = Math.max(maxY, l.y + l.height);
+    }
+    const viewW = this.containerEl.clientWidth || window.innerWidth;
+    const viewH = this.containerEl.clientHeight || window.innerHeight;
+    if (minX === Infinity) {
+      this.boardOffsetX = viewW / 2 - 50000 * this.zoom;
+      this.boardOffsetY = viewH / 2 - 50000 * this.zoom;
+    } else {
+      const boardW = maxX - minX;
+      const boardH = maxY - minY;
+      this.boardOffsetX =
+        (viewW - boardW * this.zoom) / 2 - minX * this.zoom;
+      this.boardOffsetY =
+        (viewH - boardH * this.zoom) / 2 - minY * this.zoom;
+    }
+    this.boardEl.style.transform = `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px) scale(${this.zoom})`;
+    this.updateMinimapView();
+    this.drawEdges();
+  }
+
+  private editTitle(el: HTMLElement) {
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = this.board?.title || '';
+    input.addClass('vtasks-title-input');
+    el.replaceWith(input);
+    input.focus();
+    input.select();
+    const finish = (save: boolean) => {
+      const newTitle = save ? input.value.trim() : this.board?.title || '';
+      if (save) {
+        if (this.board) this.board.title = newTitle;
+        this.onTitleChange(newTitle);
+      }
+      el.textContent = newTitle;
+      input.replaceWith(el);
+    };
+    input.onblur = () => finish(true);
+    input.onkeydown = (e) => {
+      if (e.key === 'Enter') finish(true);
+      else if (e.key === 'Escape') finish(false);
+    };
   }
 
   private updateMinimapView() {
