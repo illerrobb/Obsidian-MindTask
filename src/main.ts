@@ -28,13 +28,20 @@ export default class MindTaskPlugin extends Plugin {
           if (!el.dataset.origTitle) {
             el.dataset.origTitle = title;
           }
-          const path = (el.parentElement as HTMLElement).getAttribute('data-path') || '';
+          const parent = el.parentElement as HTMLElement;
+          const path = parent.getAttribute('data-path') || '';
           const base = path
             .split('/')
             .pop()!
             .replace(/\.vtasks\.json$/, '');
           el.textContent = base;
-          el.parentElement?.classList.add('mindtask-file');
+          parent.classList.add('mindtask-file');
+          parent.onmousedown = (evt) => {
+            if (evt.button !== 0) return;
+            evt.preventDefault();
+            evt.stopPropagation();
+            void this.openBoardFile(path);
+          };
         });
     }
   }
@@ -45,7 +52,9 @@ export default class MindTaskPlugin extends Plugin {
       .forEach((el) => {
         el.textContent = el.dataset.origTitle!;
         el.removeAttribute('data-orig-title');
-        el.parentElement?.classList.remove('mindtask-file');
+        const parent = el.parentElement as HTMLElement;
+        parent.classList.remove('mindtask-file');
+        parent.onmousedown = null;
       });
   }
 
@@ -93,12 +102,7 @@ export default class MindTaskPlugin extends Plugin {
     this.registerEvent(
       this.app.workspace.on('file-open', async (file) => {
         if (!file || !file.path.endsWith('.vtasks.json')) return;
-        this.activeBoard = { name: file.basename, path: file.path };
-        await this.loadBoardData(file.path);
-        const view = this.app.workspace.getActiveViewOfType(BoardView);
-        if (view && this.board && this.controller) {
-          view.updateData(this.board, this.tasks, this.controller);
-        }
+        await this.openBoardFile(file.path);
       })
     );
 
@@ -125,6 +129,22 @@ export default class MindTaskPlugin extends Plugin {
     await this.loadBoardData(board.path);
     const leaf = this.app.workspace.getLeaf(true);
     await leaf.setViewState({ type: VIEW_TYPE_BOARD, active: true });
+  }
+
+  private async openBoardFile(path: string) {
+    const base = path
+      .split('/')
+      .pop()!
+      .replace(/\.vtasks\.json$/, '');
+    this.activeBoard = { name: base, path };
+    await this.loadBoardData(path);
+    const view = this.app.workspace.getActiveViewOfType(BoardView);
+    if (view && this.board && this.controller) {
+      view.updateData(this.board, this.tasks, this.controller);
+    } else {
+      const leaf = this.app.workspace.activeLeaf ?? this.app.workspace.getLeaf(true);
+      await leaf.setViewState({ type: VIEW_TYPE_BOARD, active: true });
+    }
   }
 
   private async loadBoardData(path: string) {
