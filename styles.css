@@ -5,9 +5,77 @@
   display: block;
 }
 
-.vtasks-filter-bar {
+.vtasks-top-bar {
   position: relative;
   z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+}
+
+.vtasks-top-left,
+.vtasks-top-right {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.vtasks-top-left {
+  left: 0;
+}
+
+.vtasks-top-right {
+  right: 0;
+}
+
+.vtasks-board-title {
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.vtasks-top-button {
+  cursor: pointer;
+  padding: 4px;
+}
+
+.vtasks-top-button:hover {
+  background: var(--background-modifier-hover);
+}
+
+.vtasks-title-input {
+  width: 200px;
+  text-align: center;
+}
+
+.vtasks-toolbar {
+  position: absolute;
+  top: 40px;
+  right: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 20;
+}
+
+.vtasks-toolbar-section {
+  display: flex;
+  flex-direction: column;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+}
+
+.vtasks-toolbar-section button {
+  background: none;
+  border: none;
+  padding: 6px;
+}
+
+.vtasks-toolbar-section button:hover {
+  background: var(--background-modifier-hover);
 }
 
 .vtasks-board {

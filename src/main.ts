@@ -84,8 +84,7 @@ export default class MindTaskPlugin extends Plugin {
         this.controller,
         this.board,
         this.tasks,
-        { tags: this.settings.tagFilters, folders: this.settings.folderPaths },
-        (tags, folders) => this.updateFilters(tags, folders)
+        (title) => this.renameActiveBoard(title)
       )
     );
     this.registerExtensions(['vtasks.json'], VIEW_TYPE_BOARD);
@@ -98,10 +97,7 @@ export default class MindTaskPlugin extends Plugin {
         await this.loadBoardData(file.path);
         const view = this.app.workspace.getActiveViewOfType(BoardView);
         if (view && this.board && this.controller) {
-          view.updateData(this.board, this.tasks, this.controller, {
-            tags: this.settings.tagFilters,
-            folders: this.settings.folderPaths,
-          });
+          view.updateData(this.board, this.tasks, this.controller);
         }
       })
     );
@@ -144,6 +140,12 @@ export default class MindTaskPlugin extends Plugin {
 
     this.boardFile = await getBoardFile(this.app, path);
     this.board = await loadBoard(this.app, this.boardFile);
+    if (this.activeBoard) {
+      this.activeBoard.name = this.board.title || this.activeBoard.name;
+      const info = this.boards.find((b) => b.path === this.activeBoard!.path);
+      if (info) info.name = this.activeBoard.name;
+      await this.savePluginData();
+    }
 
     for (const dep of deps) {
       if (
@@ -173,6 +175,16 @@ export default class MindTaskPlugin extends Plugin {
     this.settings.folderPaths = folders;
     await this.savePluginData();
     await this.refreshFromVault();
+  }
+
+  private async renameActiveBoard(title: string) {
+    if (!this.board || !this.boardFile) return;
+    this.board.title = title;
+    await saveBoard(this.app, this.boardFile, this.board);
+    if (this.activeBoard) this.activeBoard.name = title;
+    const info = this.boards.find((b) => b.path === this.activeBoard?.path);
+    if (info) info.name = title;
+    await this.savePluginData();
   }
 
   private async refreshFromVault() {
@@ -224,10 +236,7 @@ export default class MindTaskPlugin extends Plugin {
 
     const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_BOARD)[0];
     if (leaf && this.controller) {
-      (leaf.view as BoardView).updateData(this.board, this.tasks, this.controller, {
-        tags: this.settings.tagFilters,
-        folders: this.settings.folderPaths,
-      });
+      (leaf.view as BoardView).updateData(this.board, this.tasks, this.controller);
     }
   }
 

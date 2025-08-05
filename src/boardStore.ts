@@ -29,6 +29,7 @@ export interface BoardData {
   nodes: Record<string, NodeData>;
   edges: { from: string; to: string; type: string }[];
   lanes: Record<string, LaneData>;
+  title?: string;
 }
 
 const CURRENT_VERSION = 1;
@@ -38,9 +39,16 @@ export async function loadBoard(app: App, file: TFile): Promise<BoardData> {
     const text = await app.vault.read(file);
     const data = JSON.parse(text) as BoardData;
     if (!data.lanes) data.lanes = {};
+    if (!data.title) data.title = file.basename;
     return data;
   } catch (e) {
-    return { version: CURRENT_VERSION, nodes: {}, edges: [], lanes: {} };
+    return {
+      version: CURRENT_VERSION,
+      nodes: {},
+      edges: [],
+      lanes: {},
+      title: file.basename,
+    };
   }
 }
 
