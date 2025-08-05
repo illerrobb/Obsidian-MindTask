@@ -72,6 +72,7 @@
   background: none;
   border: none;
   padding: 6px;
+  box-shadow: none;
 }
 
 .vtasks-toolbar-section button:hover {
