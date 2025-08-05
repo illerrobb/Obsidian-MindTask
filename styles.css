@@ -372,6 +372,16 @@
   background: var(--background-secondary);
 }
 
+.vtasks-group-collapsed {
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+}
+
+.vtasks-group-collapsed .vtasks-group-toggle {
+  color: var(--text-muted);
+  margin-right: 4px;
+}
+
 .vtasks-group-container {
   position: absolute;
   background: transparent;

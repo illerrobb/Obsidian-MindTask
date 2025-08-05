@@ -397,6 +397,7 @@ export class BoardView extends ItemView {
       const metaEl = nodeEl.createDiv('vtasks-meta');
       if (pos.type === 'group') {
         nodeEl.addClass('vtasks-group');
+        if (pos.collapsed) nodeEl.addClass('vtasks-group-collapsed');
         const icon = nodeEl.createDiv('vtasks-group-toggle');
         icon.textContent = '▸';
         icon.onpointerdown = (e) => e.stopPropagation();
