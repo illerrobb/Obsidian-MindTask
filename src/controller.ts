@@ -179,6 +179,27 @@ export default class Controller {
     return id;
   }
 
+  async addBoardCard(
+    info: { path: string; name: string; lastModified: number; taskCount: number },
+    x: number,
+    y: number
+  ) {
+    const id = 'b-' + crypto.randomBytes(4).toString('hex');
+    this.board.nodes[id] = {
+      x,
+      y,
+      width: 160,
+      height: 80,
+      type: 'board',
+      boardPath: info.path,
+      name: info.name,
+      lastModified: info.lastModified,
+      taskCount: info.taskCount,
+    } as NodeData;
+    await saveBoard(this.app, this.boardFile, this.board);
+    return id;
+  }
+
   async addExistingTask(id: string, x: number, y: number) {
     if (!this.tasks.has(id)) return;
     this.board.nodes[id] = { x, y } as NodeData;
