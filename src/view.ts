@@ -486,6 +486,9 @@ export class BoardView extends ItemView {
     new ResizeObserver(() => {
       this.drawEdges();
       this.updateOverflow(nodeEl);
+      if (pos.group) {
+        this.controller?.fitGroupToMembers(pos.group);
+      }
     }).observe(nodeEl);
 
     this.updateOverflow(nodeEl);
