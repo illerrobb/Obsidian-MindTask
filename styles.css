@@ -1,3 +1,12 @@
+:root {
+  --vtasks-space-xxs: 2px;
+  --vtasks-space-xs: 4px;
+  --vtasks-space-sm: 8px;
+  --vtasks-border-color: var(--background-modifier-border);
+  --vtasks-lane-bg-color: rgba(var(--background-modifier-border-rgb, 221, 221, 221), 0.24);
+  --vtasks-radius: 4px;
+}
+
 .vtasks-container {
   position: relative;
   width: 100%;
@@ -32,7 +41,7 @@
 }
 
 .vtasks-breadcrumb {
-  margin-left: 8px;
+  margin-left: var(--vtasks-space-sm);
   font-size: 0.8em;
   color: var(--text-muted);
 }
@@ -44,7 +53,7 @@
 
 .vtasks-top-button {
   cursor: pointer;
-  padding: 4px;
+  padding: var(--vtasks-space-xs);
 }
 
 .vtasks-top-button:hover {
@@ -62,7 +71,7 @@
   right: 10px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--vtasks-space-sm);
   z-index: 20;
 }
 
@@ -70,8 +79,8 @@
   display: flex;
   flex-direction: column;
   background: var(--background-primary);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 4px;
+  border: 1px solid var(--vtasks-border-color);
+  border-radius: var(--vtasks-radius);
 }
 
 .vtasks-toolbar-section button {
@@ -120,10 +129,10 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 4px 8px;
+  padding: var(--vtasks-space-xs) var(--vtasks-space-sm);
   background: var(--background-secondary-alt);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 4px;
+  border: 1px solid var(--vtasks-border-color);
+  border-radius: var(--vtasks-radius);
   overflow: visible;
   min-width: 120px;
   z-index: 3;
@@ -131,9 +140,9 @@
 
 .vtasks-lane {
   position: absolute;
-  background: #e6e6e63d;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  background: var(--vtasks-lane-bg-color);
+  border: 1px solid var(--vtasks-border-color);
+  border-radius: var(--vtasks-radius);
   transition: background 0.2s ease, border-color 0.2s ease;
   z-index: 1;
 }
@@ -145,7 +154,7 @@
 
 .vtasks-lane-header {
   background: var(--background-secondary);
-  padding: 4px 8px;
+  padding: var(--vtasks-space-xs) var(--vtasks-space-sm);
   font-weight: bold;
   font-size: 0.9em;
   color: var(--text-normal);
@@ -164,11 +173,11 @@
   text-orientation: mixed;
   height: 100%;
   width: 32px;
-  padding: 8px 4px;
+  padding: var(--vtasks-space-sm) var(--vtasks-space-xs);
   display: flex;
   align-items: center;
   justify-content: center;
-  border-right: 1px solid #ddd;
+  border-right: 1px solid var(--vtasks-border-color);
 }
 
 .vtasks-lane-vertical .vtasks-lane-header {
@@ -368,7 +377,7 @@
 
 .vtasks-selection {
   position: absolute;
-  border: 1px dashed var(--color-accent);
+  border: 1px solid var(--color-accent);
   background-color: rgba(var(--color-accent-rgb), 0.1);
   pointer-events: none;
   z-index: 10;
@@ -380,19 +389,19 @@
 
 .vtasks-group-collapsed {
   background: var(--background-secondary);
-  border: 1px solid var(--background-modifier-border);
+  border: 1px solid var(--vtasks-border-color);
 }
 
 .vtasks-group-collapsed .vtasks-group-toggle {
   color: var(--text-muted);
-  margin-right: 4px;
+  margin-right: var(--vtasks-space-xs);
 }
 
 .vtasks-group-container {
   position: absolute;
   background: transparent;
-  border: 2px dashed var(--background-modifier-border);
-  border-radius: 6px;
+  border: 2px solid var(--vtasks-border-color);
+  border-radius: calc(var(--vtasks-radius) + 2px);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
@@ -400,14 +409,14 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 2px 4px;
+  padding: var(--vtasks-space-xxs) var(--vtasks-space-xs);
   cursor: move;
-  border-bottom: 1px solid var(--background-modifier-border);
+  border-bottom: 1px solid var(--vtasks-border-color);
 }
 
 .vtasks-group-body {
   position: relative;
-  padding: 4px;
+  padding: var(--vtasks-space-xs);
   overflow: visible;
   box-sizing: border-box;
 }
@@ -419,14 +428,14 @@
 .vtasks-group-preview {
   display: flex;
   flex-wrap: wrap;
-  gap: 2px;
-  margin-top: 4px;
+  gap: var(--vtasks-space-xxs);
+  margin-top: var(--vtasks-space-xs);
 }
 
 .vtasks-group-box {
-  width: 8px;
-  height: 8px;
-  background: var(--background-modifier-border);
+  width: var(--vtasks-space-sm);
+  height: var(--vtasks-space-sm);
+  background: var(--vtasks-border-color);
 }
 
 .vtasks-group-count {
@@ -438,25 +447,25 @@
 .vtasks-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: var(--vtasks-space-xs);
   font-size: 0.75em;
-  margin-top: 4px;
+  margin-top: var(--vtasks-space-xs);
 }
 
 .vtasks-meta {
-  margin-bottom: 4px;
+  margin-bottom: var(--vtasks-space-xs);
 }
 
 .vtasks-tag,
 .vtasks-meta span {
-  padding: 2px 4px;
-  border-radius: 4px;
-  background: var(--background-modifier-border);
+  padding: var(--vtasks-space-xxs) var(--vtasks-space-xs);
+  border-radius: var(--vtasks-radius);
+  background: var(--vtasks-border-color);
 }
 
 .vtasks-tag-completed {
-  padding: 2px 4px;
-  border-radius: 4px;
+  padding: var(--vtasks-space-xxs) var(--vtasks-space-xs);
+  border-radius: var(--vtasks-radius);
   background: var(--color-green);
   color: var(--background-primary);
 }
@@ -464,11 +473,11 @@
 .vtasks-edit-input {
   width: 100%;
   box-sizing: border-box;
-  border: 1px solid var(--background-modifier-border);
+  border: 1px solid var(--vtasks-border-color);
   background: var(--background-primary);
   color: var(--text-normal);
-  padding: 2px 4px;
-  border-radius: 4px;
+  padding: var(--vtasks-space-xxs) var(--vtasks-space-xs);
+  border-radius: var(--vtasks-radius);
   font: inherit;
   margin: 0;
 }
@@ -483,7 +492,7 @@
   bottom: 40px;
   width: 270px;
   height: 150px;
-  border: 1px solid var(--background-modifier-border);
+  border: 1px solid var(--vtasks-border-color);
   background: var(--background-primary);
   overflow: hidden;
 }
@@ -494,7 +503,7 @@
 }
 
 .vtasks-mini-node {
-  fill: var(--background-modifier-border);
+  fill: var(--vtasks-border-color);
   stroke: var(--text-muted);
   stroke-width: 0.5;
 }

@@ -380,7 +380,7 @@ export class BoardView extends ItemView {
         header.createSpan({ text: pos.name });
       }
       const icon = header.createDiv('vtasks-group-toggle');
-      icon.textContent = '▾';
+      setIcon(icon, 'chevron-down');
       icon.onpointerdown = (e) => e.stopPropagation();
       icon.onclick = (e) => {
         e.stopPropagation();
@@ -407,7 +407,7 @@ export class BoardView extends ItemView {
         nodeEl.addClass('vtasks-group');
         if (pos.collapsed) nodeEl.addClass('vtasks-group-collapsed');
         const icon = nodeEl.createDiv('vtasks-group-toggle');
-        icon.textContent = '▸';
+        setIcon(icon, 'chevron-up');
         icon.onpointerdown = (e) => e.stopPropagation();
         icon.onclick = (e) => {
           e.stopPropagation();
