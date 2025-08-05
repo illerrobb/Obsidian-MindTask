@@ -170,8 +170,13 @@ export class BoardView extends ItemView {
       const parentId = n.group;
       if (parentId) {
         const g = this.board.nodes[parentId];
-        if (g && g.collapsed === true) continue;
-        if (parentId !== this.groupId) continue;
+        if (
+          g &&
+          parentId !== this.groupId &&
+          (g.collapsed === false || g.collapsed === true)
+        ) {
+          continue;
+        }
       }
       const el = this.createNodeElement(id);
       nodeElements[id] = el;
@@ -397,14 +402,6 @@ export class BoardView extends ItemView {
       const metaEl = nodeEl.createDiv('vtasks-meta');
       if (pos.type === 'group') {
         nodeEl.addClass('vtasks-group');
-        const icon = nodeEl.createDiv('vtasks-group-toggle');
-        icon.textContent = '▸';
-        icon.onpointerdown = (e) => e.stopPropagation();
-        icon.onclick = (e) => {
-          e.stopPropagation();
-          this.controller?.toggleGroupCollapse(id).then(() => this.render());
-        };
-        nodeEl.insertBefore(icon, nodeEl.firstChild);
         if (pos.name) {
           textEl.textContent = pos.name;
         }
