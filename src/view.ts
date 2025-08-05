@@ -167,17 +167,6 @@ export class BoardView extends ItemView {
     for (const id in this.board.nodes) {
       const n = this.board.nodes[id];
       if (this.groupId && id === this.groupId) continue;
-      const parentId = n.group;
-      if (parentId) {
-        const g = this.board.nodes[parentId];
-        if (
-          g &&
-          parentId !== this.groupId &&
-          (g.collapsed === false || g.collapsed === true)
-        ) {
-          continue;
-        }
-      }
       const el = this.createNodeElement(id);
       nodeElements[id] = el;
       if (this.groupId && (n.group || null) !== this.groupId) {
