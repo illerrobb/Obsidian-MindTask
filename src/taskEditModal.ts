@@ -1,4 +1,11 @@
-import { App, Modal, Setting, TextComponent, ToggleComponent, DropdownComponent } from 'obsidian';
+import {
+  App,
+  Modal,
+  Setting,
+  TextComponent,
+  ToggleComponent,
+  DropdownComponent,
+} from 'obsidian';
 import { ParsedTask } from './parser';
 import { PluginSettings } from './settings';
 
@@ -7,52 +14,84 @@ export interface EditTaskResult {
   checked: boolean;
 }
 
-function parseTaskContent(text: string) {
+interface ParsedContent {
+  title: string;
+  metas: Map<string, string>;
+  tags: string[];
+  deps: { dependsOn: string[]; subtaskOf: string[]; after: string[] };
+}
+
+function parseTaskContent(text: string): ParsedContent {
   const metas = new Map<string, string>();
   const tags: string[] = [];
-  let description = text;
+  const deps = {
+    dependsOn: [] as string[],
+    subtaskOf: [] as string[],
+    after: [] as string[],
+  };
+  let title = text;
 
-  description = description.replace(/\[(\w+)::\s*([^\]]+)\]/g, (_m, key, val) => {
+  title = title.replace(/\[dependsOn::\s*([^\]]+)\]/g, (_m, v) => {
+    deps.dependsOn.push(v.trim());
+    return '';
+  });
+  title = title.replace(/\[subtaskOf::\s*([^\]]+)\]/g, (_m, v) => {
+    deps.subtaskOf.push(v.trim());
+    return '';
+  });
+  title = title.replace(/\[after::\s*([^\]]+)\]/g, (_m, v) => {
+    deps.after.push(v.trim());
+    return '';
+  });
+
+  title = title.replace(/\[(\w+)::\s*([^\]]+)\]/g, (_m, key, val) => {
+    const k = key.toLowerCase();
+    if (k === 'id') return '';
     metas.set(key, val.trim());
     return '';
   });
-  description = description.replace(
+  title = title.replace(
     /\b(\w+)::\s*((?:\[\[[^\]]+\]\]|[^\n])*?)(?=\s+\w+::|\s+#|$)/g,
     (_m, key, val) => {
+      const k = key.toLowerCase();
+      if (k === 'id') return '';
       metas.set(key, val.trim());
       return '';
     },
   );
-  description = description.replace(/#(\S+)/g, (_m, t) => {
+  title = title.replace(/#(\S+)/g, (_m, t) => {
     tags.push('#' + t);
     return '';
   });
-  const idMatch = description.trim().match(/\^[\w-]+$/);
+  const idMatch = title.trim().match(/\^[\w-]+$/);
   if (idMatch) {
-    metas.set('ID', idMatch[0].slice(1));
-    description = description.replace(/\^[\w-]+$/, '');
+    title = title.replace(/\^[\w-]+$/, '');
   }
-  return { description: description.trim(), metas, tags };
+  return { title: title.trim(), metas, tags, deps };
 }
 
 function buildTaskText(
-  desc: string,
+  title: string,
   metas: Map<string, string>,
   tags: string[],
   settings: PluginSettings,
   id: string,
+  deps: { dependsOn: string[]; subtaskOf: string[]; after: string[] },
 ) {
   const parts: string[] = [];
-  if (desc) parts.push(desc.trim());
+  if (title) parts.push(title.trim());
   tags.forEach((t) => {
     if (!t) return;
     const tag = t.startsWith('#') ? t : '#' + t;
     parts.push(tag);
   });
   metas.forEach((v, k) => {
-    if (k === 'ID') return;
-    parts.push(`${k}:: ${v}`);
+    if (k === 'ID' || k.toLowerCase() === 'id') return;
+    parts.push(`[${k}:: ${v}]`);
   });
+  deps.dependsOn.forEach((v) => parts.push(`[dependsOn:: ${v}]`));
+  deps.subtaskOf.forEach((v) => parts.push(`[subtaskOf:: ${v}]`));
+  deps.after.forEach((v) => parts.push(`[after:: ${v}]`));
   if (settings.useBlockId) {
     parts.push(`^${id}`);
   } else {
@@ -66,10 +105,10 @@ export async function openTaskEditModal(
   task: ParsedTask,
   settings: PluginSettings,
 ): Promise<EditTaskResult | null> {
-  const { description, metas, tags } = parseTaskContent(task.text);
+  const { title, metas, tags, deps } = parseTaskContent(task.text);
   return new Promise((resolve) => {
     new (class extends Modal {
-      desc!: TextComponent;
+      titleInput!: TextComponent;
       tagsInput!: TextComponent;
       start!: TextComponent;
       scheduled!: TextComponent;
@@ -83,30 +122,53 @@ export async function openTaskEditModal(
         const { contentEl } = this;
         contentEl.createEl('h2', { text: 'Edit Task' });
         new Setting(contentEl)
-          .setName('Description')
-          .addText((t) => (this.desc = t.setValue(description)));
+          .setName('Title')
+          .addText((t) => (this.titleInput = t.setValue(title)));
         new Setting(contentEl)
           .setName('Tags')
           .addText((t) => (this.tagsInput = t.setValue(tags.join(' '))));
         new Setting(contentEl)
           .setName('Start')
-          .addText((t) => (this.start = t.setValue(metas.get('start') || '')));
+          .addText((t) => {
+            this.start = t.setValue(metas.get('start') || '');
+            this.start.inputEl.type = 'date';
+          });
         new Setting(contentEl)
           .setName('Scheduled')
-          .addText((t) => (this.scheduled = t.setValue(metas.get('scheduled') || '')));
+          .addText((t) => {
+            this.scheduled = t.setValue(metas.get('scheduled') || '');
+            this.scheduled.inputEl.type = 'date';
+          });
         new Setting(contentEl)
           .setName('Due')
-          .addText((t) => (this.due = t.setValue(metas.get('due') || '')));
+          .addText((t) => {
+            this.due = t.setValue(metas.get('due') || '');
+            this.due.inputEl.type = 'date';
+          });
         new Setting(contentEl)
           .setName('Done')
-          .addText((t) => (this.done = t.setValue(metas.get('done') || '')));
+          .addText((t) => {
+            this.done = t.setValue(metas.get('done') || '');
+            this.done.inputEl.type = 'date';
+          });
         new Setting(contentEl)
           .setName('Recurrence')
           .addText((t) =>
             (this.recur = t.setValue(
               metas.get('recurrence') || metas.get('repeat') || '',
-            )),
+            )).setPlaceholder('e.g. every week'),
           );
+        const depStrings: string[] = [];
+        if (deps.dependsOn.length)
+          depStrings.push(`Depends on: ${deps.dependsOn.join(', ')}`);
+        if (deps.subtaskOf.length)
+          depStrings.push(`Subtask of: ${deps.subtaskOf.join(', ')}`);
+        if (deps.after.length)
+          depStrings.push(`After: ${deps.after.join(', ')}`);
+        if (depStrings.length)
+          new Setting(contentEl)
+            .setName('Dependencies')
+            .setDesc(depStrings.join(' | '));
         new Setting(contentEl)
           .setName('Priority')
           .addDropdown((d) =>
@@ -127,7 +189,7 @@ export async function openTaskEditModal(
               .setCta()
               .onClick(() => {
                 const newMetas = new Map(metas);
-                const desc = this.desc.getValue().trim();
+                const title = this.titleInput.getValue().trim();
                 const tagStr = this.tagsInput.getValue().trim();
                 const newTags = tagStr
                   ? tagStr
@@ -154,11 +216,12 @@ export async function openTaskEditModal(
                 prio ? newMetas.set('priority', prio) : newMetas.delete('priority');
 
                 const text = buildTaskText(
-                  desc,
+                  title,
                   newMetas,
                   newTags,
                   settings,
                   task.blockId,
+                  deps,
                 );
                 resolve({ text, checked });
                 this.close();
