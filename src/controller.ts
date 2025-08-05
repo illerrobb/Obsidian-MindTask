@@ -41,7 +41,15 @@ export default class Controller {
     const storedX = node.group ? nx - parentAbs.x : nx;
     const storedY = node.group ? ny - parentAbs.y : ny;
     this.board.nodes[id] = { ...node, x: storedX, y: storedY } as NodeData;
-    await saveBoard(this.app, this.boardFile, this.board);
+    if (node.group) {
+      let parent: string | undefined = node.group;
+      while (parent) {
+        await this.fitGroupToMembers(parent);
+        parent = this.board.nodes[parent]?.group;
+      }
+    } else {
+      await saveBoard(this.app, this.boardFile, this.board);
+    }
   }
 
   async resizeNode(
@@ -96,7 +104,22 @@ export default class Controller {
       width: w,
       height: h,
     } as NodeData;
-    await saveBoard(this.app, this.boardFile, this.board);
+    const groups: string[] = [];
+    if (node.type === 'group') groups.push(id);
+    if (node.group) {
+      let parent: string | undefined = node.group;
+      while (parent) {
+        groups.push(parent);
+        parent = this.board.nodes[parent]?.group;
+      }
+    }
+    if (groups.length) {
+      for (const gid of groups) {
+        await this.fitGroupToMembers(gid);
+      }
+    } else {
+      await saveBoard(this.app, this.boardFile, this.board);
+    }
   }
 
   async createLane(
@@ -356,13 +379,14 @@ export default class Controller {
         member.y = pos.y - minY;
       }
     });
-    await saveBoard(this.app, this.boardFile, this.board);
+    await this.fitGroupToMembers(id);
     this.refreshView();
   }
 
   async ungroupNode(id: string) {
     const node = this.board.nodes[id];
     if (!node || node.type !== 'group' || !node.members) return;
+    const parentId = node.group;
     const groupAbs = this.getAbsolutePosition(id);
     node.members.forEach((nid) => {
       const child = this.board.nodes[nid];
@@ -373,7 +397,11 @@ export default class Controller {
       }
     });
     delete this.board.nodes[id];
-    await saveBoard(this.app, this.boardFile, this.board);
+    if (parentId) {
+      await this.fitGroupToMembers(parentId);
+    } else {
+      await saveBoard(this.app, this.boardFile, this.board);
+    }
     this.refreshView();
   }
 
