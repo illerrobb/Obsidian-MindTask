@@ -165,7 +165,6 @@ export class BoardView extends ItemView {
 
     if (!this.vaultEventsRegistered) {
       const onVaultChange = (file: TAbstractFile) => {
-        if (!this.hasFocus) return;
         if (!this.boardFile) return;
         if (file.path === this.boardFile.path) return;
         void this.refreshFromVault();
