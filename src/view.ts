@@ -111,6 +111,8 @@ export class BoardView extends ItemView {
 
   async setState(state: any) {
     if (state?.file) {
+      // Set boardFile as early as possible so getState() has it.
+      this.boardFile = this.app.vault.getAbstractFileByPath(state.file) as TFile;
       await this.loadViewData(state.file);
     }
   }
@@ -129,9 +131,12 @@ export class BoardView extends ItemView {
 
   async loadViewData(filePath: string) {
     // If we are already displaying this file, do nothing
-    if (this.boardFile?.path === filePath) return;
+    if (this.boardFile?.path === filePath && this.board) return;
 
     const boardFile = await getBoardFile(this.app, filePath);
+    // Ensure boardFile is set for getState() and getDisplayText()
+    this.boardFile = boardFile;
+
     const board = await loadBoard(this.app, boardFile);
     const files = this.app.vault.getMarkdownFiles();
     const parsed = await scanFiles(this.app, files, {
@@ -161,7 +166,6 @@ export class BoardView extends ItemView {
     this.tasks = tasks;
     this.controller = controller;
     this.boardFile = boardFile;
-    this.leaf.updateHeader();
 
     if (!this.vaultEventsRegistered) {
       const onVaultChange = (file: TAbstractFile) => {
@@ -1832,7 +1836,6 @@ export class BoardView extends ItemView {
       if (save && this.board && this.boardFile) {
         this.board.title = newTitle;
         await saveBoard(this.app, this.boardFile, this.board);
-        this.leaf.updateHeader();
       }
       el.textContent = newTitle;
       input.replaceWith(el);
