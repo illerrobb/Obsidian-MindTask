@@ -1,11 +1,6 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import MindTaskPlugin from './main';
 
-export interface BoardInfo {
-  name: string;
-  path: string;
-}
-
 export interface ColorOption {
   color: string;
   /**
@@ -37,7 +32,6 @@ export interface PluginSettings {
 
 export interface PluginData {
   settings: PluginSettings;
-  boards: BoardInfo[];
 }
 
 export const DEFAULT_SETTINGS: PluginSettings = {
@@ -66,54 +60,6 @@ export class SettingsTab extends PluginSettingTab {
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl('h2', { text: 'Boards' });
-    const boardsEl = containerEl.createDiv();
-    this.plugin.boards.forEach((b, i) => {
-      const boardSetting = new Setting(boardsEl).setName(b.name);
-      boardSetting
-        .addText((text) =>
-          text
-            .setPlaceholder('Board name')
-            .setValue(b.name)
-            .onChange(async (v) => {
-              b.name = v;
-              boardSetting.setName(v);
-              await this.plugin.savePluginData();
-            })
-        )
-        .addText((text) =>
-          text
-            .setPlaceholder('tasks.mtask')
-            .setValue(b.path)
-            .onChange(async (v) => {
-              b.path = v.trim();
-              await this.plugin.savePluginData();
-            })
-        )
-        .addExtraButton((btn) =>
-          btn
-            .setIcon('trash')
-            .setTooltip('Delete')
-            .onClick(async () => {
-              this.plugin.boards.splice(i, 1);
-              await this.plugin.savePluginData();
-              this.display();
-            })
-        );
-    });
-
-    new Setting(containerEl)
-      .addButton((btn) =>
-        btn
-          .setButtonText('Add board')
-          .setCta()
-          .onClick(async () => {
-            this.plugin.boards.push({ name: 'New Board', path: 'tasks.mtask' });
-            await this.plugin.savePluginData();
-            this.display();
-          })
-      );
-
     new Setting(containerEl)
       .setName('Board folder')
       .setDesc('Folder where new board files are stored')

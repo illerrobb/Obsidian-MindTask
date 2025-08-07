@@ -16,12 +16,10 @@ import {
   PluginSettings,
   DEFAULT_SETTINGS,
   SettingsTab,
-  BoardInfo,
   PluginData,
 } from './settings';
 
 export default class MindTaskPlugin extends Plugin {
-  boards: BoardInfo[] = [];
   settings: PluginSettings = DEFAULT_SETTINGS;
   private explorerObserver: MutationObserver | null = null;
 
@@ -91,10 +89,8 @@ export default class MindTaskPlugin extends Plugin {
         this.settings.backgroundColors = ((this.settings as any)
           .backgroundColors as unknown as string[]).map((c) => ({ color: c }));
       }
-      this.boards = data.boards ?? [];
     } else {
       this.settings = { ...DEFAULT_SETTINGS };
-      this.boards = [];
     }
     this.addSettingTab(new SettingsTab(this.app, this));
     this.registerView(VIEW_TYPE_BOARD, (leaf) => new BoardView(leaf, this));
@@ -134,9 +130,6 @@ export default class MindTaskPlugin extends Plugin {
 
     const boardFile = await getBoardFile(this.app, path);
     const board = await loadBoard(this.app, boardFile);
-    const base = path.split('/').pop()!.replace(/\.mtask$/, '');
-
-    await this.updateBoardInfo(boardFile.path, board.title || base);
 
     const controller = new Controller(
       this.app,
@@ -165,36 +158,29 @@ export default class MindTaskPlugin extends Plugin {
     }
   }
 
-  async updateBoardInfo(path: string, title: string) {
-    const info = this.boards.find((b) => b.path === path);
-    if (info) {
-      info.name = title;
-    } else {
-      this.boards.push({ path, name: title });
-    }
-    await this.savePluginData();
-  }
-
   async savePluginData() {
-    const data: PluginData = { settings: this.settings, boards: this.boards };
+    const data: PluginData = { settings: this.settings };
     await this.saveData(data);
   }
 
-  private selectBoard(): Promise<BoardInfo | null> {
+  private selectBoard(): Promise<TFile | null> {
     return new Promise((resolve) => {
-      const createItem: BoardInfo = { name: 'Create new board...', path: '' };
-      class BoardModal extends FuzzySuggestModal<BoardInfo> {
-        constructor(private plugin: MindTaskPlugin) {
+      const createItem = 'Create new board...';
+      const files = this.app.vault
+        .getFiles()
+        .filter((f) => f.path.endsWith('.mtask'));
+      class BoardModal extends FuzzySuggestModal<TFile | string> {
+        constructor(private plugin: MindTaskPlugin, private files: TFile[]) {
           super(plugin.app);
         }
-        getItems(): BoardInfo[] {
-          return [...this.plugin.boards, createItem];
+        getItems(): (TFile | string)[] {
+          return [...this.files, createItem];
         }
-        getItemText(item: BoardInfo): string {
-          return item === createItem ? 'Create new board...' : item.name;
+        getItemText(item: TFile | string): string {
+          return typeof item === 'string' ? item : item.basename;
         }
-        onChooseItem(item: BoardInfo) {
-          if (item === createItem) {
+        onChooseItem(item: TFile | string) {
+          if (typeof item === 'string') {
             this.close();
             this.plugin.createBoard().then(resolve);
           } else {
@@ -202,11 +188,11 @@ export default class MindTaskPlugin extends Plugin {
           }
         }
       }
-      new BoardModal(this).open();
+      new BoardModal(this, files).open();
     });
   }
 
-  private createBoard(): Promise<BoardInfo | null> {
+  private createBoard(): Promise<TFile | null> {
     return new Promise((resolve) => {
       class NewBoardModal extends Modal {
         nameInput!: TextComponent;
@@ -235,11 +221,8 @@ export default class MindTaskPlugin extends Plugin {
                 const path = folder
                   ? `${folder.replace(/\/$/, '')}/${slug}.mtask`
                   : `${slug}.mtask`;
-                const info: BoardInfo = { name, path };
-                this.plugin.boards.push(info);
-                await getBoardFile(this.plugin.app, path);
-                await this.plugin.savePluginData();
-                resolve(info);
+                const file = await getBoardFile(this.plugin.app, path);
+                resolve(file);
                 this.close();
               })
             )

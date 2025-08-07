@@ -109,7 +109,7 @@ export class BoardView extends ItemView {
 
     // Get the file associated with the view
     const state = this.leaf.getViewState();
-    const filePath = (state as any).state?.file || state.file;
+    const filePath = (state as any).state?.file || (state as any).file;
     if (!filePath) return;
 
     // Load the file and board data
@@ -1793,7 +1793,6 @@ export class BoardView extends ItemView {
       if (save && this.board && this.boardFile) {
         this.board.title = newTitle;
         await saveBoard(this.app, this.boardFile, this.board);
-        await this.plugin.updateBoardInfo(this.boardFile.path, newTitle);
       }
       el.textContent = newTitle;
       input.replaceWith(el);
