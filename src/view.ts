@@ -161,7 +161,7 @@ export class BoardView extends ItemView {
     this.tasks = tasks;
     this.controller = controller;
     this.boardFile = boardFile;
-    this.leaf.updateHeader();
+    this.app.workspace.trigger('layout-change');
 
     if (!this.vaultEventsRegistered) {
       const onVaultChange = (file: TAbstractFile) => {
@@ -1832,7 +1832,7 @@ export class BoardView extends ItemView {
       if (save && this.board && this.boardFile) {
         this.board.title = newTitle;
         await saveBoard(this.app, this.boardFile, this.board);
-        this.leaf.updateHeader();
+        this.app.workspace.trigger('layout-change');
       }
       el.textContent = newTitle;
       input.replaceWith(el);
