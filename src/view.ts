@@ -101,7 +101,7 @@ export class BoardView extends ItemView {
   }
 
   getDisplayText() {
-    return 'MindTask Board';
+    return this.board?.title || this.boardFile?.basename || 'MindTask Board';
   }
 
   // @ts-ignore
@@ -110,9 +110,28 @@ export class BoardView extends ItemView {
   }
 
   async setState(state: any) {
-    if (!state?.file) return;
+    if (state?.file) {
+      await this.loadViewData(state.file);
+    }
+  }
 
-    const boardFile = await getBoardFile(this.app, state.file);
+  async onOpen() {
+    // If the board is already loaded, do nothing
+    if (this.board) return;
+
+    // Get the file associated with the view
+    const state = this.leaf.getViewState();
+    const filePath = (state as any).state?.file || (state as any).file;
+    if (filePath) {
+      await this.loadViewData(filePath);
+    }
+  }
+
+  async loadViewData(filePath: string) {
+    // If we are already displaying this file, do nothing
+    if (this.boardFile?.path === filePath) return;
+
+    const boardFile = await getBoardFile(this.app, filePath);
     const board = await loadBoard(this.app, boardFile);
     const files = this.app.vault.getMarkdownFiles();
     const parsed = await scanFiles(this.app, files, {
@@ -132,32 +151,6 @@ export class BoardView extends ItemView {
     this.updateData(board, tasks, controller, boardFile);
   }
 
-  async onOpen() {
-    // If already loaded, do nothing
-    if (this.board && this.tasks.size && this.controller && this.boardFile) return;
-
-    // Get the file associated with the view
-    const state = this.leaf.getViewState();
-    const filePath = (state as any).state?.file || (state as any).file;
-    if (!filePath) return;
-
-    // Load the file and board data
-    const boardFile = this.app.vault.getAbstractFileByPath(filePath) as TFile;
-    if (!boardFile) return;
-
-    const board = await loadBoard(this.app, boardFile);
-    const files = this.app.vault.getMarkdownFiles();
-    const parsed = await scanFiles(this.app, files, {
-      tags: this.plugin.settings.tagFilters,
-      folders: this.plugin.settings.folderPaths,
-      useBlockId: this.plugin.settings.useBlockId,
-    });
-    const tasks = new Map(parsed.map((t) => [t.blockId, t]));
-    const controller = new Controller(this.app, boardFile, board, tasks, this.plugin.settings);
-
-    this.updateData(board, tasks, controller, boardFile);
-  }
-
   updateData(
     board: BoardData,
     tasks: Map<string, ParsedTask>,
@@ -168,6 +161,7 @@ export class BoardView extends ItemView {
     this.tasks = tasks;
     this.controller = controller;
     this.boardFile = boardFile;
+    this.leaf.updateHeader();
 
     if (!this.vaultEventsRegistered) {
       const onVaultChange = (file: TAbstractFile) => {
@@ -1838,6 +1832,7 @@ export class BoardView extends ItemView {
       if (save && this.board && this.boardFile) {
         this.board.title = newTitle;
         await saveBoard(this.app, this.boardFile, this.board);
+        this.leaf.updateHeader();
       }
       el.textContent = newTitle;
       input.replaceWith(el);
