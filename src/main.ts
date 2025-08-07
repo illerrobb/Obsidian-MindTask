@@ -1,4 +1,5 @@
 import {
+  App,
   Plugin,
   TFile,
   FuzzySuggestModal,
@@ -45,6 +46,21 @@ export default class MindTaskPlugin extends Plugin {
       name: 'Open MindTask Board',
       callback: () => this.openBoard(),
     });
+
+    this.addRibbonIcon('plus-square', 'New board', async () => {
+      const name = await promptBoardName(this.app);
+      if (!name) return;
+      const slug = name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+      const folder = this.settings.boardFolder.trim();
+      const path = folder
+        ? `${folder.replace(/\/$/, '')}/${slug}.mtask`
+        : `${slug}.mtask`;
+      const file = await getBoardFile(this.app, path);
+      await this.openBoardFile(file.path);
+    });
   }
 
   async openBoard() {
@@ -76,80 +92,69 @@ export default class MindTaskPlugin extends Plugin {
 
   private selectBoard(): Promise<TFile | null> {
     return new Promise((resolve) => {
-      const createItem = 'Create new board...';
       const files = this.app.vault
         .getFiles()
         .filter((f) => f.path.endsWith('.mtask'));
-      class BoardModal extends FuzzySuggestModal<TFile | string> {
+      class BoardModal extends FuzzySuggestModal<TFile> {
         constructor(private plugin: MindTaskPlugin, private files: TFile[]) {
           super(plugin.app);
         }
-        getItems(): (TFile | string)[] {
-          return [...this.files, createItem];
+        getItems(): TFile[] {
+          return this.files;
         }
-        getItemText(item: TFile | string): string {
-          return typeof item === 'string' ? item : item.basename;
+        getItemText(item: TFile): string {
+          return item.basename;
         }
-        onChooseItem(item: TFile | string) {
-          if (typeof item === 'string') {
-            this.close();
-            this.plugin.createBoard().then(resolve);
-          } else {
-            resolve(item);
-          }
+        onChooseItem(item: TFile) {
+          resolve(item);
+        }
+        onClose() {
+          resolve(null);
         }
       }
       new BoardModal(this, files).open();
     });
   }
-
-  private createBoard(): Promise<TFile | null> {
-    return new Promise((resolve) => {
-      class NewBoardModal extends Modal {
-        nameInput!: TextComponent;
-        constructor(private plugin: MindTaskPlugin) {
-          super(plugin.app);
-        }
-        onOpen() {
-          const { contentEl } = this;
-          contentEl.createEl('h2', { text: 'Create Board' });
-          new Setting(contentEl)
-            .setName('Name')
-            .addText((t) => (this.nameInput = t.setPlaceholder('Board name')));
-          new Setting(contentEl)
-            .addButton((btn) =>
-              btn.setButtonText('Create').setCta().onClick(async () => {
-                const name = this.nameInput.getValue().trim();
-                if (!name) {
-                  new Notice('Name required');
-                  return;
-                }
-                const slug = name
-                  .toLowerCase()
-                  .replace(/[^a-z0-9]+/g, '-')
-                  .replace(/^-|-$/g, '');
-                const folder = this.plugin.settings.boardFolder.trim();
-                const path = folder
-                  ? `${folder.replace(/\/$/, '')}/${slug}.mtask`
-                  : `${slug}.mtask`;
-                const file = await getBoardFile(this.plugin.app, path);
-                resolve(file);
-                this.close();
-              })
-            )
-            .addExtraButton((btn) =>
-              btn.setIcon('cross').setTooltip('Cancel').onClick(() => {
-                this.close();
-                resolve(null);
-              })
-            );
-        }
-        onClose() {
-          const { contentEl } = this;
-          contentEl.empty();
-        }
-      }
-      new NewBoardModal(this).open();
-    });
-  }
 }
+
+async function promptBoardName(app: App): Promise<string | null> {
+  return new Promise((resolve) => {
+    class NewBoardModal extends Modal {
+      nameInput!: TextComponent;
+      constructor(app: App) {
+        super(app);
+      }
+      onOpen() {
+        const { contentEl } = this;
+        contentEl.createEl('h2', { text: 'Create Board' });
+        new Setting(contentEl)
+          .setName('Name')
+          .addText((t) => (this.nameInput = t.setPlaceholder('Board name')));
+        new Setting(contentEl)
+          .addButton((btn) =>
+            btn.setButtonText('Create').setCta().onClick(() => {
+              const name = this.nameInput.getValue().trim();
+              if (!name) {
+                new Notice('Name required');
+                return;
+              }
+              resolve(name);
+              this.close();
+            })
+          )
+          .addExtraButton((btn) =>
+            btn.setIcon('cross').setTooltip('Cancel').onClick(() => {
+              resolve(null);
+              this.close();
+            })
+          );
+      }
+      onClose() {
+        const { contentEl } = this;
+        contentEl.empty();
+      }
+    }
+    new NewBoardModal(app).open();
+  });
+}
+
