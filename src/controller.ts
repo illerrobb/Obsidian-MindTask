@@ -216,16 +216,26 @@ export default class Controller {
     );
   }
 
-  async editTask(id: string) {
+  async editTask(id: string): Promise<boolean> {
     const task = this.tasks.get(id);
-    if (!task) return;
+    if (!task) return false;
+
+    const originalText = task.text;
+    const originalChecked = task.checked;
+
     const result = await openTaskEditModal(this.app, task, this.settings);
-    if (!result) return;
-    await this.modifyTaskText(task, () => result.text);
-    if (result.checked !== task.checked) {
-      await this.setCheck(id, result.checked);
+    if (!result) return false;
+
+    let changed = false;
+    if (result.text !== originalText) {
+      await this.modifyTaskText(task, () => result.text);
+      changed = true;
     }
-    this.refreshView();
+    if (result.checked !== originalChecked) {
+      await this.setCheck(id, result.checked);
+      changed = true;
+    }
+    return changed;
   }
 
   async toggleCheck(id: string) {
@@ -296,15 +306,6 @@ export default class Controller {
     }
     this.board.nodes[id] = data;
     await saveBoard(this.app, this.boardFile, this.board);
-  }
-
-  private refreshView() {
-    this.app.workspace.getLeavesOfType('mind-task').forEach((leaf) => {
-      const view = (leaf as WorkspaceLeaf).view as any;
-      if (view && typeof view.render === 'function') {
-        view.render();
-      }
-    });
   }
 
   private async modifyTaskText(task: ParsedTask, fn: (text: string) => string) {

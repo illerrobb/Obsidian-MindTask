@@ -171,6 +171,7 @@ export class BoardView extends ItemView {
 
     if (!this.vaultEventsRegistered) {
       const onVaultChange = (file: TAbstractFile) => {
+        if (!this.hasFocus) return;
         if (!this.boardFile) return;
         if (file.path === this.boardFile.path) return;
         void this.refreshFromVault();
@@ -556,7 +557,11 @@ export class BoardView extends ItemView {
       if (pos.type === 'group') {
         this.openGroup(id);
       } else {
-        this.controller?.editTask(id);
+        this.controller?.editTask(id).then((changed) => {
+          if (changed) {
+            this.refreshFromVault();
+          }
+        });
       }
     });
 
