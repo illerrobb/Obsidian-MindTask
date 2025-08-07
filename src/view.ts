@@ -89,6 +89,7 @@ export class BoardView extends ItemView {
   private tasks: Map<string, ParsedTask> = new Map();
   private boardFile: TFile | null = null;
   private vaultEventsRegistered = false;
+  private needsRefresh = false;
   private plugin: MindTaskPlugin;
 
   constructor(leaf: WorkspaceLeaf, plugin: MindTaskPlugin) {
@@ -167,7 +168,7 @@ export class BoardView extends ItemView {
       const onVaultChange = (file: TAbstractFile) => {
         if (!this.boardFile) return;
         if (file.path === this.boardFile.path) return;
-        void this.refreshFromVault();
+        this.needsRefresh = true;
       };
       this.registerEvent(this.app.vault.on('create', onVaultChange));
       this.registerEvent(this.app.vault.on('modify', onVaultChange));
@@ -564,6 +565,10 @@ export class BoardView extends ItemView {
   private registerEvents() {
     this.boardEl.addEventListener('focus', () => {
       this.hasFocus = true;
+      if (this.needsRefresh) {
+        this.refreshFromVault();
+        this.needsRefresh = false;
+      }
     });
     this.boardEl.addEventListener('blur', () => {
       this.hasFocus = false;
