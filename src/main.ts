@@ -8,10 +8,7 @@ import {
   Setting,
 } from 'obsidian';
 import { BoardView, VIEW_TYPE_BOARD } from './view';
-import { loadBoard, getBoardFile } from './boardStore';
-import { scanFiles } from './parser';
-import type { ParsedTask } from './parser';
-import Controller from './controller';
+import { getBoardFile } from './boardStore';
 import {
   PluginSettings,
   DEFAULT_SETTINGS,
@@ -93,16 +90,12 @@ export default class MindTaskPlugin extends Plugin {
       this.settings = { ...DEFAULT_SETTINGS };
     }
     this.addSettingTab(new SettingsTab(this.app, this));
-    this.registerView(VIEW_TYPE_BOARD, (leaf) => new BoardView(leaf, this));
+    this.registerView(
+      VIEW_TYPE_BOARD,
+      (leaf) => new BoardView(leaf, this) as any
+    );
     this.registerExtensions(['mtask'], VIEW_TYPE_BOARD);
     this.observeExplorer();
-
-    this.registerEvent(
-      this.app.workspace.on('file-open', async (file) => {
-        if (!file || !file.path.endsWith('.mtask')) return;
-        await this.openBoardFile(file.path);
-      })
-    );
 
     this.addCommand({
       id: 'open-board',
@@ -118,33 +111,8 @@ export default class MindTaskPlugin extends Plugin {
   }
 
   async openBoardFile(path: string) {
-    const files = this.app.vault.getMarkdownFiles();
-    const parsed = await scanFiles(this.app, files, {
-      tags: this.settings.tagFilters,
-      folders: this.settings.folderPaths,
-      useBlockId: this.settings.useBlockId,
-    });
-    const tasks: Map<string, ParsedTask> = new Map(
-      parsed.map((t) => [t.blockId, t])
-    );
-
-    const boardFile = await getBoardFile(this.app, path);
-    const board = await loadBoard(this.app, boardFile);
-
-    const controller = new Controller(
-      this.app,
-      boardFile,
-      board,
-      tasks,
-      this.settings
-    );
-
     const leaf = this.app.workspace.getLeaf(true);
-    await leaf.setViewState({ type: VIEW_TYPE_BOARD, active: true });
-    const view = this.app.workspace.getActiveViewOfType(BoardView);
-    if (view) {
-      view.updateData(board, tasks, controller, boardFile);
-    }
+    await leaf.setViewState({ type: VIEW_TYPE_BOARD, state: { file: path }, active: true });
   }
 
   async updateFilters(tags: string[], folders: string[]) {
@@ -153,7 +121,7 @@ export default class MindTaskPlugin extends Plugin {
     await this.savePluginData();
     const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_BOARD);
     for (const leaf of leaves) {
-      const view = leaf.view as BoardView;
+      const view = leaf.view as unknown as BoardView;
       await view.refreshFromVault();
     }
   }

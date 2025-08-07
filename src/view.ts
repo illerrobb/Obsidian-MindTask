@@ -14,7 +14,7 @@ import {
 } from 'obsidian';
 import type MindTaskPlugin from './main';
 import Controller from './controller';
-import { BoardData, saveBoard, loadBoard } from './boardStore';
+import { BoardData, saveBoard, loadBoard, getBoardFile } from './boardStore';
 import { ParsedTask, scanFiles, parseDependencies } from './parser';
 
 export const VIEW_TYPE_BOARD = 'mind-task';
@@ -101,6 +101,34 @@ export class BoardView extends ItemView {
 
   getDisplayText() {
     return 'MindTask Board';
+  }
+
+  // @ts-ignore
+  async getState() {
+    return { file: this.boardFile?.path };
+  }
+
+  async setState(state: any) {
+    if (!state?.file) return;
+
+    const boardFile = await getBoardFile(this.app, state.file);
+    const board = await loadBoard(this.app, boardFile);
+    const files = this.app.vault.getMarkdownFiles();
+    const parsed = await scanFiles(this.app, files, {
+      tags: this.plugin.settings.tagFilters,
+      folders: this.plugin.settings.folderPaths,
+      useBlockId: this.plugin.settings.useBlockId,
+    });
+    const tasks = new Map(parsed.map((t) => [t.blockId, t]));
+    const controller = new Controller(
+      this.app,
+      boardFile,
+      board,
+      tasks,
+      this.plugin.settings
+    );
+
+    this.updateData(board, tasks, controller, boardFile);
   }
 
   async onOpen() {
