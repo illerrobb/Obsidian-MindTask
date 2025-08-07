@@ -611,6 +611,7 @@ export class BoardView extends ItemView {
     this.boardEl.onpointerdown = (e) => {
       if ((e as PointerEvent).button === 2) return;
       this.pointerDownSelected = false;
+      this.boardEl.focus();
       if (this.editingId) this.finishEditing(true);
       const laneResize = (e.target as HTMLElement).closest('.vtasks-lane-resize') as HTMLElement | null;
       const laneHeader = (e.target as HTMLElement).closest('.vtasks-lane-header') as HTMLElement | null;
@@ -1127,7 +1128,11 @@ export class BoardView extends ItemView {
         }
       } else {
         this.finishEditing(true);
-        if (!this.didDragSelect && !(e as MouseEvent).shiftKey) {
+        if (
+          !this.didDragSelect &&
+          !(e as MouseEvent).shiftKey &&
+          this.isBoardFocused()
+        ) {
           this.clearSelection();
         }
         this.didDragSelect = false;
@@ -1385,6 +1390,10 @@ export class BoardView extends ItemView {
       if (el) el.classList.remove('selected');
     });
     this.selectedIds.clear();
+  }
+
+  private isBoardFocused(): boolean {
+    return document.activeElement === this.boardEl;
   }
 
   private getDragIds(): Set<string> {
