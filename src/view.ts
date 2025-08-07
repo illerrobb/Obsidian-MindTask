@@ -59,6 +59,7 @@ export class BoardView extends ItemView {
   private editingId: string | null = null;
   private pointerDownSelected = false;
   private didDragSelect = false;
+  private hasFocus = false;
   private resizingId: string | null = null;
   private resizeDir = '';
   private resizeStartWidth = 0;
@@ -563,6 +564,12 @@ export class BoardView extends ItemView {
   }
 
   private registerEvents() {
+    this.boardEl.addEventListener('focus', () => {
+      this.hasFocus = true;
+    });
+    this.boardEl.addEventListener('blur', () => {
+      this.hasFocus = false;
+    });
     this.boardEl.addEventListener('dragover', (e) => {
       e.preventDefault();
       this.boardEl.addClass('drag-over');
@@ -1128,13 +1135,13 @@ export class BoardView extends ItemView {
         }
       } else {
         this.finishEditing(true);
-        if (
-          !this.didDragSelect &&
-          !(e as MouseEvent).shiftKey &&
-          this.isBoardFocused()
-        ) {
-          this.clearSelection();
-        }
+          if (
+            !this.didDragSelect &&
+            !(e as MouseEvent).shiftKey &&
+            this.hasFocus
+          ) {
+            this.clearSelection();
+          }
         this.didDragSelect = false;
       }
       this.pointerDownSelected = false;
@@ -1390,10 +1397,6 @@ export class BoardView extends ItemView {
       if (el) el.classList.remove('selected');
     });
     this.selectedIds.clear();
-  }
-
-  private isBoardFocused(): boolean {
-    return document.activeElement === this.boardEl;
   }
 
   private getDragIds(): Set<string> {
