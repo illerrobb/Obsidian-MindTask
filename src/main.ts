@@ -1,17 +1,27 @@
-import { Plugin, TFile, TAbstractFile, FuzzySuggestModal, Modal, TextComponent, Notice, Setting } from 'obsidian';
+import {
+  Plugin,
+  TFile,
+  FuzzySuggestModal,
+  Modal,
+  TextComponent,
+  Notice,
+  Setting,
+} from 'obsidian';
 import { BoardView, VIEW_TYPE_BOARD } from './view';
-import { BoardData, loadBoard, saveBoard, getBoardFile } from './boardStore';
-import { scanFiles, parseDependencies, ParsedTask, ScanOptions } from './parser';
+import { loadBoard, getBoardFile } from './boardStore';
+import { scanFiles } from './parser';
+import type { ParsedTask } from './parser';
 import Controller from './controller';
-import { PluginSettings, DEFAULT_SETTINGS, SettingsTab, BoardInfo, PluginData } from './settings';
+import {
+  PluginSettings,
+  DEFAULT_SETTINGS,
+  SettingsTab,
+  BoardInfo,
+  PluginData,
+} from './settings';
 
 export default class MindTaskPlugin extends Plugin {
-  private board: BoardData | null = null;
-  private boardFile: TFile | null = null;
-  private tasks: Map<string, ParsedTask> = new Map();
-  private controller: Controller | null = null;
   boards: BoardInfo[] = [];
-  private activeBoard: BoardInfo | null = null;
   settings: PluginSettings = DEFAULT_SETTINGS;
   private explorerObserver: MutationObserver | null = null;
 
@@ -87,16 +97,7 @@ export default class MindTaskPlugin extends Plugin {
       this.boards = [];
     }
     this.addSettingTab(new SettingsTab(this.app, this));
-    this.registerView(VIEW_TYPE_BOARD, (leaf) =>
-      new BoardView(
-        leaf,
-        this.controller,
-        this.board,
-        this.tasks,
-        (title) => this.renameActiveBoard(title),
-        this
-      )
-    );
+    this.registerView(VIEW_TYPE_BOARD, (leaf) => new BoardView(leaf, this));
     this.registerExtensions(['mtask'], VIEW_TYPE_BOARD);
     this.observeExplorer();
 
@@ -107,15 +108,6 @@ export default class MindTaskPlugin extends Plugin {
       })
     );
 
-    const onVaultChange = (file: TAbstractFile) => {
-      if (!this.boardFile) return;
-      if (file.path === this.boardFile.path) return;
-      this.refreshFromVault();
-    };
-    this.registerEvent(this.app.vault.on('create', onVaultChange));
-    this.registerEvent(this.app.vault.on('modify', onVaultChange));
-    this.registerEvent(this.app.vault.on('delete', onVaultChange));
-
     this.addCommand({
       id: 'open-board',
       name: 'Open MindTask Board',
@@ -124,146 +116,63 @@ export default class MindTaskPlugin extends Plugin {
   }
 
   async openBoard() {
-    let board = await this.selectBoard();
+    const board = await this.selectBoard();
     if (!board) return;
-    this.activeBoard = board;
-    await this.loadBoardData(board.path);
-    const leaf = this.app.workspace.getLeaf(true);
-    await leaf.setViewState({ type: VIEW_TYPE_BOARD, active: true });
+    await this.openBoardFile(board.path);
   }
 
   async openBoardFile(path: string) {
-    const base = path
-      .split('/')
-      .pop()!
-      .replace(/\.mtask$/, '');
-    this.activeBoard = { name: base, path };
-    await this.loadBoardData(path);
-    let view = this.app.workspace.getActiveViewOfType(BoardView);
-    if (view && this.board && this.controller) {
-      view.updateData(this.board, this.tasks, this.controller);
-    } else {
-      const leaf = this.app.workspace.activeLeaf ?? this.app.workspace.getLeaf(true);
-      await leaf.setViewState({ type: VIEW_TYPE_BOARD, active: true });
-      // After creating the leaf, ensure the view is updated with board data
-      view = this.app.workspace.getActiveViewOfType(BoardView);
-      if (view && this.board && this.controller) {
-        view.updateData(this.board, this.tasks, this.controller);
-      }
-    }
-  }
-
-  private async loadBoardData(path: string) {
     const files = this.app.vault.getMarkdownFiles();
     const parsed = await scanFiles(this.app, files, {
       tags: this.settings.tagFilters,
       folders: this.settings.folderPaths,
       useBlockId: this.settings.useBlockId,
     });
-    const deps = parseDependencies(parsed);
+    const tasks: Map<string, ParsedTask> = new Map(
+      parsed.map((t) => [t.blockId, t])
+    );
 
-    this.tasks = new Map(parsed.map((t) => [t.blockId, t]));
+    const boardFile = await getBoardFile(this.app, path);
+    const board = await loadBoard(this.app, boardFile);
+    const base = path.split('/').pop()!.replace(/\.mtask$/, '');
 
-    this.boardFile = await getBoardFile(this.app, path);
-    this.board = await loadBoard(this.app, this.boardFile);
-    if (this.activeBoard) {
-      this.activeBoard.name = this.board.title || this.activeBoard.name;
-      const info = this.boards.find((b) => b.path === this.activeBoard!.path);
-      if (info) info.name = this.activeBoard.name;
-      await this.savePluginData();
-    }
+    await this.updateBoardInfo(boardFile.path, board.title || base);
 
-    for (const dep of deps) {
-      if (
-        this.board!.nodes[dep.from] &&
-        this.board!.nodes[dep.to] &&
-        !this.board.edges.find(
-          (e) => e.from === dep.from && e.to === dep.to && e.type === dep.type
-        )
-      ) {
-        this.board.edges.push(dep);
-      }
-    }
-
-    await saveBoard(this.app, this.boardFile, this.board);
-
-    this.controller = new Controller(
+    const controller = new Controller(
       this.app,
-      this.boardFile,
-      this.board,
-      this.tasks,
+      boardFile,
+      board,
+      tasks,
       this.settings
     );
+
+    const leaf = this.app.workspace.getLeaf(true);
+    await leaf.setViewState({ type: VIEW_TYPE_BOARD, active: true });
+    const view = this.app.workspace.getActiveViewOfType(BoardView);
+    if (view) {
+      view.updateData(board, tasks, controller, boardFile);
+    }
   }
 
   async updateFilters(tags: string[], folders: string[]) {
     this.settings.tagFilters = tags;
     this.settings.folderPaths = folders;
     await this.savePluginData();
-    await this.refreshFromVault();
+    const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_BOARD);
+    for (const leaf of leaves) {
+      const view = leaf.view as BoardView;
+      await view.refreshFromVault();
+    }
   }
 
-  private async renameActiveBoard(title: string) {
-    if (!this.board || !this.boardFile) return;
-    this.board.title = title;
-    await saveBoard(this.app, this.boardFile, this.board);
-    if (this.activeBoard) this.activeBoard.name = title;
-    const info = this.boards.find((b) => b.path === this.activeBoard?.path);
-    if (info) info.name = title;
+  async updateBoardInfo(path: string, title: string) {
+    const info = this.boards.find((b) => b.path === path);
+    if (info) {
+      info.name = title;
+    } else {
+      this.boards.push({ path, name: title });
+    }
     await this.savePluginData();
-  }
-
-  private async refreshFromVault() {
-    if (!this.board || !this.boardFile) return;
-
-    const files = this.app.vault.getMarkdownFiles();
-    const parsed = await scanFiles(this.app, files, {
-      tags: this.settings.tagFilters,
-      folders: this.settings.folderPaths,
-      useBlockId: this.settings.useBlockId,
-    });
-    const deps = parseDependencies(parsed);
-
-    this.tasks.clear();
-    for (const task of parsed) {
-      this.tasks.set(task.blockId, task);
-    }
-
-    for (const id of Object.keys(this.board.nodes)) {
-      const n = this.board.nodes[id] as any;
-      if (!this.tasks.has(id) && n.type !== 'group') delete this.board.nodes[id];
-    }
-
-    this.board.edges = this.board.edges.filter(
-      (e) =>
-        (this.tasks.has(e.from) || this.board!.nodes[e.from]?.type === 'group') &&
-        (this.tasks.has(e.to) || this.board!.nodes[e.to]?.type === 'group')
-    );
-
-    const existing = this.board.edges.filter((e) =>
-      deps.some((d) => d.from === e.from && d.to === e.to && d.type === e.type)
-    );
-
-    for (const dep of deps) {
-      if (
-        this.board.nodes[dep.from] &&
-        this.board.nodes[dep.to] &&
-        !existing.find(
-          (e) => e.from === dep.from && e.to === dep.to && e.type === dep.type
-        )
-      ) {
-        existing.push(dep);
-      }
-    }
-
-    this.board.edges = existing;
-
-    await saveBoard(this.app, this.boardFile, this.board);
-
-    const leaf = this.app.workspace.getLeavesOfType(VIEW_TYPE_BOARD)[0];
-    if (leaf && this.controller) {
-      (leaf.view as BoardView).updateData(this.board, this.tasks, this.controller);
-    }
   }
 
   async savePluginData() {
