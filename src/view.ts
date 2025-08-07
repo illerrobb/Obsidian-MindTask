@@ -10,11 +10,12 @@ import {
   App,
   setIcon,
   TFile,
+  TAbstractFile,
 } from 'obsidian';
 import type MindTaskPlugin from './main';
 import Controller from './controller';
-import { BoardData } from './boardStore';
-import { ParsedTask } from './parser';
+import { BoardData, saveBoard } from './boardStore';
+import { ParsedTask, scanFiles, parseDependencies } from './parser';
 
 export const VIEW_TYPE_BOARD = 'mind-task';
 
@@ -82,18 +83,16 @@ export class BoardView extends ItemView {
   private laneResizeStartLaneY = 0;
   private groupId: string | null = null;
   private groupFocusEl: HTMLElement | null = null;
-  private onTitleChange: (title: string) => void;
+  private controller: Controller | null = null;
+  private board: BoardData | null = null;
+  private tasks: Map<string, ParsedTask> = new Map();
+  private boardFile: TFile | null = null;
+  private vaultEventsRegistered = false;
+  private plugin: MindTaskPlugin;
 
-  constructor(
-    leaf: WorkspaceLeaf,
-    private controller: Controller | null,
-    private board: BoardData | null,
-    private tasks: Map<string, ParsedTask>,
-    onTitleChange: (title: string) => void,
-    private plugin: MindTaskPlugin
-  ) {
+  constructor(leaf: WorkspaceLeaf, plugin: MindTaskPlugin) {
     super(leaf);
-    this.onTitleChange = onTitleChange;
+    this.plugin = plugin;
   }
 
   getViewType() {
@@ -113,11 +112,84 @@ export class BoardView extends ItemView {
   updateData(
     board: BoardData,
     tasks: Map<string, ParsedTask>,
-    controller: Controller
+    controller: Controller,
+    boardFile: TFile
   ) {
     this.board = board;
     this.tasks = tasks;
     this.controller = controller;
+    this.boardFile = boardFile;
+
+    if (!this.vaultEventsRegistered) {
+      const onVaultChange = (file: TAbstractFile) => {
+        if (!this.boardFile) return;
+        if (file.path === this.boardFile.path) return;
+        void this.refreshFromVault();
+      };
+      this.registerEvent(this.app.vault.on('create', onVaultChange));
+      this.registerEvent(this.app.vault.on('modify', onVaultChange));
+      this.registerEvent(this.app.vault.on('delete', onVaultChange));
+      this.vaultEventsRegistered = true;
+    }
+
+    this.render();
+  }
+
+  async refreshFromVault() {
+    if (!this.board || !this.boardFile) return;
+
+    const files = this.app.vault.getMarkdownFiles();
+    const parsed = await scanFiles(this.app, files, {
+      tags: this.plugin.settings.tagFilters,
+      folders: this.plugin.settings.folderPaths,
+      useBlockId: this.plugin.settings.useBlockId,
+    });
+    const deps = parseDependencies(parsed);
+
+    this.tasks.clear();
+    for (const task of parsed) {
+      this.tasks.set(task.blockId, task);
+    }
+
+    for (const id of Object.keys(this.board.nodes)) {
+      const n = this.board.nodes[id] as any;
+      if (!this.tasks.has(id) && n.type !== 'group') delete this.board.nodes[id];
+    }
+
+    this.board.edges = this.board.edges.filter(
+      (e) =>
+        (this.tasks.has(e.from) || this.board!.nodes[e.from]?.type === 'group') &&
+        (this.tasks.has(e.to) || this.board!.nodes[e.to]?.type === 'group')
+    );
+
+    const existing = this.board.edges.filter((e) =>
+      deps.some((d) => d.from === e.from && d.to === e.to && d.type === e.type)
+    );
+
+    for (const dep of deps) {
+      if (
+        this.board.nodes[dep.from] &&
+        this.board.nodes[dep.to] &&
+        !existing.find(
+          (e) => e.from === dep.from && e.to === dep.to && e.type === dep.type
+        )
+      ) {
+        existing.push(dep);
+      }
+    }
+
+    this.board.edges = existing;
+
+    await saveBoard(this.app, this.boardFile, this.board);
+
+    this.controller = new Controller(
+      this.app,
+      this.boardFile,
+      this.board,
+      this.tasks,
+      this.plugin.settings
+    );
+
     this.render();
   }
 
@@ -1696,19 +1768,22 @@ export class BoardView extends ItemView {
     el.replaceWith(input);
     input.focus();
     input.select();
-    const finish = (save: boolean) => {
+    const finish = async (save: boolean) => {
       const newTitle = save ? input.value.trim() : this.board?.title || '';
-      if (save) {
-        if (this.board) this.board.title = newTitle;
-        this.onTitleChange(newTitle);
+      if (save && this.board && this.boardFile) {
+        this.board.title = newTitle;
+        await saveBoard(this.app, this.boardFile, this.board);
+        await this.plugin.updateBoardInfo(this.boardFile.path, newTitle);
       }
       el.textContent = newTitle;
       input.replaceWith(el);
     };
-    input.onblur = () => finish(true);
+    input.onblur = () => {
+      void finish(true);
+    };
     input.onkeydown = (e) => {
-      if (e.key === 'Enter') finish(true);
-      else if (e.key === 'Escape') finish(false);
+      if (e.key === 'Enter') void finish(true);
+      else if (e.key === 'Escape') void finish(false);
     };
   }
 
