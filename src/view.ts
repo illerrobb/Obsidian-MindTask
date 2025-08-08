@@ -11,7 +11,9 @@ import {
   setIcon,
   TFile,
   TAbstractFile,
+  normalizePath,
 } from 'obsidian';
+import { relative } from 'path';
 import type MindTaskPlugin from './main';
 import Controller from './controller';
 import { BoardData, saveBoard, loadBoard, getBoardFile } from './boardStore';
@@ -632,11 +634,13 @@ export class BoardView extends ItemView {
       const items: { path: string; name: string; lastModified?: number }[] = [];
       const files = e.dataTransfer?.files;
       if (files && files.length > 0) {
+        const basePath = (this.app.vault.adapter as any).basePath || '';
         for (const file of Array.from(files)) {
           if (!file.name.endsWith('.mtask')) continue;
-          const basePath = (this.app.vault.adapter as any).basePath || '';
-          let rel = (file as any).path;
-          if (rel.startsWith(basePath)) rel = rel.slice(basePath.length + 1);
+          let rel = normalizePath(
+            relative(basePath, (file as any).path).replace(/\\/g, '/'),
+          );
+          if (rel.startsWith('..')) continue;
           items.push({
             path: rel,
             name: file.name.replace(/\.mtask$/, ''),
@@ -644,10 +648,14 @@ export class BoardView extends ItemView {
           });
         }
       } else {
-        const text = e.dataTransfer?.getData('text/plain') || e.dataTransfer?.getData('text/uri-list');
+        const text =
+          e.dataTransfer?.getData('text/plain') ||
+          e.dataTransfer?.getData('text/uri-list');
         if (text) {
           for (const line of text.split('\n')) {
-            let rel = decodeURI(line.trim());
+            const rel = normalizePath(
+              decodeURI(line.trim()).replace(/\\/g, '/'),
+            );
             if (!rel.endsWith('.mtask')) continue;
             items.push({
               path: rel,
@@ -659,8 +667,8 @@ export class BoardView extends ItemView {
       let offset = 0;
       let added = false;
       for (const item of items) {
-        const tfile = this.app.vault.getAbstractFileByPath(item.path) as TFile;
-        if (!tfile) continue;
+        const tfile = this.app.vault.getAbstractFileByPath(item.path);
+        if (!(tfile instanceof TFile)) continue;
         let count = 0;
         try {
           const data = JSON.parse(await this.app.vault.read(tfile));
