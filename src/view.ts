@@ -474,21 +474,20 @@ export class BoardView extends ItemView {
     if (pos.color) nodeEl.style.backgroundColor = pos.color;
 
     const orientH = this.board?.orientation ?? 'vertical';
-    nodeEl.createDiv(
-      `vtasks-handle vtasks-handle-in vtasks-handle-${orientH === 'vertical' ? 'top' : 'left'}`
-    );
-
-    const textEl = nodeEl.createDiv('vtasks-text');
-    const metaEl = nodeEl.createDiv('vtasks-meta');
 
     if (pos.type === 'board') {
+      nodeEl.createDiv(
+        `vtasks-handle vtasks-handle-in vtasks-handle-${orientH === 'vertical' ? 'top' : 'left'}`
+      );
+      const textEl = nodeEl.createDiv('vtasks-text');
+      const metaEl = nodeEl.createDiv('vtasks-meta');
       textEl.setText(pos.name || id);
       metaEl.createSpan({ text: `${pos.taskCount ?? 0} tasks` });
       if (pos.lastModified) {
         metaEl.createSpan({ text: new Date(pos.lastModified).toLocaleDateString() });
       }
       nodeEl.addClass('vtasks-board-card');
-      const outHandle = nodeEl.createDiv(
+      nodeEl.createDiv(
         `vtasks-handle vtasks-handle-out vtasks-handle-${orientH === 'vertical' ? 'bottom' : 'right'}`
       );
       const dirs = ['n', 'e', 's', 'w', 'ne', 'nw', 'se', 'sw'];
@@ -506,6 +505,12 @@ export class BoardView extends ItemView {
       });
       return nodeEl;
     }
+
+    nodeEl.createDiv(
+      `vtasks-handle vtasks-handle-in vtasks-handle-${orientH === 'vertical' ? 'top' : 'left'}`
+    );
+    const textEl = nodeEl.createDiv('vtasks-text');
+    const metaEl = nodeEl.createDiv('vtasks-meta');
 
     const task = this.tasks.get(id);
     let text = task?.text ?? id;
