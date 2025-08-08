@@ -26,8 +26,6 @@ export interface PluginSettings {
   rearrangeSpacingX: number;
   /** Vertical spacing between nodes when rearranging */
   rearrangeSpacingY: number;
-  /** Orientation of node layout */
-  orientation: 'vertical' | 'horizontal';
 }
 
 export interface PluginData {
@@ -49,7 +47,6 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   ],
   rearrangeSpacingX: 40,
   rearrangeSpacingY: 40,
-  orientation: 'vertical',
 };
 
 export class SettingsTab extends PluginSettingTab {
@@ -171,20 +168,6 @@ export class SettingsTab extends PluginSettingTab {
             await this.plugin.savePluginData();
           });
       });
-
-    new Setting(containerEl)
-      .setName('Orientation')
-      .setDesc('Direction for arranged nodes')
-      .addDropdown((dropdown) =>
-        dropdown
-          .addOption('vertical', 'Vertical')
-          .addOption('horizontal', 'Horizontal')
-          .setValue(this.plugin.settings.orientation)
-          .onChange(async (value) => {
-            this.plugin.settings.orientation = value as 'vertical' | 'horizontal';
-            await this.plugin.savePluginData();
-          })
-      );
 
     containerEl.createEl('h2', { text: 'Background colors' });
     const colorsEl = containerEl.createDiv();

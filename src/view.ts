@@ -257,21 +257,12 @@ export class BoardView extends ItemView {
     this.containerEl.empty();
     this.containerEl.addClass('vtasks-container');
     const topBar = this.containerEl.createDiv('vtasks-top-bar');
-    const left = topBar.createDiv('vtasks-top-left');
     const titleEl = topBar.createDiv('vtasks-board-title');
     titleEl.setText(this.board.title || 'Board');
     titleEl.onclick = () => this.editTitle(titleEl);
-    const right = topBar.createDiv('vtasks-top-right');
-    const settingsBtn = right.createDiv('vtasks-top-button');
-    setIcon(settingsBtn, 'settings');
-    settingsBtn.setAttr('title', 'Board settings');
-    settingsBtn.onclick = () => {
-      (this.app as any).setting.open();
-      (this.app as any).setting.openTabById('mind-task');
-    };
 
     this.boardEl = this.containerEl.createDiv('vtasks-board');
-    const orient = this.controller?.settings.orientation ?? 'vertical';
+    const orient = this.board?.orientation ?? 'vertical';
     this.boardEl.addClass(
       orient === 'horizontal' ? 'vtasks-horizontal' : 'vtasks-vertical'
     );
@@ -333,6 +324,31 @@ export class BoardView extends ItemView {
     setIcon(fitBtn, 'maximize');
     fitBtn.setAttr('title', 'Zoom to fit');
     fitBtn.onclick = () => this.zoomToFit();
+
+    const settingsBtn = zoomSection.createEl('button');
+    setIcon(settingsBtn, 'settings');
+    settingsBtn.setAttr('title', 'Board settings');
+    settingsBtn.onclick = (e) => {
+      const menu = new Menu();
+      const current = this.board?.orientation ?? 'vertical';
+      menu.addItem((item) =>
+        item.setTitle('Vertical orientation').onClick(async () => {
+          if (current !== 'vertical') {
+            await this.controller?.setOrientation('vertical');
+            this.render();
+          }
+        })
+      );
+      menu.addItem((item) =>
+        item.setTitle('Horizontal orientation').onClick(async () => {
+          if (current !== 'horizontal') {
+            await this.controller?.setOrientation('horizontal');
+            this.render();
+          }
+        })
+      );
+      menu.showAtMouseEvent(e as MouseEvent);
+    };
 
     this.registerEvents();
 
@@ -455,7 +471,7 @@ export class BoardView extends ItemView {
     nodeEl.style.borderColor = pos.color || defaultColor;
     if (pos.color) nodeEl.style.backgroundColor = pos.color;
 
-    const orientH = this.controller?.settings.orientation ?? 'vertical';
+    const orientH = this.board?.orientation ?? 'vertical';
     nodeEl.createDiv(
       `vtasks-handle vtasks-handle-in vtasks-handle-${orientH === 'vertical' ? 'top' : 'left'}`
     );
@@ -1170,7 +1186,7 @@ export class BoardView extends ItemView {
         const menu = new Menu();
         menu.addItem((item) =>
           item.setTitle('Create lane').onClick(() => {
-            const orient = this.controller?.settings.orientation ?? 'vertical';
+            const orient = this.board?.orientation ?? 'vertical';
             this.controller!
               .createLane('Lane', pos.x, pos.y, 300, 300, orient)
               .then(() => this.render());
@@ -1461,7 +1477,7 @@ export class BoardView extends ItemView {
       const y1 = (fr.top - boardRect.top + fr.height / 2) / this.zoom;
       const x2 = (tr.left - boardRect.left + tr.width / 2) / this.zoom;
       const y2 = (tr.top - boardRect.top + tr.height / 2) / this.zoom;
-      const orientD = this.controller?.settings.orientation ?? 'vertical';
+      const orientD = this.board?.orientation ?? 'vertical';
       let d: string;
       if (orientD === 'horizontal') {
         const dx = Math.abs(x2 - x1);

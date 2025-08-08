@@ -116,6 +116,11 @@ export default class Controller {
     await saveBoard(this.app, this.boardFile, this.board);
   }
 
+  async setOrientation(orient: 'vertical' | 'horizontal') {
+    this.board.orientation = orient;
+    await saveBoard(this.app, this.boardFile, this.board);
+  }
+
   async setLaneOrientation(
     id: string,
     orient: 'vertical' | 'horizontal'
@@ -422,7 +427,7 @@ export default class Controller {
       .filter((p) => p.node);
     if (!nodes.length) return;
 
-    const orient = this.settings.orientation ?? 'vertical';
+    const orient = this.board.orientation ?? 'vertical';
     const spacingA =
       orient === 'vertical'
         ? this.settings.rearrangeSpacingX
