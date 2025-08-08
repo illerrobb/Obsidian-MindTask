@@ -6,7 +6,7 @@
   "scripts": {
     "build": "rollup -c && cp manifest.json styles.css dist/",
     "dev": "rollup -c -w",
-    "test": "tsx test/boardHandles.test.ts"
+    "test": "tsx test/boardHandles.test.ts && tsx test/connectedHandles.test.ts"
   },
   "keywords": [
     "obsidian-plugin"

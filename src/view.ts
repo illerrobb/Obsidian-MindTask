@@ -36,6 +36,7 @@ export class BoardView extends ItemView {
   private dragStartPositions: Map<string, { x: number; y: number }> = new Map();
   private edgeStart: string | null = null;
   private tempEdge: SVGPathElement | null = null;
+  private edgeHoverHandle: HTMLElement | null = null;
   private edgeX = 0;
   private edgeY = 0;
   private edgeEls: Map<number, { hit: SVGPathElement; line: SVGPathElement }> =
@@ -1032,6 +1033,13 @@ export class BoardView extends ItemView {
         const y2 = coords.y;
         const dx = Math.abs(x2 - this.edgeX);
         this.tempEdge.setAttr('d', `M${this.edgeX} ${this.edgeY} C ${this.edgeX + dx / 2} ${this.edgeY}, ${x2 - dx / 2} ${y2}, ${x2} ${y2}`);
+        const el = document.elementFromPoint((e as PointerEvent).clientX, (e as PointerEvent).clientY);
+        const handle = el ? (el.closest('.vtasks-handle') as HTMLElement | null) : null;
+        if (handle !== this.edgeHoverHandle) {
+          if (this.edgeHoverHandle) this.edgeHoverHandle.removeClass('vtasks-handle-hover');
+          this.edgeHoverHandle = handle;
+          if (this.edgeHoverHandle) this.edgeHoverHandle.addClass('vtasks-handle-hover');
+        }
       } else if (this.selectionRect) {
         const x = coords.x;
         const y = coords.y;
@@ -1105,8 +1113,12 @@ export class BoardView extends ItemView {
         this.isBoardDragging = false;
         this.updateMinimapView();
       } else if (this.edgeStart) {
+        if (this.edgeHoverHandle) {
+          this.edgeHoverHandle.removeClass('vtasks-handle-hover');
+          this.edgeHoverHandle = null;
+        }
         const handle = (e.target as HTMLElement).closest('.vtasks-handle-in') as HTMLElement | null;
-        const node = handle ? handle.closest('.vtasks-node') as HTMLElement | null : null;
+        const node = handle ? (handle.closest('.vtasks-node') as HTMLElement | null) : null;
         if (node) {
           const toId = node.getAttribute('data-id')!;
             if (toId !== this.edgeStart) {
@@ -1523,6 +1535,9 @@ export class BoardView extends ItemView {
 
   private drawEdges() {
     const toRemove = new Set(this.edgeEls.keys());
+    this.boardEl
+      .querySelectorAll('.vtasks-handle')
+      .forEach((h) => (h as HTMLElement).removeClass('vtasks-handle-connected'));
     this.board!.edges.forEach((edge, idx) => {
       const fromNode = this.board!.nodes[edge.from];
       const toNode = this.board!.nodes[edge.to];
@@ -1548,6 +1563,8 @@ export class BoardView extends ItemView {
         }
         return;
       }
+      fromEl.addClass('vtasks-handle-connected');
+      toEl.addClass('vtasks-handle-connected');
       const boardRect = this.boardEl.getBoundingClientRect();
       const fr = fromEl.getBoundingClientRect();
       const tr = toEl.getBoundingClientRect();
