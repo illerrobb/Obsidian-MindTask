@@ -27,6 +27,8 @@ export interface BoardData {
   lanes: Record<string, LaneData>;
   title?: string;
   orientation?: 'vertical' | 'horizontal';
+  /** Whether nodes snap to the background grid */
+  snapToGrid?: boolean;
 }
 
 const CURRENT_VERSION = 1;
@@ -38,6 +40,7 @@ export async function loadBoard(app: App, file: TFile): Promise<BoardData> {
     if (!data.lanes) data.lanes = {};
     if (!data.title) data.title = file.basename;
     if (!data.orientation) data.orientation = 'vertical';
+    if (data.snapToGrid === undefined) data.snapToGrid = true;
     return data;
   } catch (e) {
     return {
@@ -47,6 +50,7 @@ export async function loadBoard(app: App, file: TFile): Promise<BoardData> {
       lanes: {},
       title: file.basename,
       orientation: 'vertical',
+      snapToGrid: true,
     };
   }
 }
@@ -76,7 +80,14 @@ export async function getBoardFile(app: App, path: string): Promise<TFile> {
       await app.vault.create(
         normalized,
         JSON.stringify(
-          { version: CURRENT_VERSION, nodes: {}, edges: [], lanes: {}, orientation: 'vertical' },
+          {
+            version: CURRENT_VERSION,
+            nodes: {},
+            edges: [],
+            lanes: {},
+            orientation: 'vertical',
+            snapToGrid: true,
+          },
           null,
           2
         )
