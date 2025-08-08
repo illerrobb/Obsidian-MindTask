@@ -555,7 +555,25 @@ export class BoardView extends ItemView {
     }
     const tagsEl = metaEl.createDiv('vtasks-tags');
     tags.forEach((t) => tagsEl.createSpan({ text: t, cls: 'vtasks-tag' }));
-    if (task?.checked) nodeEl.addClass('done');
+    if (pos.type !== 'group') {
+      nodeEl.addClass('vtasks-task');
+      const checked = task?.checked ?? false;
+      const checkEl = nodeEl.createDiv('vtasks-check');
+      setIcon(checkEl, checked ? 'check-circle' : 'circle');
+      checkEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const newVal = !this.tasks.get(id)?.checked;
+        if (newVal) {
+          nodeEl.addClass('done');
+          setIcon(checkEl, 'check-circle');
+        } else {
+          nodeEl.removeClass('done');
+          setIcon(checkEl, 'circle');
+        }
+        this.controller!.setCheck(id, newVal).then(() => this.render());
+      });
+      if (checked) nodeEl.addClass('done');
+    }
     const outHandle = nodeEl.createDiv(
       `vtasks-handle vtasks-handle-out vtasks-handle-${orientH === 'vertical' ? 'bottom' : 'right'}`
     );

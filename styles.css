@@ -123,6 +123,10 @@
   z-index: 3;
 }
 
+.vtasks-task {
+  padding-right: 24px;
+}
+
 .vtasks-lane {
   position: absolute;
   background: #e6e6e63d;
@@ -406,6 +410,20 @@
   border-radius: 4px;
   font: inherit;
   margin: 0;
+}
+
+.vtasks-check {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.vtasks-node.done .vtasks-check {
+  color: var(--color-green);
 }
 
 .vtasks-node.done {
