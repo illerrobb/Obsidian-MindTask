@@ -628,36 +628,56 @@ export class BoardView extends ItemView {
     this.boardEl.addEventListener('drop', async (e: DragEvent) => {
       e.preventDefault();
       this.boardEl.removeClass('drag-over');
-      const files = e.dataTransfer?.files;
-      if (!files) return;
       const pos = this.getBoardCoords(e);
-      let offset = 0;
-      let added = false;
-      for (const file of Array.from(files)) {
-        if (file.name.endsWith('.mtask')) {
+      const items: { path: string; name: string; lastModified?: number }[] = [];
+      const files = e.dataTransfer?.files;
+      if (files && files.length > 0) {
+        for (const file of Array.from(files)) {
+          if (!file.name.endsWith('.mtask')) continue;
           const basePath = (this.app.vault.adapter as any).basePath || '';
           let rel = (file as any).path;
           if (rel.startsWith(basePath)) rel = rel.slice(basePath.length + 1);
-          const tfile = this.app.vault.getAbstractFileByPath(rel) as TFile;
-          if (!tfile) continue;
-          let count = 0;
-          try {
-            const data = JSON.parse(await this.app.vault.read(tfile));
-            count = Object.keys(data.nodes || {}).length;
-          } catch {}
-          const info = {
+          items.push({
+            path: rel,
             name: file.name.replace(/\.mtask$/, ''),
             lastModified: file.lastModified,
-            taskCount: count,
-            path: rel,
-          };
-          const id = await this.controller?.addBoardCard(info, pos.x + offset, pos.y + offset);
-          if (id) {
-            const laneId = this.getLaneForPosition(pos.x + offset, pos.y + offset);
-            if (laneId) await this.controller?.assignNodeToLane(id, laneId);
-            added = true;
-            offset += 20;
+          });
+        }
+      } else {
+        const text = e.dataTransfer?.getData('text/plain') || e.dataTransfer?.getData('text/uri-list');
+        if (text) {
+          for (const line of text.split('\n')) {
+            let rel = decodeURI(line.trim());
+            if (!rel.endsWith('.mtask')) continue;
+            items.push({
+              path: rel,
+              name: rel.split('/').pop()!.replace(/\.mtask$/, ''),
+            });
           }
+        }
+      }
+      let offset = 0;
+      let added = false;
+      for (const item of items) {
+        const tfile = this.app.vault.getAbstractFileByPath(item.path) as TFile;
+        if (!tfile) continue;
+        let count = 0;
+        try {
+          const data = JSON.parse(await this.app.vault.read(tfile));
+          count = Object.keys(data.nodes || {}).length;
+        } catch {}
+        const info = {
+          name: item.name,
+          lastModified: item.lastModified ?? tfile.stat.mtime,
+          taskCount: count,
+          path: item.path,
+        };
+        const id = await this.controller?.addBoardCard(info, pos.x + offset, pos.y + offset);
+        if (id) {
+          const laneId = this.getLaneForPosition(pos.x + offset, pos.y + offset);
+          if (laneId) await this.controller?.assignNodeToLane(id, laneId);
+          added = true;
+          offset += 20;
         }
       }
       if (added) this.render();
