@@ -26,6 +26,7 @@ export interface BoardData {
   edges: { from: string; to: string; type: string }[];
   lanes: Record<string, LaneData>;
   title?: string;
+  orientation?: 'vertical' | 'horizontal';
 }
 
 const CURRENT_VERSION = 1;
@@ -36,6 +37,7 @@ export async function loadBoard(app: App, file: TFile): Promise<BoardData> {
     const data = JSON.parse(text) as BoardData;
     if (!data.lanes) data.lanes = {};
     if (!data.title) data.title = file.basename;
+    if (!data.orientation) data.orientation = 'vertical';
     return data;
   } catch (e) {
     return {
@@ -44,6 +46,7 @@ export async function loadBoard(app: App, file: TFile): Promise<BoardData> {
       edges: [],
       lanes: {},
       title: file.basename,
+      orientation: 'vertical',
     };
   }
 }
@@ -72,7 +75,11 @@ export async function getBoardFile(app: App, path: string): Promise<TFile> {
     try {
       await app.vault.create(
         normalized,
-        JSON.stringify({ version: CURRENT_VERSION, nodes: {}, edges: [], lanes: {} }, null, 2)
+        JSON.stringify(
+          { version: CURRENT_VERSION, nodes: {}, edges: [], lanes: {}, orientation: 'vertical' },
+          null,
+          2
+        )
       );
     } catch (err: any) {
       if (err?.message?.includes('already exists')) {
