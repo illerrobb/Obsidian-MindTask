@@ -6,7 +6,7 @@
   "scripts": {
     "build": "rollup -c && cp manifest.json styles.css dist/",
     "dev": "rollup -c -w",
-    "test": "echo \"No tests\""
+    "test": "tsx test/boardHandles.test.ts"
   },
   "keywords": [
     "obsidian-plugin"
@@ -18,9 +18,11 @@
     "@rollup/plugin-node-resolve": "^15.0.1",
     "@rollup/plugin-typescript": "^11.1.2",
     "@types/node": "^24.1.0",
+    "jsdom": "^24.0.0",
     "obsidian": "1.8.7",
     "rollup": "^4.45.1",
     "tslib": "^2.8.1",
+    "tsx": "^4.7.1",
     "typescript": "^5.3.3"
   },
   "type": "module"
