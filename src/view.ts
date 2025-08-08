@@ -237,8 +237,19 @@ export class BoardView extends ItemView {
       this.tasks,
       this.plugin.settings
     );
-
+    const prevSelected = new Set(this.selectedIds);
     this.render();
+    this.selectedIds.clear();
+    prevSelected.forEach((id) => {
+      if (!this.board?.nodes[id]) return;
+      const el = this.boardEl.querySelector(
+        `.vtasks-node[data-id="${id}"]`
+      ) as HTMLElement | null;
+      if (el) {
+        el.classList.add('selected');
+        this.selectedIds.add(id);
+      }
+    });
   }
 
   private render() {
