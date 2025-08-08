@@ -13,7 +13,6 @@ import {
   TAbstractFile,
   normalizePath,
 } from 'obsidian';
-import { relative } from 'path';
 import type MindTaskPlugin from './main';
 import Controller from './controller';
 import { BoardData, saveBoard, loadBoard, getBoardFile } from './boardStore';
@@ -637,15 +636,25 @@ export class BoardView extends ItemView {
       this.boardEl.removeClass('drag-over');
       const pos = this.getBoardCoords(e);
       const items: { path: string; name: string; lastModified?: number }[] = [];
+      const basePath = ((this.app.vault.adapter as any).basePath || '').replace(/\\/g, '/');
+      const toVaultPath = (raw: string): string | null => {
+        let p = decodeURI(raw).replace(/\\/g, '/');
+        p = p.replace(/^file:\/\//, '').replace(/^app:\/\/local\//, '');
+        if (basePath && p.startsWith(basePath)) {
+          p = p.slice(basePath.length);
+        } else if (basePath && p.includes(':') && !p.startsWith(basePath)) {
+          return null; // outside vault
+        }
+        if (p.startsWith('/')) p = p.slice(1);
+        return normalizePath(p);
+      };
+
       const files = e.dataTransfer?.files;
       if (files && files.length > 0) {
-        const basePath = (this.app.vault.adapter as any).basePath || '';
         for (const file of Array.from(files)) {
           if (!file.name.endsWith('.mtask')) continue;
-          let rel = normalizePath(
-            relative(basePath, (file as any).path).replace(/\\/g, '/'),
-          );
-          if (rel.startsWith('..')) continue;
+          const rel = toVaultPath((file as any).path || file.name);
+          if (!rel) continue;
           items.push({
             path: rel,
             name: file.name.replace(/\.mtask$/, ''),
@@ -658,10 +667,8 @@ export class BoardView extends ItemView {
           e.dataTransfer?.getData('text/uri-list');
         if (text) {
           for (const line of text.split('\n')) {
-            const rel = normalizePath(
-              decodeURI(line.trim()).replace(/\\/g, '/'),
-            );
-            if (!rel.endsWith('.mtask')) continue;
+            const rel = toVaultPath(line.trim());
+            if (!rel || !rel.endsWith('.mtask')) continue;
             items.push({
               path: rel,
               name: rel.split('/').pop()!.replace(/\.mtask$/, ''),
