@@ -165,8 +165,13 @@ export class BoardView extends ItemView {
 
     if (!this.vaultEventsRegistered) {
       const onVaultChange = (file: TAbstractFile) => {
-        if (!this.boardFile) return;
-        if (file.path === this.boardFile.path) return;
+        if (!this.boardFile || !(file instanceof TFile)) return;
+        if (
+          file.path === this.boardFile.path ||
+          file.path.endsWith('.mtask') ||
+          !file.path.endsWith('.md')
+        )
+          return;
         void this.refreshFromVault();
       };
       this.registerEvent(this.app.vault.on('create', onVaultChange));
