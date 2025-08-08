@@ -90,6 +90,10 @@
   transform-origin: 0 0; /* oppure usa 'center center' per zoomare dal centro */
 }
 
+.vtasks-no-grid {
+  background-image: none;
+}
+
 .vtasks-align-line {
   position: absolute;
   background: var(--color-accent);

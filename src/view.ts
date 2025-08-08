@@ -267,6 +267,9 @@ export class BoardView extends ItemView {
     this.boardEl.addClass(
       orient === 'horizontal' ? 'vtasks-horizontal' : 'vtasks-vertical'
     );
+    if (!(this.board?.snapToGrid ?? true)) {
+      this.boardEl.addClass('vtasks-no-grid');
+    }
     this.boardEl.tabIndex = 0;
     this.boardEl.style.transform = `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px) scale(${this.zoom})`;
     this.alignVLine = this.boardEl.createDiv('vtasks-align-line vtasks-align-v');
@@ -331,6 +334,16 @@ export class BoardView extends ItemView {
     settingsBtn.setAttr('title', 'Board settings');
     settingsBtn.onclick = (e) => {
       const menu = new Menu();
+      const snap = this.board?.snapToGrid ?? true;
+      menu.addItem((item) =>
+        item
+          .setTitle('Snap to grid')
+          .setChecked(snap)
+          .onClick(async () => {
+            await this.controller?.setSnapToGrid(!snap);
+            this.render();
+          })
+      );
       const current = this.board?.orientation ?? 'vertical';
       menu.addItem((item) =>
         item.setTitle('Vertical orientation').onClick(async () => {
@@ -845,6 +858,7 @@ export class BoardView extends ItemView {
 
     this.boardEl.onpointermove = (e) => {
       const coords = this.getBoardCoords(e as PointerEvent);
+      const snap = this.board?.snapToGrid ?? true;
       const laneId = this.getLaneForPosition(coords.x, coords.y);
       this.boardEl.querySelectorAll('.vtasks-lane').forEach((l) => {
         const el = l as HTMLElement;
@@ -914,19 +928,21 @@ export class BoardView extends ItemView {
         let height = this.resizeStartHeight;
 
         if (this.resizeDir.includes('w')) {
-          x = Math.round((this.resizeStartNodeX + dx) / this.gridSize) * this.gridSize;
+          x = this.resizeStartNodeX + dx;
+          if (snap) x = Math.round(x / this.gridSize) * this.gridSize;
           width = right - x;
         } else if (this.resizeDir.includes('e')) {
           width = this.resizeStartWidth + dx;
-          width = Math.round(width / this.gridSize) * this.gridSize;
+          if (snap) width = Math.round(width / this.gridSize) * this.gridSize;
         }
 
         if (this.resizeDir.includes('n')) {
-          y = Math.round((this.resizeStartNodeY + dy) / this.gridSize) * this.gridSize;
+          y = this.resizeStartNodeY + dy;
+          if (snap) y = Math.round(y / this.gridSize) * this.gridSize;
           height = bottom - y;
         } else if (this.resizeDir.includes('s')) {
           height = this.resizeStartHeight + dy;
-          height = Math.round(height / this.gridSize) * this.gridSize;
+          if (snap) height = Math.round(height / this.gridSize) * this.gridSize;
         }
 
         width = Math.max(120, width);
@@ -979,8 +995,12 @@ export class BoardView extends ItemView {
         this.getDragIds().forEach((id) => {
           const start = this.dragStartPositions.get(id);
           if (!start) return;
-          let x = Math.round((start.x + curX - this.dragStartX) / this.gridSize) * this.gridSize;
-          let y = Math.round((start.y + curY - this.dragStartY) / this.gridSize) * this.gridSize;
+          let x = start.x + curX - this.dragStartX;
+          let y = start.y + curY - this.dragStartY;
+          if (snap) {
+            x = Math.round(x / this.gridSize) * this.gridSize;
+            y = Math.round(y / this.gridSize) * this.gridSize;
+          }
 
           const nodeEl = this.boardEl.querySelector(
             `.vtasks-node[data-id="${id}"]`
