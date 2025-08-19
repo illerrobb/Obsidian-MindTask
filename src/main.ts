@@ -7,6 +7,7 @@ import {
   TextComponent,
   Notice,
   Setting,
+  normalizePath,
 } from 'obsidian';
 import { BoardView, VIEW_TYPE_BOARD } from './view';
 import { getBoardFile } from './boardStore';
@@ -33,6 +34,18 @@ export default class MindTaskPlugin extends Plugin {
       }
     } else {
       this.settings = { ...DEFAULT_SETTINGS };
+    }
+
+    if (this.settings.notesFolder.trim()) {
+      const folderPath = normalizePath(this.settings.notesFolder.trim());
+      const folder = this.app.vault.getAbstractFileByPath(folderPath);
+      if (!folder) {
+        try {
+          await this.app.vault.createFolder(folderPath);
+        } catch {
+          /* ignore */
+        }
+      }
     }
     this.addSettingTab(new SettingsTab(this.app, this));
     this.registerView(

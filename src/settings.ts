@@ -20,6 +20,12 @@ export interface PluginSettings {
   deletePermanently: boolean;
   /** Folder to store board files */
   boardFolder: string;
+  /** Default description mode for new tasks */
+  defaultDescriptionMode: 'short' | 'note';
+  /** Folder to store detailed task notes */
+  notesFolder: string;
+  /** Template file used when creating detailed notes */
+  templatePath: string;
   /** List of background colors for tasks */
   backgroundColors: ColorOption[];
   /** Horizontal spacing between nodes when rearranging */
@@ -39,6 +45,9 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   useBlockId: true,
   deletePermanently: false,
   boardFolder: '',
+  defaultDescriptionMode: 'short',
+  notesFolder: '',
+  templatePath: 'Templates/task-note.md',
   backgroundColors: [
     { color: 'red' },
     { color: 'green' },
@@ -81,6 +90,49 @@ export class SettingsTab extends PluginSettingTab {
             this.plugin.settings.defaultTaskFile = value.trim();
             await this.plugin.savePluginData();
           })
+      );
+
+    new Setting(containerEl)
+      .setName('Default description mode')
+      .setDesc(
+        'Choose whether new tasks use a short description or a detailed note',
+      )
+      .addDropdown((dropdown) =>
+        dropdown
+          .addOption('short', 'Brief only')
+          .addOption('note', 'With detailed note')
+          .setValue(this.plugin.settings.defaultDescriptionMode)
+          .onChange(async (value) => {
+            this.plugin.settings.defaultDescriptionMode = value as
+              'short' | 'note';
+            await this.plugin.savePluginData();
+          }),
+      );
+
+    new Setting(containerEl)
+      .setName('Notes folder')
+      .setDesc('Folder where detailed notes are stored')
+      .addText((text) =>
+        text
+          .setPlaceholder('(same as task file)')
+          .setValue(this.plugin.settings.notesFolder)
+          .onChange(async (value) => {
+            this.plugin.settings.notesFolder = value.trim();
+            await this.plugin.savePluginData();
+          }),
+      );
+
+    new Setting(containerEl)
+      .setName('Note template')
+      .setDesc('Template file for detailed notes')
+      .addText((text) =>
+        text
+          .setPlaceholder('Templates/task-note.md')
+          .setValue(this.plugin.settings.templatePath)
+          .onChange(async (value) => {
+            this.plugin.settings.templatePath = value.trim();
+            await this.plugin.savePluginData();
+          }),
       );
 
     new Setting(containerEl)
