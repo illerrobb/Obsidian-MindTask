@@ -308,6 +308,7 @@
   border: 1px solid var(--text-muted);
   font-size: 12px;
   pointer-events: auto;
+  white-space: pre-wrap;
 }
 
 .vtasks-edge-label.vtasks-edge-depends {
@@ -322,7 +323,7 @@
   border-color: var(--color-green);
 }
 
-input.vtasks-edge-label-input {
+textarea.vtasks-edge-label-input {
   padding: 1px 2px;
 }
 

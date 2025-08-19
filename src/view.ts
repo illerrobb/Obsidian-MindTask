@@ -1818,10 +1818,10 @@ export class BoardView extends ItemView {
         let label = current.label;
         if (!label) {
           label = this.boardEl.createDiv('vtasks-edge-label');
-          label.ondblclick = (e) => {
+          label.addEventListener('click', (e) => {
             e.stopPropagation();
             this.startEditingEdgeLabel(idx);
-          };
+          });
           current.label = label;
         }
         label.setText(edge.label);
@@ -1973,21 +1973,21 @@ export class BoardView extends ItemView {
     current.label?.remove();
     const cx = (current.x1 + current.x2) / 2;
     const cy = (current.y1 + current.y2) / 2;
-    const input = document.createElement('input');
-    input.value = edge.label || '';
-    input.classList.add(
+    const area = document.createElement('textarea');
+    area.value = edge.label || '';
+    area.classList.add(
       'vtasks-edge-label',
       'vtasks-edge-label-input',
       `vtasks-edge-${edge.type}`
     );
-    input.style.left = cx + 'px';
-    input.style.top = cy + 'px';
-    this.boardEl.appendChild(input);
+    area.style.left = cx + 'px';
+    area.style.top = cy + 'px';
+    this.boardEl.appendChild(area);
     this.editingEdgeLabel = idx;
     const finish = (save: boolean) => {
       if (this.editingEdgeLabel !== idx) return;
-      const val = save ? input.value.trim() : edge.label || '';
-      input.remove();
+      const val = save ? area.value.trim() : edge.label || '';
+      area.remove();
       this.editingEdgeLabel = null;
       if (save) {
         this.controller!.setEdgeLabel(idx, val).then(() => this.render());
@@ -1995,30 +1995,30 @@ export class BoardView extends ItemView {
         this.render();
       }
     };
-    input.addEventListener('keydown', (e) => {
+    area.addEventListener('keydown', (e) => {
       e.stopPropagation();
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        finish(true);
-      } else if (e.key === 'Escape') {
+      if (e.key === 'Escape') {
         e.preventDefault();
         finish(false);
+      } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        finish(true);
       }
     });
-    input.addEventListener('blur', () => finish(true));
-    input.focus();
+    area.addEventListener('blur', () => finish(true));
+    area.focus();
   }
 
   private finishEditingEdgeLabel(save: boolean) {
     if (this.editingEdgeLabel == null) return;
     const idx = this.editingEdgeLabel;
-    const input = this.boardEl.querySelector('input.vtasks-edge-label-input') as HTMLInputElement | null;
-    if (!input) {
+    const area = this.boardEl.querySelector('textarea.vtasks-edge-label-input') as HTMLTextAreaElement | null;
+    if (!area) {
       this.editingEdgeLabel = null;
       return;
     }
-    const val = input.value.trim();
-    input.remove();
+    const val = area.value.trim();
+    area.remove();
     this.editingEdgeLabel = null;
     if (save) {
       this.controller!.setEdgeLabel(idx, val).then(() => this.render());
