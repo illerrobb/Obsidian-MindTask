@@ -275,7 +275,7 @@ export default class Controller {
         }
         f = this.app.vault.getAbstractFileByPath(folderPath);
       }
-      folder = f instanceof TFolder ? f : this.app.vault.getRoot();
+      folder = f && 'children' in f ? (f as TFolder) : this.app.vault.getRoot();
     } else {
       folder = task.file.parent ?? this.app.vault.getRoot();
     }
