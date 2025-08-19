@@ -735,8 +735,13 @@ export class BoardView extends ItemView {
       const boardItems: { path: string; name: string; lastModified?: number }[] = [];
       const noteItems: { path: string; name: string }[] = [];
       const basePath = ((this.app.vault.adapter as any).basePath || '').replace(/\\/g, '/');
-      const toVaultPath = (raw: string): string | null => {
-        let p = decodeURI(raw).replace(/\\/g, '/');
+      const toVaultPath = (raw: unknown): string | null => {
+        if (raw == null) return null;
+        let p =
+          typeof raw === 'string'
+            ? raw
+            : ((raw as any).path || (raw as any).name || '') + '';
+        p = decodeURI(p).replace(/\\/g, '/');
         const obsidian = /^obsidian:\/\/open\?(.*)/.exec(p);
         if (obsidian) {
           const params = new URLSearchParams(obsidian[1]);
@@ -756,8 +761,44 @@ export class BoardView extends ItemView {
         return normalizePath(p);
       };
 
+      const items = e.dataTransfer?.items;
       const files = e.dataTransfer?.files;
-      if (files && files.length > 0) {
+      if (items && items.length > 0) {
+        for (const item of Array.from(items)) {
+          if (item.kind === 'file') {
+            const file = item.getAsFile();
+            if (!file) continue;
+            const rel = toVaultPath((file as any).path || file.name);
+            if (!rel) continue;
+            if (file.name.endsWith('.mtask')) {
+              boardItems.push({
+                path: rel,
+                name: file.name.replace(/\.mtask$/, ''),
+                lastModified: file.lastModified,
+              });
+            } else if (file.name.endsWith('.md')) {
+              noteItems.push({ path: rel, name: file.name });
+            }
+          } else if (item.kind === 'string') {
+            const text = await new Promise<string>((resolve) =>
+              item.getAsString((s) => resolve(s))
+            );
+            if (!text) continue;
+            for (const line of text.split('\n')) {
+              const rel = toVaultPath(line.trim());
+              if (!rel) continue;
+              if (rel.endsWith('.mtask')) {
+                boardItems.push({
+                  path: rel,
+                  name: rel.split('/').pop()!.replace(/\.mtask$/, ''),
+                });
+              } else if (rel.endsWith('.md')) {
+                noteItems.push({ path: rel, name: rel.split('/').pop()! });
+              }
+            }
+          }
+        }
+      } else if (files && files.length > 0) {
         for (const file of Array.from(files)) {
           const rel = toVaultPath((file as any).path || file.name);
           if (!rel) continue;
@@ -800,6 +841,22 @@ export class BoardView extends ItemView {
                 path: rel,
                 name: dmFile.name || rel.split('/').pop()!,
               });
+            }
+          }
+          const dmText = (this.app as any).dragManager?.getData(
+            e.dataTransfer,
+            'text'
+          );
+          if (dmText) {
+            const texts = Array.isArray(dmText) ? dmText : [dmText];
+            for (const t of texts) {
+              const rel = toVaultPath(t.path || t);
+              if (rel && rel.endsWith('.md')) {
+                noteItems.push({
+                  path: rel,
+                  name: t.name || rel.split('/').pop()!,
+                });
+              }
             }
           }
         }
