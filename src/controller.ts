@@ -493,6 +493,13 @@ export default class Controller {
     await saveBoard(this.app, this.boardFile, this.board);
   }
 
+  async setEdgeLabel(index: number, label: string) {
+    const edge = this.board.edges[index];
+    if (!edge) return;
+    edge.label = label;
+    await saveBoard(this.app, this.boardFile, this.board);
+  }
+
   async rearrangeNodes(ids: string[]) {
     const nodes = ids
       .map((id) => ({ id, node: this.board.nodes[id] }))

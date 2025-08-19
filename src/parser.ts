@@ -97,8 +97,18 @@ export async function scanFiles(
 /**
  * Parse dependencies from task text using `dependsOn::` syntax.
  */
-export function parseDependencies(tasks: ParsedTask[]): { from: string; to: string; type: string }[] {
-  const edges: { from: string; to: string; type: string }[] = [];
+export function parseDependencies(tasks: ParsedTask[]): {
+  from: string;
+  to: string;
+  type: string;
+  label?: string;
+}[] {
+  const edges: {
+    from: string;
+    to: string;
+    type: string;
+    label?: string;
+  }[] = [];
   const depRegex = /\[dependsOn::\s*([\w-]+)\]/g;
   const subtaskRegex = /\[subtaskOf::\s*([\w-]+)\]/g;
   const seqRegex = /\[after::\s*([\w-]+)\]/g;
