@@ -10,10 +10,7 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
-    "baseUrl": ".",
-    "paths": {
-      "obsidian": ["test/obsidian"]
-    }
+    "baseUrl": "."
   },
-  "include": ["src/**/*", "test/**/*"]
+  "include": ["src/**/*"]
 }

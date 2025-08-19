@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "paths": {
+      "obsidian": ["test/obsidian"]
+    }
+  },
+  "include": ["src/**/*", "test/**/*"]
+}
