@@ -309,6 +309,8 @@
   font-size: 12px;
   pointer-events: auto;
   white-space: pre-wrap;
+  z-index: 2;
+  border-radius: 8px;
 }
 
 .vtasks-edge-label.vtasks-edge-depends {
