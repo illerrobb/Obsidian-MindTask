@@ -523,12 +523,12 @@ export class BoardView extends ItemView {
       `vtasks-handle vtasks-handle-in vtasks-handle-${orientH === 'vertical' ? 'top' : 'left'}`
     );
     const textEl = nodeEl.createDiv('vtasks-text');
-    const metaEl = nodeEl.createDiv('vtasks-meta');
-
     const task = this.tasks.get(id);
     let text = task?.text ?? id;
     const metas: { key: string; val: string }[] = [];
     const tags: string[] = [];
+    let description: string | undefined = task?.description;
+    let notePath: string | undefined = task?.notePath;
     text = text.replace(/\[(\w+)::\s*([^\]]+)\]/g, (m, key, val) => {
       if (!['dependsOn', 'subtaskOf', 'after'].includes(key)) metas.push({ key, val: val.trim() });
       return '';
@@ -546,7 +546,22 @@ export class BoardView extends ItemView {
       metas.push({ key: 'ID', val: idMatch[0].slice(1) });
       text = text.replace(/\^[\w-]+$/, '');
     }
+    for (let i = metas.length - 1; i >= 0; i--) {
+      const k = metas[i].key.toLowerCase();
+      if (k === 'description') {
+        description = metas[i].val;
+        metas.splice(i, 1);
+      } else if (k === 'notepath') {
+        notePath = metas[i].val;
+        metas.splice(i, 1);
+      }
+    }
     textEl.textContent = text.trim();
+    if (description) {
+      const descEl = nodeEl.createDiv('vtasks-desc');
+      descEl.setText(description);
+    }
+    const metaEl = nodeEl.createDiv('vtasks-meta');
     metas.forEach((m) => {
       if (m.key === 'completed') {
         metaEl.createSpan({ text: m.val, cls: 'vtasks-tag-completed' });
@@ -575,6 +590,14 @@ export class BoardView extends ItemView {
     }
     const tagsEl = metaEl.createDiv('vtasks-tags');
     tags.forEach((t) => tagsEl.createSpan({ text: t, cls: 'vtasks-tag' }));
+    if (notePath) {
+      const noteEl = metaEl.createSpan({ cls: 'vtasks-note-link' });
+      setIcon(noteEl, 'file');
+      noteEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.app.workspace.openLinkText(notePath!, '', false);
+      });
+    }
     if (pos.type !== 'group') {
       nodeEl.addClass('vtasks-task');
       const checked = task?.checked ?? false;

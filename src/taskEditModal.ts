@@ -3,8 +3,10 @@ import {
   Modal,
   Setting,
   TextComponent,
+  TextAreaComponent,
   ToggleComponent,
   DropdownComponent,
+  normalizePath,
 } from 'obsidian';
 import { ParsedTask } from './parser';
 import { PluginSettings } from './settings';
@@ -12,6 +14,8 @@ import { PluginSettings } from './settings';
 export interface EditTaskResult {
   text: string;
   checked: boolean;
+  description: string;
+  notePath?: string;
 }
 
 interface ParsedContent {
@@ -117,6 +121,8 @@ export async function openTaskEditModal(
       recur!: TextComponent;
       priority!: DropdownComponent;
       checked!: ToggleComponent;
+      description!: TextAreaComponent;
+      notePath!: TextComponent;
 
       onOpen() {
         const { contentEl } = this;
@@ -127,6 +133,27 @@ export async function openTaskEditModal(
         new Setting(contentEl)
           .setName('Tags')
           .addText((t) => (this.tagsInput = t.setValue(tags.join(' '))));
+        new Setting(contentEl)
+          .setName('Description')
+          .addTextArea((t) => (this.description = t.setValue(metas.get('description') || '')));
+        new Setting(contentEl)
+          .setName('Note Path')
+          .addText((t) => (this.notePath = t.setValue(metas.get('notePath') || '')))
+          .addExtraButton((btn) =>
+            btn
+              .setIcon('file')
+              .setTooltip('Open or create note')
+              .onClick(async () => {
+                const path = this.notePath.getValue().trim();
+                if (!path) return;
+                const normalized = normalizePath(path);
+                let file = this.app.vault.getAbstractFileByPath(normalized) as any;
+                if (!file) {
+                  file = await this.app.vault.create(normalized, '');
+                }
+                await this.app.workspace.openLinkText(normalized, '', false);
+              }),
+          );
         new Setting(contentEl)
           .setName('Start')
           .addText((t) => {
@@ -203,6 +230,8 @@ export async function openTaskEditModal(
                 const recur = this.recur.getValue().trim();
                 const prio = this.priority.getValue();
                 const checked = this.checked.getValue();
+                const desc = this.description.getValue().trim();
+                const note = this.notePath.getValue().trim();
 
                 start ? newMetas.set('start', start) : newMetas.delete('start');
                 scheduled
@@ -214,6 +243,12 @@ export async function openTaskEditModal(
                   ? newMetas.set('recurrence', recur)
                   : newMetas.delete('recurrence');
                 prio ? newMetas.set('priority', prio) : newMetas.delete('priority');
+                desc
+                  ? newMetas.set('description', desc)
+                  : newMetas.delete('description');
+                note
+                  ? newMetas.set('notePath', note)
+                  : newMetas.delete('notePath');
 
                 const text = buildTaskText(
                   title,
@@ -223,7 +258,7 @@ export async function openTaskEditModal(
                   task.blockId,
                   deps,
                 );
-                resolve({ text, checked });
+                resolve({ text, checked, description: desc, notePath: note || undefined });
                 this.close();
               }),
           )

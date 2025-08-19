@@ -9,6 +9,8 @@ export interface ParsedTask {
   blockId: string;
   indent: number;
   dependsOn: string[];
+  description?: string;
+  notePath?: string;
 }
 
 /**
@@ -57,7 +59,27 @@ export async function scanFiles(
         }
         modified = true;
       }
-      tasks.push({ file, line: i, text, checked, blockId, indent, dependsOn: [] });
+      const descMatch =
+        text.match(/\[description::\s*([^\]]+)\]/) ||
+        text.match(/\bdescription::\s*((?:\[\[[^\]]+\]\]|[^\n])*?)(?=\s+\w+::|\s+#|$)/);
+      const noteMatch =
+        text.match(/\[notePath::\s*([^\]]+)\]/) ||
+        text.match(/\bnotePath::\s*((?:\[\[[^\]]+\]\]|[^\n])*?)(?=\s+\w+::|\s+#|$)/);
+
+      const description = descMatch ? descMatch[1].trim() : undefined;
+      const notePath = noteMatch ? noteMatch[1].trim() : undefined;
+
+      tasks.push({
+        file,
+        line: i,
+        text,
+        checked,
+        blockId,
+        indent,
+        dependsOn: [],
+        description,
+        notePath,
+      });
     }
     if (modified) {
       await app.vault.modify(file, lines.join('\n'));
