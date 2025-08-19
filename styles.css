@@ -279,11 +279,15 @@
   border-radius: 50%;
   background: var(--color-accent);
   opacity: 0;
-  transition: opacity 0.2s ease-in-out;
+  transition: opacity 0.2s ease-in-out, transform 0.1s ease-in-out;
 }
 
 .vtasks-node:hover .vtasks-handle,
 .vtasks-board.show-handles .vtasks-handle {
+  opacity: 1;
+}
+
+.vtasks-handle-connected {
   opacity: 1;
 }
 
@@ -293,10 +297,18 @@
   transform: translate(-50%, -50%);
 }
 
+.vtasks-vertical .vtasks-handle-top.vtasks-handle-hover {
+  transform: translate(-50%, -50%) scale(1.4);
+}
+
 .vtasks-vertical .vtasks-handle-bottom {
   bottom: -5px;
   left: 50%;
   transform: translate(-50%, 50%);
+}
+
+.vtasks-vertical .vtasks-handle-bottom.vtasks-handle-hover {
+  transform: translate(-50%, 50%) scale(1.4);
 }
 
 .vtasks-horizontal .vtasks-handle-left {
@@ -305,10 +317,18 @@
   transform: translate(-50%, -50%);
 }
 
+.vtasks-horizontal .vtasks-handle-left.vtasks-handle-hover {
+  transform: translate(-50%, -50%) scale(1.4);
+}
+
 .vtasks-horizontal .vtasks-handle-right {
   right: -5px;
   top: 50%;
   transform: translate(50%, -50%);
+}
+
+.vtasks-horizontal .vtasks-handle-right.vtasks-handle-hover {
+  transform: translate(50%, -50%) scale(1.4);
 }
 
 .vtasks-resize {
