@@ -91,6 +91,7 @@ export class BoardView extends ItemView {
   private tasks: Map<string, ParsedTask> = new Map();
   private boardFile: TFile | null = null;
   private vaultEventsRegistered = false;
+  private skipNextRename = false;
   private plugin: MindTaskPlugin;
 
   constructor(leaf: WorkspaceLeaf, plugin: MindTaskPlugin) {
@@ -176,9 +177,27 @@ export class BoardView extends ItemView {
           return;
         void this.refreshFromVault();
       };
+      const onVaultRename = async (file: TAbstractFile, oldPath: string) => {
+        if (!this.boardFile || !(file instanceof TFile)) return;
+        if (file === this.boardFile) {
+          if (this.skipNextRename) {
+            this.skipNextRename = false;
+            return;
+          }
+          if (this.board) {
+            this.board.title = file.basename;
+            await saveBoard(this.app, this.boardFile, this.board);
+            this.app.workspace.trigger('layout-change');
+            this.render();
+          }
+        } else if (file.path.endsWith('.md') || oldPath.endsWith('.md')) {
+          void this.refreshFromVault();
+        }
+      };
       this.registerEvent(this.app.vault.on('create', onVaultChange));
       this.registerEvent(this.app.vault.on('modify', onVaultChange));
       this.registerEvent(this.app.vault.on('delete', onVaultChange));
+      this.registerEvent(this.app.vault.on('rename', onVaultRename));
       this.vaultEventsRegistered = true;
     }
 
@@ -1979,6 +1998,19 @@ export class BoardView extends ItemView {
     const finish = async (save: boolean) => {
       const newTitle = save ? input.value.trim() : this.board?.title || '';
       if (save && this.board && this.boardFile) {
+        const slug = newTitle
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '');
+        const dir = this.boardFile.parent?.path || '';
+        const newPath = normalizePath(
+          dir ? `${dir}/${slug}.mtask` : `${slug}.mtask`
+        );
+        if (newPath !== this.boardFile.path) {
+          this.skipNextRename = true;
+          await this.app.vault.rename(this.boardFile, newPath);
+          this.boardFile = this.app.vault.getAbstractFileByPath(newPath) as TFile;
+        }
         this.board.title = newTitle;
         await saveBoard(this.app, this.boardFile, this.board);
         this.app.workspace.trigger('layout-change');
