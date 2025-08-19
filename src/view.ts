@@ -39,8 +39,18 @@ export class BoardView extends ItemView {
   private edgeHoverHandle: HTMLElement | null = null;
   private edgeX = 0;
   private edgeY = 0;
-  private edgeEls: Map<number, { hit: SVGPathElement; line: SVGPathElement }> =
-    new Map();
+  private edgeEls: Map<
+    number,
+    {
+      hit: SVGPathElement;
+      line: SVGPathElement;
+      label?: HTMLDivElement;
+      x1: number;
+      y1: number;
+      x2: number;
+      y2: number;
+    }
+  > = new Map();
   private selectionRect: HTMLElement | null = null;
   private selStartX = 0;
   private selStartY = 0;
@@ -59,6 +69,7 @@ export class BoardView extends ItemView {
   private isMinimapDragging = false;
   private editTimer: number | null = null;
   private editingId: string | null = null;
+  private editingEdgeLabel: number | null = null;
   private pointerDownSelected = false;
   private didDragSelect = false;
   private hasFocus = false;
@@ -658,6 +669,7 @@ export class BoardView extends ItemView {
       }
       if (this.editingId) {
         this.finishEditing(true);
+        if (this.editingEdgeLabel != null) this.finishEditingEdgeLabel(true);
       }
       if (pos.type === 'group') {
         this.openGroup(id);
@@ -764,6 +776,7 @@ export class BoardView extends ItemView {
       this.pointerDownSelected = false;
       this.boardEl.focus();
       if (this.editingId) this.finishEditing(true);
+      if (this.editingEdgeLabel != null) this.finishEditingEdgeLabel(true);
       const laneResize = (e.target as HTMLElement).closest('.vtasks-lane-resize') as HTMLElement | null;
       const laneHeader = (e.target as HTMLElement).closest('.vtasks-lane-header') as HTMLElement | null;
       const lane = (e.target as HTMLElement).closest('.vtasks-lane') as HTMLElement | null;
@@ -1591,6 +1604,7 @@ export class BoardView extends ItemView {
         if (els) {
           els.hit.remove();
           els.line.remove();
+          els.label?.remove();
           this.edgeEls.delete(idx);
         }
         return;
@@ -1601,6 +1615,7 @@ export class BoardView extends ItemView {
         if (els) {
           els.hit.remove();
           els.line.remove();
+          els.label?.remove();
           this.edgeEls.delete(idx);
         }
         return;
@@ -1632,11 +1647,20 @@ export class BoardView extends ItemView {
         line.classList.add('vtasks-edge-line');
         this.svgEl.appendChild(hit);
         this.svgEl.appendChild(line);
-        current = { hit, line };
+        current = { hit, line, x1, y1, x2, y2 };
         this.edgeEls.set(idx, current);
+      } else {
+        current.x1 = x1;
+        current.y1 = y1;
+        current.x2 = x2;
+        current.y2 = y2;
       }
       current.hit.setAttr('d', d);
       current.hit.setAttr('data-index', String(idx));
+      current.hit.ondblclick = (e) => {
+        e.stopPropagation();
+        this.startEditingEdgeLabel(idx);
+      };
       current.line.setAttr('d', d);
       current.line.setAttr('data-index', String(idx));
       current.line.classList.remove(
@@ -1645,12 +1669,39 @@ export class BoardView extends ItemView {
         'vtasks-edge-sequence'
       );
       current.line.classList.add(`vtasks-edge-${edge.type}`);
+      // Handle label
+      const cx = (x1 + x2) / 2;
+      const cy = (y1 + y2) / 2;
+      if (edge.label) {
+        let label = current.label;
+        if (!label) {
+          label = this.boardEl.createDiv('vtasks-edge-label');
+          label.ondblclick = (e) => {
+            e.stopPropagation();
+            this.startEditingEdgeLabel(idx);
+          };
+          current.label = label;
+        }
+        label.setText(edge.label);
+        label.style.left = cx + 'px';
+        label.style.top = cy + 'px';
+        label.classList.remove(
+          'vtasks-edge-depends',
+          'vtasks-edge-subtask',
+          'vtasks-edge-sequence'
+        );
+        label.classList.add(`vtasks-edge-${edge.type}`);
+      } else if (current.label) {
+        current.label.remove();
+        current.label = undefined;
+      }
     });
     toRemove.forEach((idx) => {
       const els = this.edgeEls.get(idx);
       if (!els) return;
       els.hit.remove();
       els.line.remove();
+      els.label?.remove();
       this.edgeEls.delete(idx);
     });
   }
@@ -1768,6 +1819,69 @@ export class BoardView extends ItemView {
     this.editingId = null;
     if (save) {
       this.controller!.renameTask(id, val).then(() => this.render());
+    }
+  }
+
+  private startEditingEdgeLabel(idx: number) {
+    if (!this.controller) return;
+    const current = this.edgeEls.get(idx);
+    const edge = this.board!.edges[idx];
+    if (!current || !edge) return;
+    this.finishEditingEdgeLabel(true);
+    current.label?.remove();
+    const cx = (current.x1 + current.x2) / 2;
+    const cy = (current.y1 + current.y2) / 2;
+    const input = document.createElement('input');
+    input.value = edge.label || '';
+    input.classList.add(
+      'vtasks-edge-label',
+      'vtasks-edge-label-input',
+      `vtasks-edge-${edge.type}`
+    );
+    input.style.left = cx + 'px';
+    input.style.top = cy + 'px';
+    this.boardEl.appendChild(input);
+    this.editingEdgeLabel = idx;
+    const finish = (save: boolean) => {
+      if (this.editingEdgeLabel !== idx) return;
+      const val = save ? input.value.trim() : edge.label || '';
+      input.remove();
+      this.editingEdgeLabel = null;
+      if (save) {
+        this.controller!.setEdgeLabel(idx, val).then(() => this.render());
+      } else {
+        this.render();
+      }
+    };
+    input.addEventListener('keydown', (e) => {
+      e.stopPropagation();
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        finish(true);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        finish(false);
+      }
+    });
+    input.addEventListener('blur', () => finish(true));
+    input.focus();
+  }
+
+  private finishEditingEdgeLabel(save: boolean) {
+    if (this.editingEdgeLabel == null) return;
+    const idx = this.editingEdgeLabel;
+    const input = this.boardEl.querySelector('input.vtasks-edge-label-input') as HTMLInputElement | null;
+    if (!input) {
+      this.editingEdgeLabel = null;
+      return;
+    }
+    const val = input.value.trim();
+    input.remove();
+    this.editingEdgeLabel = null;
+    if (save) {
+      this.controller!.setEdgeLabel(idx, val).then(() => this.render());
+    } else {
+      this.render();
     }
   }
 

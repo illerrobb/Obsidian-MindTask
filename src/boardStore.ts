@@ -23,7 +23,7 @@ export interface NodeData {
 export interface BoardData {
   version: number;
   nodes: Record<string, NodeData>;
-  edges: { from: string; to: string; type: string }[];
+  edges: { from: string; to: string; type: string; label?: string }[];
   lanes: Record<string, LaneData>;
   title?: string;
   orientation?: 'vertical' | 'horizontal';

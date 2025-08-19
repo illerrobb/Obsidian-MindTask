@@ -269,6 +269,11 @@
   stroke-width: 1.5px;
   fill: none;
   pointer-events: none;
+  transition: stroke-width 0.15s;
+}
+
+.vtasks-edge:hover + .vtasks-edge-line {
+  stroke-width: 3px;
 }
 
 .vtasks-edge-line.vtasks-edge-depends {
@@ -283,6 +288,32 @@
 .vtasks-edge-line.vtasks-edge-sequence {
   stroke: var(--color-green);
   stroke-dasharray: 2 2;
+}
+
+.vtasks-edge-label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  background: var(--background-primary);
+  padding: 1px 2px;
+  border: 1px solid var(--text-muted);
+  font-size: 12px;
+  pointer-events: auto;
+}
+
+.vtasks-edge-label.vtasks-edge-depends {
+  border-color: var(--color-accent);
+}
+
+.vtasks-edge-label.vtasks-edge-subtask {
+  border-color: var(--color-yellow);
+}
+
+.vtasks-edge-label.vtasks-edge-sequence {
+  border-color: var(--color-green);
+}
+
+input.vtasks-edge-label-input {
+  padding: 1px 2px;
 }
 
 .vtasks-handle {
