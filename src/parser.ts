@@ -1,4 +1,4 @@
-import { App, TFile } from 'obsidian';
+import { App, TFile, normalizePath } from 'obsidian';
 import crypto from 'crypto';
 
 export interface ParsedTask {
@@ -59,15 +59,21 @@ export async function scanFiles(
         }
         modified = true;
       }
-      const descMatch =
-        text.match(/\[description::\s*([^\]]+)\]/) ||
-        text.match(/\bdescription::\s*((?:\[\[[^\]]+\]\]|[^\n])*?)(?=\s+\w+::|\s+#|$)/);
       const noteMatch =
         text.match(/\[notePath::\s*([^\]]+)\]/) ||
         text.match(/\bnotePath::\s*((?:\[\[[^\]]+\]\]|[^\n])*?)(?=\s+\w+::|\s+#|$)/);
 
-      const description = descMatch ? descMatch[1].trim() : undefined;
       const notePath = noteMatch ? noteMatch[1].trim() : undefined;
+      let description: string | undefined;
+      if (notePath) {
+        const link = notePath.replace(/^\[\[/, '').replace(/\]\]$/, '');
+        const noteFile = app.vault.getAbstractFileByPath(
+          normalizePath(link),
+        );
+        if (noteFile instanceof TFile) {
+          description = await app.vault.read(noteFile);
+        }
+      }
 
       tasks.push({
         file,

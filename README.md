@@ -58,6 +58,20 @@ Relationships are stored using inline Dataview fields that reference the target 
 
 ![Task relationships](docs/img/links.png) <!-- TODO: task links image -->
 
+### Task Descriptions
+
+Tasks can link to a dedicated note to hold a longer description. Add a
+`notePath` field to the task, for example:
+
+```markdown
+- [ ] My task  [notePath:: path/to/note.md]
+```
+
+When a note path is present, MindTask loads the note content and displays it as
+the task description. Editing the task saves the description text back to the
+linked note, creating the file if needed. The legacy `description` field is no
+longer used.
+
 ## Settings
 
 * **Task identifiers**:
