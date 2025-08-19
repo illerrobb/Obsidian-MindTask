@@ -225,6 +225,20 @@ export default class Controller {
     return id;
   }
 
+  async addNoteNode(path: string, x: number, y: number) {
+    const id = 'n-' + crypto.randomBytes(4).toString('hex');
+    this.board.nodes[id] = {
+      x,
+      y,
+      width: 200,
+      height: 200,
+      type: 'note',
+      notePath: path,
+    } as NodeData;
+    await saveBoard(this.app, this.boardFile, this.board);
+    return id;
+  }
+
   async addExistingTask(id: string, x: number, y: number) {
     if (!this.tasks.has(id)) return;
     this.board.nodes[id] = { x, y } as NodeData;

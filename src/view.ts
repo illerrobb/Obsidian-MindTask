@@ -549,6 +549,35 @@ export class BoardView extends ItemView {
       return nodeEl;
     }
 
+    if (pos.type === 'note') {
+      nodeEl.createDiv(
+        `vtasks-handle vtasks-handle-in vtasks-handle-${orientH === 'vertical' ? 'top' : 'left'}`
+      );
+      const area = nodeEl.createEl('textarea', { cls: 'vtasks-note-content' });
+      const notePath = pos.notePath;
+      if (notePath) {
+        const file = this.app.vault.getAbstractFileByPath(notePath);
+        if (file instanceof TFile) {
+          this.app.vault.read(file).then((content) => {
+            area.value = content;
+          });
+          area.addEventListener('blur', () => {
+            this.app.vault.modify(file, area.value);
+          });
+        }
+      }
+      nodeEl.addClass('vtasks-note');
+      nodeEl.createDiv(
+        `vtasks-handle vtasks-handle-out vtasks-handle-${orientH === 'vertical' ? 'bottom' : 'right'}`
+      );
+      const dirs = ['n', 'e', 's', 'w', 'ne', 'nw', 'se', 'sw'];
+      dirs.forEach((d) => nodeEl.createDiv(`vtasks-resize vtasks-resize-${d}`));
+      new ResizeObserver(() => {
+        this.drawEdges();
+      }).observe(nodeEl);
+      return nodeEl;
+    }
+
     nodeEl.createDiv(
       `vtasks-handle vtasks-handle-in vtasks-handle-${orientH === 'vertical' ? 'top' : 'left'}`
     );
@@ -703,7 +732,8 @@ export class BoardView extends ItemView {
       e.preventDefault();
       this.boardEl.removeClass('drag-over');
       const pos = this.getBoardCoords(e);
-      const items: { path: string; name: string; lastModified?: number }[] = [];
+      const boardItems: { path: string; name: string; lastModified?: number }[] = [];
+      const noteItems: { path: string; name: string }[] = [];
       const basePath = ((this.app.vault.adapter as any).basePath || '').replace(/\\/g, '/');
       const toVaultPath = (raw: string): string | null => {
         let p = decodeURI(raw).replace(/\\/g, '/');
@@ -720,14 +750,17 @@ export class BoardView extends ItemView {
       const files = e.dataTransfer?.files;
       if (files && files.length > 0) {
         for (const file of Array.from(files)) {
-          if (!file.name.endsWith('.mtask')) continue;
           const rel = toVaultPath((file as any).path || file.name);
           if (!rel) continue;
-          items.push({
-            path: rel,
-            name: file.name.replace(/\.mtask$/, ''),
-            lastModified: file.lastModified,
-          });
+          if (file.name.endsWith('.mtask')) {
+            boardItems.push({
+              path: rel,
+              name: file.name.replace(/\.mtask$/, ''),
+              lastModified: file.lastModified,
+            });
+          } else if (file.name.endsWith('.md')) {
+            noteItems.push({ path: rel, name: file.name });
+          }
         }
       } else {
         const text =
@@ -736,17 +769,21 @@ export class BoardView extends ItemView {
         if (text) {
           for (const line of text.split('\n')) {
             const rel = toVaultPath(line.trim());
-            if (!rel || !rel.endsWith('.mtask')) continue;
-            items.push({
-              path: rel,
-              name: rel.split('/').pop()!.replace(/\.mtask$/, ''),
-            });
+            if (!rel) continue;
+            if (rel.endsWith('.mtask')) {
+              boardItems.push({
+                path: rel,
+                name: rel.split('/').pop()!.replace(/\.mtask$/, ''),
+              });
+            } else if (rel.endsWith('.md')) {
+              noteItems.push({ path: rel, name: rel.split('/').pop()! });
+            }
           }
         }
       }
       let offset = 0;
       let added = false;
-      for (const item of items) {
+      for (const item of boardItems) {
         const tfile = this.app.vault.getAbstractFileByPath(item.path);
         if (!(tfile instanceof TFile)) continue;
         let count = 0;
@@ -761,6 +798,19 @@ export class BoardView extends ItemView {
           path: item.path,
         };
         const id = await this.controller?.addBoardCard(info, pos.x + offset, pos.y + offset);
+        if (id) {
+          const laneId = this.getLaneForPosition(pos.x + offset, pos.y + offset);
+          if (laneId) await this.controller?.assignNodeToLane(id, laneId);
+          added = true;
+          offset += 20;
+        }
+      }
+      for (const item of noteItems) {
+        const id = await this.controller?.addNoteNode(
+          item.path,
+          pos.x + offset,
+          pos.y + offset
+        );
         if (id) {
           const laneId = this.getLaneForPosition(pos.x + offset, pos.y + offset);
           if (laneId) await this.controller?.assignNodeToLane(id, laneId);
