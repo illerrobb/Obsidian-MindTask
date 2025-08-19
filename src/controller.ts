@@ -1,4 +1,5 @@
-import { App, normalizePath, TFile, WorkspaceLeaf, TFolder } from 'obsidian';
+import { App, normalizePath, TFile, WorkspaceLeaf } from 'obsidian';
+import type { TFolder } from 'obsidian';
 import crypto from 'crypto';
 import { BoardData, NodeData, LaneData, saveBoard } from './boardStore';
 import { ParsedTask } from './parser';
@@ -194,6 +195,12 @@ export default class Controller {
     this.tasks.set(id, task);
     this.board.nodes[id] = { x, y } as NodeData;
     await saveBoard(this.app, this.boardFile, this.board);
+    if (
+      this.settings.defaultDescriptionMode === 'note' &&
+      !task.notePath
+    ) {
+      await this.createDetailedNote(id);
+    }
     return id;
   }
 
@@ -237,12 +244,28 @@ export default class Controller {
   async createDetailedNote(taskId: string): Promise<string | null> {
     const task = this.tasks.get(taskId);
     if (!task) return null;
-
-    const templatePath = normalizePath('Templates/task-note.md');
+    const templatePath = normalizePath(this.settings.templatePath);
     const template = this.app.vault.getAbstractFileByPath(templatePath);
     if (!(template instanceof TFile)) return null;
 
-    const folder: TFolder = task.file.parent ?? this.app.vault.getRoot();
+    let folder: TFolder;
+    const base = this.settings.notesFolder.trim();
+    if (base) {
+      const folderPath = normalizePath(base);
+      let f = this.app.vault.getAbstractFileByPath(folderPath);
+      if (!f) {
+        try {
+          await this.app.vault.createFolder(folderPath);
+        } catch {
+          /* ignore */
+        }
+        f = this.app.vault.getAbstractFileByPath(folderPath);
+      }
+      folder = f instanceof TFolder ? f : this.app.vault.getRoot();
+    } else {
+      folder = task.file.parent ?? this.app.vault.getRoot();
+    }
+
     const notePath = normalizePath(`${folder.path}/${task.blockId}.md`);
     let newFile = this.app.vault.getAbstractFileByPath(notePath) as TFile;
     const content = await this.app.vault.read(template);
