@@ -111,6 +111,7 @@ export async function openTaskEditModal(
   createDetailedNote?: (taskId: string) => Promise<string | null>,
 ): Promise<EditTaskResult | null> {
   const { title, metas, tags, deps } = parseTaskContent(task.text);
+  metas.delete('description');
   return new Promise((resolve) => {
     new (class extends Modal {
       constructor(
@@ -140,9 +141,9 @@ export async function openTaskEditModal(
         new Setting(contentEl)
           .setName('Tags')
           .addText((t) => (this.tagsInput = t.setValue(tags.join(' '))));
-        new Setting(contentEl)
-          .setName('Description')
-          .addTextArea((t) => (this.description = t.setValue(metas.get('description') || '')));
+          new Setting(contentEl)
+            .setName('Description')
+            .addTextArea((t) => (this.description = t.setValue(task.description || '')));
         new Setting(contentEl)
           .setName('Note Path')
           .addText((t) => (this.notePath = t.setValue(metas.get('notePath') || '')))
@@ -234,7 +235,7 @@ export async function openTaskEditModal(
             btn
               .setButtonText('Save')
               .setCta()
-              .onClick(() => {
+              .onClick(async () => {
                 const newMetas = new Map(metas);
                 const title = this.titleInput.getValue().trim();
                 const tagStr = this.tagsInput.getValue().trim();
@@ -263,9 +264,7 @@ export async function openTaskEditModal(
                   ? newMetas.set('recurrence', recur)
                   : newMetas.delete('recurrence');
                 prio ? newMetas.set('priority', prio) : newMetas.delete('priority');
-                desc
-                  ? newMetas.set('description', desc)
-                  : newMetas.delete('description');
+                newMetas.delete('description');
                 note
                   ? newMetas.set('notePath', note)
                   : newMetas.delete('notePath');
@@ -278,6 +277,15 @@ export async function openTaskEditModal(
                   task.blockId,
                   deps,
                 );
+                if (note) {
+                  const normalized = normalizePath(note);
+                  let file = this.app.vault.getAbstractFileByPath(normalized) as any;
+                  if (!file) {
+                    file = await this.app.vault.create(normalized, desc);
+                  } else {
+                    await this.app.vault.modify(file, desc);
+                  }
+                }
                 resolve({ text, checked, description: desc, notePath: note || undefined });
                 this.close();
               }),
