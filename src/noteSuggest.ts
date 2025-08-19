@@ -1,7 +1,7 @@
 import { App, TFile, AbstractInputSuggest } from 'obsidian';
 
 export class NoteSuggest extends AbstractInputSuggest<TFile> {
-  constructor(app: App, inputEl: HTMLInputElement) {
+  constructor(app: App, private inputEl: HTMLInputElement) {
     super(app, inputEl);
   }
 
