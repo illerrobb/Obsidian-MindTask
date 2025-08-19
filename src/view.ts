@@ -1308,7 +1308,9 @@ export class BoardView extends ItemView {
       this.boardEl.ondblclick = (e) => {
         if (
           (e.target as HTMLElement).closest('.vtasks-node') ||
-          (e.target as HTMLElement).closest('.vtasks-lane-header')
+          (e.target as HTMLElement).closest('.vtasks-lane-header') ||
+          (e.target as HTMLElement).closest('.vtasks-edge') ||
+          (e.target as HTMLElement).closest('.vtasks-edge-label')
         )
           return;
         const pos = this.getBoardCoords(e as MouseEvent);
