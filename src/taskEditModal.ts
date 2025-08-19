@@ -108,10 +108,17 @@ export async function openTaskEditModal(
   app: App,
   task: ParsedTask,
   settings: PluginSettings,
+  createDetailedNote?: (taskId: string) => Promise<string | null>,
 ): Promise<EditTaskResult | null> {
   const { title, metas, tags, deps } = parseTaskContent(task.text);
   return new Promise((resolve) => {
     new (class extends Modal {
+      constructor(
+        app: App,
+        private createDetailedNote?: (taskId: string) => Promise<string | null>,
+      ) {
+        super(app);
+      }
       titleInput!: TextComponent;
       tagsInput!: TextComponent;
       start!: TextComponent;
@@ -152,6 +159,19 @@ export async function openTaskEditModal(
                   file = await this.app.vault.create(normalized, '');
                 }
                 await this.app.workspace.openLinkText(normalized, '', false);
+              }),
+          )
+          .addExtraButton((btn) =>
+            btn
+              .setIcon('file-plus')
+              .setTooltip('Create detailed note')
+              .onClick(async () => {
+                if (!this.createDetailedNote) return;
+                const newPath = await this.createDetailedNote(task.blockId);
+                if (newPath) {
+                  this.notePath.setValue(newPath);
+                  await this.app.workspace.openLinkText(newPath, '', false);
+                }
               }),
           );
         new Setting(contentEl)
@@ -276,7 +296,7 @@ export async function openTaskEditModal(
       onClose() {
         this.contentEl.empty();
       }
-    })(app).open();
+    })(app, createDetailedNote).open();
   });
 }
 
