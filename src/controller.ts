@@ -1,4 +1,4 @@
-import { App, normalizePath, TFile, WorkspaceLeaf } from 'obsidian';
+import { App, normalizePath, TFile, WorkspaceLeaf, TFolder } from 'obsidian';
 import crypto from 'crypto';
 import { BoardData, NodeData, LaneData, saveBoard } from './boardStore';
 import { ParsedTask } from './parser';
@@ -234,6 +234,37 @@ export default class Controller {
     );
   }
 
+  async createDetailedNote(taskId: string): Promise<string | null> {
+    const task = this.tasks.get(taskId);
+    if (!task) return null;
+
+    const templatePath = normalizePath('Templates/task-note.md');
+    const template = this.app.vault.getAbstractFileByPath(templatePath);
+    if (!(template instanceof TFile)) return null;
+
+    const folder: TFolder = task.file.parent ?? this.app.vault.getRoot();
+    const notePath = normalizePath(`${folder.path}/${task.blockId}.md`);
+    let newFile = this.app.vault.getAbstractFileByPath(notePath) as TFile;
+    const content = await this.app.vault.read(template);
+    if (!newFile) {
+      newFile = await this.app.vault.create(notePath, content);
+    } else {
+      await this.app.vault.modify(newFile, content);
+    }
+
+    task.notePath = notePath;
+    await this.modifyTaskText(task, (text) => {
+      const field = `[notePath:: ${notePath}]`;
+      const re = /\[notePath::\s*[^\]]+\]/;
+      if (re.test(text)) return text.replace(re, field);
+      const idField = /\[id::\s*[^\]]+\]|\^[\w-]+$/;
+      const m = text.match(idField);
+      if (m) return text.replace(idField, `${field}  ${m[0]}`);
+      return `${text}  ${field}`;
+    });
+    return notePath;
+  }
+
   async editTask(id: string): Promise<boolean> {
     const task = this.tasks.get(id);
     if (!task) return false;
@@ -241,7 +272,12 @@ export default class Controller {
     const originalText = task.text;
     const originalChecked = task.checked;
 
-    const result = await openTaskEditModal(this.app, task, this.settings);
+    const result = await openTaskEditModal(
+      this.app,
+      task,
+      this.settings,
+      (tid) => this.createDetailedNote(tid)
+    );
     if (!result) return false;
 
     let changed = false;
