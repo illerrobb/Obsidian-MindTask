@@ -84,6 +84,18 @@ export class TextComponent {
   getValue(): string { return this.inputEl.value; }
 }
 
+export class PopoverSuggest<T> {
+  constructor(public app: App) {}
+  open(): void {}
+  close(): void {}
+}
+
+export abstract class AbstractInputSuggest<T> extends PopoverSuggest<T> {
+  constructor(app: App, public inputEl: HTMLInputElement) {
+    super(app);
+  }
+}
+
 export class TAbstractFile {}
 export class TFile extends TAbstractFile {
   path = '';

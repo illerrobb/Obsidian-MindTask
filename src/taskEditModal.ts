@@ -8,6 +8,7 @@ import {
   DropdownComponent,
   normalizePath,
 } from 'obsidian';
+import { NoteSuggest } from './noteSuggest';
 import { ParsedTask } from './parser';
 import { PluginSettings } from './settings';
 
@@ -146,7 +147,10 @@ export async function openTaskEditModal(
             .addTextArea((t) => (this.description = t.setValue(task.description || '')));
         new Setting(contentEl)
           .setName('Note Path')
-          .addText((t) => (this.notePath = t.setValue(metas.get('notePath') || '')))
+          .addText((t) => {
+            this.notePath = t.setValue(metas.get('notePath') || '');
+            new NoteSuggest(app, t.inputEl);
+          })
           .addExtraButton((btn) =>
             btn
               .setIcon('file')
