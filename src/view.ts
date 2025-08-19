@@ -233,7 +233,9 @@ export class BoardView extends ItemView {
 
     for (const id of Object.keys(this.board.nodes)) {
       const n = this.board.nodes[id] as any;
-      if (!this.tasks.has(id) && n.type !== 'group') delete this.board.nodes[id];
+      // Only remove nodes that correspond to tasks no longer present.
+      // Preserve board, note and other special nodes which have a type set.
+      if (!this.tasks.has(id) && !n.type) delete this.board.nodes[id];
     }
 
     this.board.edges = this.board.edges.filter(
