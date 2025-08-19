@@ -540,7 +540,7 @@ export class BoardView extends ItemView {
         this.updateOverflow(nodeEl);
       }).observe(nodeEl);
       this.updateOverflow(nodeEl);
-      nodeEl.addEventListener('click', (e) => {
+      nodeEl.addEventListener('dblclick', (e) => {
         e.stopPropagation();
         if ((pos as any).boardPath) {
           this.plugin.openBoardFile((pos as any).boardPath);
