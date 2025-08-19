@@ -131,6 +131,19 @@
   padding-right: 24px;
 }
 
+.vtasks-desc {
+  font-size: 0.9em;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vtasks-note-link {
+  cursor: pointer;
+  margin-left: 4px;
+}
+
 .vtasks-lane {
   position: absolute;
   background: #e6e6e63d;

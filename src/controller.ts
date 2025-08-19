@@ -174,6 +174,12 @@ export default class Controller {
     await this.app.vault.append(file, `- [ ] ${text}  ${idPart}\n`);
     const content = await this.app.vault.read(file);
     const line = content.split(/\r?\n/).length - 1;
+    const descMatch =
+      text.match(/\[description::\s*([^\]]+)\]/) ||
+      text.match(/\bdescription::\s*((?:\[\[[^\]]+\]\]|[^\n])*?)(?=\s+\w+::|\s+#|$)/);
+    const noteMatch =
+      text.match(/\[notePath::\s*([^\]]+)\]/) ||
+      text.match(/\bnotePath::\s*((?:\[\[[^\]]+\]\]|[^\n])*?)(?=\s+\w+::|\s+#|$)/);
     const task: ParsedTask = {
       file,
       line,
@@ -182,6 +188,8 @@ export default class Controller {
       blockId: id,
       indent: 0,
       dependsOn: [],
+      description: descMatch ? descMatch[1].trim() : undefined,
+      notePath: noteMatch ? noteMatch[1].trim() : undefined,
     };
     this.tasks.set(id, task);
     this.board.nodes[id] = { x, y } as NodeData;
