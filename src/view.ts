@@ -1386,10 +1386,20 @@ export class BoardView extends ItemView {
     );
 
       this.boardEl.ondblclick = (e) => {
+        const edgeEl = document
+          .elementsFromPoint((e as MouseEvent).clientX, (e as MouseEvent).clientY)
+          .find(
+            (el) =>
+              el.classList.contains('vtasks-edge') ||
+              el.classList.contains('vtasks-edge-line')
+          ) as SVGPathElement | undefined;
+        if (edgeEl && edgeEl.getAttr('data-index')) {
+          this.startEditingEdgeLabel(parseInt(edgeEl.getAttr('data-index')!));
+          return;
+        }
         if (
           (e.target as HTMLElement).closest('.vtasks-node') ||
           (e.target as HTMLElement).closest('.vtasks-lane-header') ||
-          (e.target as HTMLElement).closest('.vtasks-edge') ||
           (e.target as HTMLElement).closest('.vtasks-edge-label')
         )
           return;
