@@ -454,8 +454,10 @@ export default class Controller {
   async createEdge(from: string, to: string, type: string) {
     const fromTask = this.tasks.get(from);
     const toTask = this.tasks.get(to);
-    if (!fromTask || !toTask) return;
-    await this.applyRelation(type, fromTask, toTask);
+    // Apply relations only when both ends are tasks, otherwise just store the edge
+    if (fromTask && toTask) {
+      await this.applyRelation(type, fromTask, toTask);
+    }
     this.board.edges.push({ from, to, type });
     await saveBoard(this.app, this.boardFile, this.board);
   }
@@ -466,19 +468,19 @@ export default class Controller {
     const types = ['depends', 'subtask', 'sequence'];
     const current = types.indexOf(edge.type);
     const next = types[(current + 1) % types.length];
-    let fromTask = this.tasks.get(edge.from);
-    let toTask = this.tasks.get(edge.to);
-    if (!fromTask || !toTask) return;
-
-    await this.removeRelation(edge.type, fromTask, toTask);
-
-    if (edge.type === 'depends' || next === 'depends') {
-      [edge.from, edge.to] = [edge.to, edge.from];
-      fromTask = this.tasks.get(edge.from)!;
-      toTask = this.tasks.get(edge.to)!;
+    const fromTask = this.tasks.get(edge.from);
+    const toTask = this.tasks.get(edge.to);
+    if (fromTask && toTask) {
+      await this.removeRelation(edge.type, fromTask, toTask);
+      if (edge.type === 'depends' || next === 'depends') {
+        [edge.from, edge.to] = [edge.to, edge.from];
+      }
+      const newFromTask = this.tasks.get(edge.from);
+      const newToTask = this.tasks.get(edge.to);
+      if (newFromTask && newToTask) {
+        await this.applyRelation(next, newFromTask, newToTask);
+      }
     }
-
-    await this.applyRelation(next, fromTask, toTask);
     edge.type = next;
     await saveBoard(this.app, this.boardFile, this.board);
   }
@@ -488,9 +490,10 @@ export default class Controller {
     if (!edge || edge.type === type) return;
     const fromTask = this.tasks.get(edge.from);
     const toTask = this.tasks.get(edge.to);
-    if (!fromTask || !toTask) return;
-    await this.removeRelation(edge.type, fromTask, toTask);
-    await this.applyRelation(type, fromTask, toTask);
+    if (fromTask && toTask) {
+      await this.removeRelation(edge.type, fromTask, toTask);
+      await this.applyRelation(type, fromTask, toTask);
+    }
     edge.type = type;
     await saveBoard(this.app, this.boardFile, this.board);
   }
