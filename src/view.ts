@@ -737,6 +737,15 @@ export class BoardView extends ItemView {
       const basePath = ((this.app.vault.adapter as any).basePath || '').replace(/\\/g, '/');
       const toVaultPath = (raw: string): string | null => {
         let p = decodeURI(raw).replace(/\\/g, '/');
+        const obsidian = /^obsidian:\/\/open\?(.*)/.exec(p);
+        if (obsidian) {
+          const params = new URLSearchParams(obsidian[1]);
+          const file = params.get('file');
+          if (!file) return null;
+          p = decodeURIComponent(file);
+          if (p.startsWith('/')) p = p.slice(1);
+          return normalizePath(p);
+        }
         p = p.replace(/^file:\/\//, '').replace(/^app:\/\/local\//, '');
         if (basePath && p.startsWith(basePath)) {
           p = p.slice(basePath.length);
@@ -777,6 +786,20 @@ export class BoardView extends ItemView {
               });
             } else if (rel.endsWith('.md')) {
               noteItems.push({ path: rel, name: rel.split('/').pop()! });
+            }
+          }
+        } else {
+          const dmFile = (this.app as any).dragManager?.getData(
+            e.dataTransfer,
+            'file'
+          );
+          if (dmFile) {
+            const rel = toVaultPath(dmFile.path || dmFile);
+            if (rel && rel.endsWith('.md')) {
+              noteItems.push({
+                path: rel,
+                name: dmFile.name || rel.split('/').pop()!,
+              });
             }
           }
         }
