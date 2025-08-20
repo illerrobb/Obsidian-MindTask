@@ -106,6 +106,7 @@ export class BoardView extends ItemView {
   private vaultEventsRegistered = false;
   private skipNextRename = false;
   private plugin: MindTaskPlugin;
+  private containerEventsRegistered = false;
 
   constructor(leaf: WorkspaceLeaf, plugin: MindTaskPlugin) {
     super(leaf);
@@ -835,23 +836,21 @@ export class BoardView extends ItemView {
     this.boardEl.addEventListener('blur', () => {
       this.hasFocus = false;
     });
-    this.registerDomEvent(
-      this.containerEl,
-      'dragover',
-      (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        this.boardEl.addClass('drag-over');
-      },
-      { capture: true }
-    );
-    this.registerDomEvent(this.boardEl, 'dragleave', () => {
-      this.boardEl.removeClass('drag-over');
-    });
-    this.registerDomEvent(
-      this.containerEl,
-      'drop',
-      async (e: DragEvent) => {
+    if (!this.containerEventsRegistered) {
+      this.registerDomEvent(
+        this.containerEl,
+        'dragover',
+        (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          this.boardEl.addClass('drag-over');
+        },
+        { capture: true }
+      );
+      this.registerDomEvent(
+        this.containerEl,
+        'drop',
+        async (e: DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
         console.log('drop items', e.dataTransfer?.items);
@@ -1025,9 +1024,14 @@ export class BoardView extends ItemView {
           offset += 20;
         }
       }
-      },
-      { capture: true }
-    );
+        },
+        { capture: true }
+      );
+      this.containerEventsRegistered = true;
+    }
+    this.registerDomEvent(this.boardEl, 'dragleave', () => {
+      this.boardEl.removeClass('drag-over');
+    });
 
     this.boardEl.onpointerdown = (e) => {
       if ((e as PointerEvent).button === 2) return;
