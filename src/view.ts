@@ -834,7 +834,7 @@ export class BoardView extends ItemView {
       this.boardEl.removeClass('drag-over');
       const pos = this.getBoardCoords(e);
       const boardItems: { path: string; name: string; lastModified?: number }[] = [];
-      const noteItems: { path: string; name: string }[] = [];
+      const notePaths: string[] = [];
       const basePath = ((this.app.vault.adapter as any).basePath || '').replace(/\\/g, '/');
       const toVaultPath = (raw: unknown): string | null => {
         if (raw == null) return null;
@@ -862,108 +862,84 @@ export class BoardView extends ItemView {
         return normalizePath(p);
       };
 
+      const processPath = (
+        raw: unknown,
+        name?: string,
+        lastModified?: number
+      ) => {
+        const rel = toVaultPath(raw);
+        if (!rel) return;
+        const lower = rel.toLowerCase();
+        if (lower.endsWith('.mtask')) {
+          boardItems.push({
+            path: rel,
+            name: name || rel.split('/').pop()!.replace(/\.mtask$/i, ''),
+            lastModified,
+          });
+        } else if (lower.endsWith('.md')) {
+          notePaths.push(rel);
+        }
+      };
+
       const items = e.dataTransfer?.items;
-      const files = e.dataTransfer?.files;
-      if (items && items.length > 0) {
+      if (items) {
         for (const item of Array.from(items)) {
           if (item.kind === 'file') {
             const file = item.getAsFile();
-            if (!file) continue;
-            const rel = toVaultPath((file as any).path || file.name);
-            if (!rel) continue;
-            if (file.name.endsWith('.mtask')) {
-              boardItems.push({
-                path: rel,
-                name: file.name.replace(/\.mtask$/, ''),
-                lastModified: file.lastModified,
-              });
-            } else if (file.name.endsWith('.md')) {
-              noteItems.push({ path: rel, name: file.name });
+            if (file) {
+              processPath((file as any).path || file.name, file.name, file.lastModified);
             }
           } else if (item.kind === 'string') {
             const text = await new Promise<string>((resolve) =>
               item.getAsString((s) => resolve(s))
             );
-            if (!text) continue;
-            for (const line of text.split('\n')) {
-              const rel = toVaultPath(line.trim());
-              if (!rel) continue;
-              if (rel.endsWith('.mtask')) {
-                boardItems.push({
-                  path: rel,
-                  name: rel.split('/').pop()!.replace(/\.mtask$/, ''),
-                });
-              } else if (rel.endsWith('.md')) {
-                noteItems.push({ path: rel, name: rel.split('/').pop()! });
-              }
-            }
-          }
-        }
-      } else if (files && files.length > 0) {
-        for (const file of Array.from(files)) {
-          const rel = toVaultPath((file as any).path || file.name);
-          if (!rel) continue;
-          if (file.name.endsWith('.mtask')) {
-            boardItems.push({
-              path: rel,
-              name: file.name.replace(/\.mtask$/, ''),
-              lastModified: file.lastModified,
-            });
-          } else if (file.name.endsWith('.md')) {
-            noteItems.push({ path: rel, name: file.name });
-          }
-        }
-      } else {
-        const text =
-          e.dataTransfer?.getData('text/plain') ||
-          e.dataTransfer?.getData('text/uri-list');
-        if (text) {
-          for (const line of text.split('\n')) {
-            const rel = toVaultPath(line.trim());
-            if (!rel) continue;
-            if (rel.endsWith('.mtask')) {
-              boardItems.push({
-                path: rel,
-                name: rel.split('/').pop()!.replace(/\.mtask$/, ''),
-              });
-            } else if (rel.endsWith('.md')) {
-              noteItems.push({ path: rel, name: rel.split('/').pop()! });
-            }
-          }
-        } else {
-          const dmFile = (this.app as any).dragManager?.getData(
-            e.dataTransfer,
-            'file'
-          );
-          if (dmFile) {
-            const rel = toVaultPath(dmFile.path || dmFile);
-            if (rel && rel.endsWith('.md')) {
-              noteItems.push({
-                path: rel,
-                name: dmFile.name || rel.split('/').pop()!,
-              });
-            }
-          }
-          const dmText = (this.app as any).dragManager?.getData(
-            e.dataTransfer,
-            'text'
-          );
-          if (dmText) {
-            const texts = Array.isArray(dmText) ? dmText : [dmText];
-            for (const t of texts) {
-              const rel = toVaultPath(t.path || t);
-              if (rel && rel.endsWith('.md')) {
-                noteItems.push({
-                  path: rel,
-                  name: t.name || rel.split('/').pop()!,
-                });
+            if (text) {
+              for (const line of text.split('\n')) {
+                processPath(line.trim());
               }
             }
           }
         }
       }
+
+      const files = e.dataTransfer?.files;
+      if (files) {
+        for (const file of Array.from(files)) {
+          processPath((file as any).path || file.name, file.name, file.lastModified);
+        }
+      }
+
+      const text =
+        e.dataTransfer?.getData('text/plain') ||
+        e.dataTransfer?.getData('text/uri-list');
+      if (text) {
+        for (const line of text.split('\n')) {
+          processPath(line.trim());
+        }
+      }
+
+      const dmFile = (this.app as any).dragManager?.getData(
+        e.dataTransfer,
+        'file'
+      );
+      if (dmFile) {
+        const files = Array.isArray(dmFile) ? dmFile : [dmFile];
+        for (const f of files) {
+          processPath(f.path || f, f.name);
+        }
+      }
+      const dmText = (this.app as any).dragManager?.getData(
+        e.dataTransfer,
+        'text'
+      );
+      if (dmText) {
+        const texts = Array.isArray(dmText) ? dmText : [dmText];
+        for (const t of texts) {
+          processPath(t.path || t, t.name);
+        }
+      }
+
       let offset = 0;
-      let added = false;
       for (const item of boardItems) {
         const tfile = this.app.vault.getAbstractFileByPath(item.path);
         if (!(tfile instanceof TFile)) continue;
@@ -993,24 +969,23 @@ export class BoardView extends ItemView {
         if (id) {
           const laneId = this.getLaneForPosition(pos.x + offset, pos.y + offset);
           if (laneId) await this.controller?.assignNodeToLane(id, laneId);
-          added = true;
+          this.render();
           offset += 20;
         }
       }
-      for (const item of noteItems) {
+      for (const path of notePaths) {
         const id = await this.controller?.addNoteNode(
-          item.path,
+          path,
           pos.x + offset,
           pos.y + offset
         );
         if (id) {
           const laneId = this.getLaneForPosition(pos.x + offset, pos.y + offset);
           if (laneId) await this.controller?.assignNodeToLane(id, laneId);
-          added = true;
+          this.render();
           offset += 20;
         }
       }
-      if (added) this.render();
     });
 
     this.boardEl.onpointerdown = (e) => {
