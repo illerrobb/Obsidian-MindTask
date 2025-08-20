@@ -835,23 +835,33 @@ export class BoardView extends ItemView {
     this.boardEl.addEventListener('blur', () => {
       this.hasFocus = false;
     });
-    this.registerDomEvent(this.boardEl, 'dragover', (e) => {
-      e.preventDefault();
-      this.boardEl.addClass('drag-over');
-    });
+    this.registerDomEvent(
+      this.containerEl,
+      'dragover',
+      (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.boardEl.addClass('drag-over');
+      },
+      { capture: true }
+    );
     this.registerDomEvent(this.boardEl, 'dragleave', () => {
       this.boardEl.removeClass('drag-over');
     });
-    this.registerDomEvent(this.boardEl, 'drop', async (e: DragEvent) => {
-      e.preventDefault();
-      console.log('drop items', e.dataTransfer?.items);
-      console.log('drop files', e.dataTransfer?.files);
-      console.log(
-        'drop text/plain',
-        e.dataTransfer?.getData?.('text/plain')
-      );
-      this.boardEl.removeClass('drag-over');
-      const pos = this.getBoardCoords(e);
+    this.registerDomEvent(
+      this.containerEl,
+      'drop',
+      async (e: DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('drop items', e.dataTransfer?.items);
+        console.log('drop files', e.dataTransfer?.files);
+        console.log(
+          'drop text/plain',
+          e.dataTransfer?.getData?.('text/plain')
+        );
+        this.boardEl.removeClass('drag-over');
+        const pos = this.getBoardCoords(e);
       const boardItems: { path: string; name: string; lastModified?: number }[] = [];
       const notePaths: string[] = [];
       const basePath = ((this.app.vault.adapter as any).basePath || '').replace(/\\/g, '/');
@@ -1007,7 +1017,9 @@ export class BoardView extends ItemView {
           offset += 20;
         }
       }
-    });
+      },
+      { capture: true }
+    );
 
     this.boardEl.onpointerdown = (e) => {
       if ((e as PointerEvent).button === 2) return;
