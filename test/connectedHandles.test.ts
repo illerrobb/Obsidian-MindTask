@@ -80,6 +80,7 @@ const view: any = {
   edgeEls: new Map(),
   controller: { settings: {} },
   groupId: null,
+  selectedIds: new Set(),
   drawMinimap: () => {},
   updateOverflow: () => {},
 };
