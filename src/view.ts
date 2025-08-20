@@ -835,14 +835,14 @@ export class BoardView extends ItemView {
     this.boardEl.addEventListener('blur', () => {
       this.hasFocus = false;
     });
-    this.boardEl.addEventListener('dragover', (e) => {
+    this.registerDomEvent(this.boardEl, 'dragover', (e) => {
       e.preventDefault();
       this.boardEl.addClass('drag-over');
     });
-    this.boardEl.addEventListener('dragleave', () => {
+    this.registerDomEvent(this.boardEl, 'dragleave', () => {
       this.boardEl.removeClass('drag-over');
     });
-    this.boardEl.addEventListener('drop', async (e: DragEvent) => {
+    this.registerDomEvent(this.boardEl, 'drop', async (e: DragEvent) => {
       e.preventDefault();
       this.boardEl.removeClass('drag-over');
       const pos = this.getBoardCoords(e);
