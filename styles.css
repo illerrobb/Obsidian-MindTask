@@ -133,7 +133,7 @@
   padding: 4px 8px;
   background: var(--background-secondary-alt);
   border: 1px solid var(--background-modifier-border);
-  border-radius: 4px;
+  border-radius: 10px;
   overflow: visible;
   min-width: 120px;
   z-index: 3;
