@@ -595,7 +595,8 @@ export class BoardView extends ItemView {
       return nodeEl;
     }
 
-    if (pos.type === 'note') {
+    if (pos.type === 'note' || pos.notePath) {
+      if (pos.notePath && pos.type !== 'note') pos.type = 'note';
       nodeEl.createDiv(
         `vtasks-handle vtasks-handle-in vtasks-handle-${orientH === 'vertical' ? 'top' : 'left'}`
       );
