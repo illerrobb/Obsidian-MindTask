@@ -392,6 +392,22 @@ export class BoardView extends ItemView {
             this.render();
           })
       );
+      const alignThreshold = this.board?.alignThreshold ?? 5;
+      menu.addItem((item) =>
+        item.setTitle(`Alignment threshold (${alignThreshold})`).onClick(async () => {
+          const val = await this.promptString(
+            'Alignment threshold',
+            alignThreshold.toString()
+          );
+          if (val !== null) {
+            const num = parseInt(val, 10);
+            if (!isNaN(num)) {
+              await this.controller?.setAlignThreshold(num);
+              this.render();
+            }
+          }
+        })
+      );
       const current = this.board?.orientation ?? 'vertical';
       menu.addItem((item) =>
         item.setTitle('Vertical orientation').onClick(async () => {
@@ -2149,7 +2165,7 @@ export class BoardView extends ItemView {
     h: number,
     dir = ''
   ) {
-    const threshold = 5;
+    const threshold = this.board?.alignThreshold ?? 5;
     const cx = x + w / 2;
     const cy = y + h / 2;
     let alignX: number | null = null;

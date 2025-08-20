@@ -31,6 +31,8 @@ export interface BoardData {
   snapToGrid?: boolean;
   /** Whether nodes snap to alignment guides */
   snapToGuides?: boolean;
+  /** Threshold (in pixels) for showing alignment guides */
+  alignThreshold?: number;
 }
 
 const CURRENT_VERSION = 1;
@@ -44,6 +46,7 @@ export async function loadBoard(app: App, file: TFile): Promise<BoardData> {
     if (!data.orientation) data.orientation = 'vertical';
     if (data.snapToGrid === undefined) data.snapToGrid = true;
     if (data.snapToGuides === undefined) data.snapToGuides = false;
+    if (data.alignThreshold === undefined) data.alignThreshold = 5;
     return data;
   } catch (e) {
     return {
@@ -55,6 +58,7 @@ export async function loadBoard(app: App, file: TFile): Promise<BoardData> {
       orientation: 'vertical',
       snapToGrid: true,
       snapToGuides: false,
+      alignThreshold: 5,
     };
   }
 }
@@ -92,6 +96,7 @@ export async function getBoardFile(app: App, path: string): Promise<TFile> {
             orientation: 'vertical',
             snapToGrid: true,
             snapToGuides: false,
+            alignThreshold: 5,
           },
           null,
           2
