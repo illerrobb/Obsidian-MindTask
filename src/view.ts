@@ -1227,7 +1227,7 @@ export class BoardView extends ItemView {
 
         width = Math.max(120, width);
         height = Math.max(20, height);
-        let guides = this.showAlignmentGuides(id, x, y, width, height);
+        let guides = this.showAlignmentGuides(id, x, y, width, height, this.resizeDir);
         if (snapToGuides) {
           const threshold = 5;
           if (guides.alignX != null) {
@@ -2141,12 +2141,29 @@ export class BoardView extends ItemView {
     }
   }
 
-  private showAlignmentGuides(id: string, x: number, y: number, w: number, h: number) {
+  private showAlignmentGuides(
+    id: string,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    dir = ''
+  ) {
     const threshold = 5;
     const cx = x + w / 2;
     const cy = y + h / 2;
     let alignX: number | null = null;
     let alignY: number | null = null;
+
+    const checkLeft = dir ? dir.includes('w') : true;
+    const checkRight = dir ? dir.includes('e') : true;
+    const checkXCenter = !dir;
+    const checkTop = dir ? dir.includes('n') : true;
+    const checkBottom = dir ? dir.includes('s') : true;
+    const checkYCenter = !dir;
+    const checkX = checkLeft || checkRight || checkXCenter;
+    const checkY = checkTop || checkBottom || checkYCenter;
+
     for (const nid in this.board!.nodes) {
       if (nid === id) continue;
       const n = this.board!.nodes[nid];
@@ -2157,24 +2174,28 @@ export class BoardView extends ItemView {
       const ncy = n.y + nh / 2;
       const xs = [n.x, n.x + nw, ncx];
       const ys = [n.y, n.y + nh, ncy];
-      xs.forEach((xx) => {
-        if (Math.abs(xx - x) <= threshold) alignX = xx;
-        if (Math.abs(xx - (x + w)) <= threshold) alignX = xx;
-        if (Math.abs(xx - cx) <= threshold) alignX = xx;
-      });
-      ys.forEach((yy) => {
-        if (Math.abs(yy - y) <= threshold) alignY = yy;
-        if (Math.abs(yy - (y + h)) <= threshold) alignY = yy;
-        if (Math.abs(yy - cy) <= threshold) alignY = yy;
-      });
+      if (checkX) {
+        xs.forEach((xx) => {
+          if (checkLeft && Math.abs(xx - x) <= threshold) alignX = xx;
+          if (checkRight && Math.abs(xx - (x + w)) <= threshold) alignX = xx;
+          if (checkXCenter && Math.abs(xx - cx) <= threshold) alignX = xx;
+        });
+      }
+      if (checkY) {
+        ys.forEach((yy) => {
+          if (checkTop && Math.abs(yy - y) <= threshold) alignY = yy;
+          if (checkBottom && Math.abs(yy - (y + h)) <= threshold) alignY = yy;
+          if (checkYCenter && Math.abs(yy - cy) <= threshold) alignY = yy;
+        });
+      }
     }
-    if (alignX != null) {
+    if (checkX && alignX != null) {
       this.alignVLine.style.left = alignX + 'px';
       this.alignVLine.style.display = '';
     } else {
       this.alignVLine.style.display = 'none';
     }
-    if (alignY != null) {
+    if (checkY && alignY != null) {
       this.alignHLine.style.top = alignY + 'px';
       this.alignHLine.style.display = '';
     } else {
