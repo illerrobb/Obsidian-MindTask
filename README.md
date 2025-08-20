@@ -39,6 +39,8 @@
 1. Launch the **MindTask: Open board** command from the Command Palette.
 2. Drag nodes with your mouse to organize tasks.
 3. Right-click on a node or connection to access the context menu.
+4. Drop note links or files onto the board to create new nodes. Links without the `.md`
+   extension are automatically resolved.
 
 ### Navigation
 

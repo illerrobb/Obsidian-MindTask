@@ -896,9 +896,17 @@ export class BoardView extends ItemView {
         name?: string,
         lastModified?: number
       ) => {
-        const rel = toVaultPath(raw);
+        let rel = toVaultPath(raw);
         if (!rel) return;
-        const lower = rel.toLowerCase();
+        let lower = rel.toLowerCase();
+        // Allow dropping paths without extension; try appending ".md" if it exists
+        if (!lower.endsWith('.md')) {
+          const mdCandidate = `${rel}.md`;
+          if (this.app.vault.getAbstractFileByPath(mdCandidate)) {
+            rel = mdCandidate;
+            lower = rel.toLowerCase();
+          }
+        }
         if (lower.endsWith('.mtask')) {
           boardItems.push({
             path: rel,
