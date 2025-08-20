@@ -236,6 +236,11 @@ export class BoardView extends ItemView {
     for (const id of Object.keys(this.board.nodes)) {
       const n = this.board.nodes[id] as any;
       if (n.notePath && !n.type) n.type = 'note';
+      console.debug('refreshFromVault node', {
+        id,
+        type: n.type,
+        notePath: n.notePath,
+      });
       // Only remove nodes that correspond to tasks no longer present.
       // Preserve board, note and other special nodes which have a type set.
       if (!this.tasks.has(id) && !n.type) delete this.board.nodes[id];
@@ -602,12 +607,21 @@ export class BoardView extends ItemView {
       );
       const area = nodeEl.createEl('textarea', { cls: 'vtasks-note-content' });
       const notePath = pos.notePath;
+      console.debug('createNodeElement notePath', { id, notePath });
       if (notePath) {
         const file = this.app.vault.getAbstractFileByPath(notePath);
-        if (file instanceof TFile) {
-          this.app.vault.read(file).then((content) => {
-            area.value = content;
-          });
+        const found = file instanceof TFile;
+        console.debug('createNodeElement file lookup', { notePath, found });
+        if (found) {
+          this.app.vault.read(file).then(
+            (content) => {
+              console.debug('createNodeElement content loaded', { notePath });
+              area.value = content;
+            },
+            (err) => {
+              console.debug('createNodeElement content load failed', { notePath, err });
+            }
+          );
           area.addEventListener('blur', () => {
             this.app.vault.modify(file, area.value);
           });
