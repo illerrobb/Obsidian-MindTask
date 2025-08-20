@@ -844,6 +844,12 @@ export class BoardView extends ItemView {
     });
     this.registerDomEvent(this.boardEl, 'drop', async (e: DragEvent) => {
       e.preventDefault();
+      console.log('drop items', e.dataTransfer?.items);
+      console.log('drop files', e.dataTransfer?.files);
+      console.log(
+        'drop text/plain',
+        e.dataTransfer?.getData?.('text/plain')
+      );
       this.boardEl.removeClass('drag-over');
       const pos = this.getBoardCoords(e);
       const boardItems: { path: string; name: string; lastModified?: number }[] = [];
