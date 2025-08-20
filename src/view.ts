@@ -677,30 +677,7 @@ export class BoardView extends ItemView {
       if (description) descEl.setText(description);
       descEl.addEventListener('click', (e) => {
         e.stopPropagation();
-        const original = descEl!.textContent ?? '';
-        const input = nodeEl.createEl('textarea', { cls: 'vtasks-desc-input' });
-        input.value = original;
-        descEl!.replaceWith(input);
-
-        const finish = () => {
-          input.removeEventListener('blur', finish);
-          input.removeEventListener('keydown', onKeydown);
-          const val = input.value;
-          input.replaceWith(descEl!);
-          descEl!.setText(val);
-          this.controller?.setDescription(id, val).then(() => this.render());
-        };
-
-        const onKeydown = (ev: KeyboardEvent) => {
-          if (ev.key === 'Enter' || ev.key === 'Escape') {
-            ev.preventDefault();
-            finish();
-          }
-        };
-
-        input.addEventListener('blur', finish);
-        input.addEventListener('keydown', onKeydown);
-        input.focus();
+        this.startDescEdit(id);
       });
     }
     const metaEl = nodeEl.createDiv('vtasks-meta');
@@ -1692,6 +1669,13 @@ export class BoardView extends ItemView {
     });
 
     this.boardEl.addEventListener('keydown', (e) => {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        (e.target as HTMLElement).isContentEditable
+      ) {
+        return;
+      }
       const first = Array.from(this.selectedIds)[0];
       if (e.key === '+' || e.key === '=') {
         const rect = this.containerEl.getBoundingClientRect();
@@ -1704,6 +1688,17 @@ export class BoardView extends ItemView {
         return;
       }
       if (!first) return;
+      if (
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !e.altKey &&
+        e.key.length === 1 &&
+        e.key !== ' '
+      ) {
+        e.preventDefault();
+        this.startDescEdit(first, e.key);
+        return;
+      }
       if (e.key === ' ') {
         e.preventDefault();
         this.controller!.toggleCheck(first).then(() => this.render());
@@ -1929,6 +1924,61 @@ export class BoardView extends ItemView {
       els.label?.remove();
       this.edgeEls.delete(idx);
     });
+  }
+
+  private startDescEdit(id: string, initial?: string) {
+    const descEl = this.boardEl.querySelector(
+      `.vtasks-node[data-id="${id}"] .vtasks-desc`
+    ) as HTMLElement | null;
+    if (!descEl) return;
+    const original = descEl.textContent ?? '';
+    descEl.contentEditable = 'true';
+    descEl.classList.add('vtasks-inline-edit');
+
+    const cleanup = () => {
+      descEl.classList.remove('vtasks-inline-edit');
+      descEl.contentEditable = 'false';
+      descEl.removeEventListener('blur', onBlur);
+      descEl.removeEventListener('keydown', onKeydown);
+    };
+
+    const save = () => {
+      const val = descEl.textContent ?? '';
+      cleanup();
+      this.controller?.setDescription(id, val).then(() => this.render());
+    };
+
+    const cancel = () => {
+      descEl.textContent = original;
+      cleanup();
+    };
+
+    const onBlur = () => save();
+    const onKeydown = (ev: KeyboardEvent) => {
+      ev.stopPropagation();
+      if (ev.key === 'Enter') {
+        ev.preventDefault();
+        save();
+      } else if (ev.key === 'Escape') {
+        ev.preventDefault();
+        cancel();
+      }
+    };
+
+    descEl.addEventListener('blur', onBlur);
+    descEl.addEventListener('keydown', onKeydown);
+    if (initial) {
+      descEl.textContent = original + initial;
+    }
+    descEl.focus();
+    const sel = window.getSelection();
+    if (sel) {
+      const range = document.createRange();
+      range.selectNodeContents(descEl);
+      range.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
   }
 
   private updateOverflow(nodeEl: HTMLElement) {
