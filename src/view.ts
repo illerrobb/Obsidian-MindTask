@@ -241,37 +241,31 @@ export class BoardView extends ItemView {
       if (!this.tasks.has(id) && !n.type) delete this.board.nodes[id];
     }
 
+    // Remove edges that reference nodes no longer on the board
     this.board.edges = this.board.edges.filter(
       (e) => this.board!.nodes[e.from] && this.board!.nodes[e.to]
     );
 
-    const existing = this.board.edges.filter((e) => {
+    // Start with dependency edges between existing nodes
+    const combined = deps.filter(
+      (d) => this.board!.nodes[d.from] && this.board!.nodes[d.to]
+    );
+
+    // Merge in existing edges that involve special nodes (type defined)
+    for (const e of this.board.edges) {
       const fromNode = this.board!.nodes[e.from] as any;
       const toNode = this.board!.nodes[e.to] as any;
-      const fromTask = this.tasks.has(e.from);
-      const toTask = this.tasks.has(e.to);
-      const involvesNote = fromNode?.type === 'note' || toNode?.type === 'note';
-      if (fromTask && toTask && !involvesNote) {
-        return deps.some(
-          (d) => d.from === e.from && d.to === e.to && d.type === e.type
-        );
-      }
-      return true;
-    });
-
-    for (const dep of deps) {
       if (
-        this.board.nodes[dep.from] &&
-        this.board.nodes[dep.to] &&
-        !existing.find(
-          (e) => e.from === dep.from && e.to === dep.to && e.type === dep.type
+        (fromNode?.type !== undefined || toNode?.type !== undefined) &&
+        !combined.find(
+          (d) => d.from === e.from && d.to === e.to && d.type === e.type
         )
       ) {
-        existing.push(dep);
+        combined.push(e);
       }
     }
 
-    this.board.edges = existing;
+    this.board.edges = combined;
 
     await saveBoard(this.app, this.boardFile, this.board);
 
