@@ -372,13 +372,23 @@ export class BoardView extends ItemView {
     settingsBtn.setAttr('title', 'Board settings');
     settingsBtn.onclick = (e) => {
       const menu = new Menu();
-      const snap = this.board?.snapToGrid ?? true;
+      const snapGrid = this.board?.snapToGrid ?? true;
       menu.addItem((item) =>
         item
           .setTitle('Snap to grid')
-          .setChecked(snap)
+          .setChecked(snapGrid)
           .onClick(async () => {
-            await this.controller?.setSnapToGrid(!snap);
+            await this.controller?.setSnapToGrid(!snapGrid);
+            this.render();
+          })
+      );
+      const snapGuides = this.board?.snapToGuides ?? false;
+      menu.addItem((item) =>
+        item
+          .setTitle('Snap to guides')
+          .setChecked(snapGuides)
+          .onClick(async () => {
+            await this.controller?.setSnapToGuides(!snapGuides);
             this.render();
           })
       );
@@ -1127,7 +1137,8 @@ export class BoardView extends ItemView {
 
     this.boardEl.onpointermove = (e) => {
       const coords = this.getBoardCoords(e as PointerEvent);
-      const snap = this.board?.snapToGrid ?? true;
+      const snapToGrid = this.board?.snapToGrid ?? true;
+      const snapToGuides = this.board?.snapToGuides ?? false;
       const laneId = this.getLaneForPosition(coords.x, coords.y);
       this.boardEl.querySelectorAll('.vtasks-lane').forEach((l) => {
         const el = l as HTMLElement;
@@ -1198,24 +1209,60 @@ export class BoardView extends ItemView {
 
         if (this.resizeDir.includes('w')) {
           x = this.resizeStartNodeX + dx;
-          if (snap) x = Math.round(x / this.gridSize) * this.gridSize;
+          if (snapToGrid) x = Math.round(x / this.gridSize) * this.gridSize;
           width = right - x;
         } else if (this.resizeDir.includes('e')) {
           width = this.resizeStartWidth + dx;
-          if (snap) width = Math.round(width / this.gridSize) * this.gridSize;
+          if (snapToGrid) width = Math.round(width / this.gridSize) * this.gridSize;
         }
 
         if (this.resizeDir.includes('n')) {
           y = this.resizeStartNodeY + dy;
-          if (snap) y = Math.round(y / this.gridSize) * this.gridSize;
+          if (snapToGrid) y = Math.round(y / this.gridSize) * this.gridSize;
           height = bottom - y;
         } else if (this.resizeDir.includes('s')) {
           height = this.resizeStartHeight + dy;
-          if (snap) height = Math.round(height / this.gridSize) * this.gridSize;
+          if (snapToGrid) height = Math.round(height / this.gridSize) * this.gridSize;
         }
 
         width = Math.max(120, width);
         height = Math.max(20, height);
+        let guides = this.showAlignmentGuides(id, x, y, width, height);
+        if (snapToGuides) {
+          const threshold = 5;
+          if (guides.alignX != null) {
+            const diffLeft = Math.abs(guides.alignX - x);
+            const diffRight = Math.abs(guides.alignX - (x + width));
+            const diffCenter = Math.abs(guides.alignX - (x + width / 2));
+            const minDiff = Math.min(diffLeft, diffRight, diffCenter);
+            if (minDiff <= threshold) {
+              if (minDiff === diffLeft) {
+                x = guides.alignX;
+                width = right - x;
+              } else if (minDiff === diffRight) {
+                width = guides.alignX - x;
+              } else {
+                x = guides.alignX - width / 2;
+              }
+            }
+          }
+          if (guides.alignY != null) {
+            const diffTop = Math.abs(guides.alignY - y);
+            const diffBottom = Math.abs(guides.alignY - (y + height));
+            const diffCenter = Math.abs(guides.alignY - (y + height / 2));
+            const minDiff = Math.min(diffTop, diffBottom, diffCenter);
+            if (minDiff <= threshold) {
+              if (minDiff === diffTop) {
+                y = guides.alignY;
+                height = bottom - y;
+              } else if (minDiff === diffBottom) {
+                height = guides.alignY - y;
+              } else {
+                y = guides.alignY - height / 2;
+              }
+            }
+          }
+        }
         nodeEl.style.width = width + 'px';
         nodeEl.style.height = height + 'px';
         const parentId = this.board!.nodes[id].group;
@@ -1246,7 +1293,6 @@ export class BoardView extends ItemView {
             }
           });
         }
-        this.showAlignmentGuides(id, x, y, width, height);
         this.board!.nodes[id] = {
           ...this.board!.nodes[id],
           x,
@@ -1254,6 +1300,7 @@ export class BoardView extends ItemView {
           width,
           height,
         };
+        if (snapToGuides) this.showAlignmentGuides(id, x, y, width, height);
         this.updateOverflow(nodeEl);
         this.drawEdges();
         this.drawMinimap();
@@ -1266,7 +1313,7 @@ export class BoardView extends ItemView {
           if (!start) return;
           let x = start.x + curX - this.dragStartX;
           let y = start.y + curY - this.dragStartY;
-          if (snap) {
+          if (snapToGrid) {
             x = Math.round(x / this.gridSize) * this.gridSize;
             y = Math.round(y / this.gridSize) * this.gridSize;
           }
@@ -1288,7 +1335,56 @@ export class BoardView extends ItemView {
             mainX = x; mainY = y; mainW = w; mainH = h;
           }
         });
-        if (this.draggingId) this.showAlignmentGuides(this.draggingId, mainX, mainY, mainW, mainH);
+        if (this.draggingId) {
+          let guides = this.showAlignmentGuides(this.draggingId, mainX, mainY, mainW, mainH);
+          if (snapToGuides) {
+            const threshold = 5;
+            let newX = mainX;
+            let newY = mainY;
+            if (guides.alignX != null) {
+              const diffLeft = Math.abs(guides.alignX - mainX);
+              const diffRight = Math.abs(guides.alignX - (mainX + mainW));
+              const diffCenter = Math.abs(guides.alignX - (mainX + mainW / 2));
+              const minDiff = Math.min(diffLeft, diffRight, diffCenter);
+              if (minDiff <= threshold) {
+                if (minDiff === diffLeft) newX = guides.alignX;
+                else if (minDiff === diffRight) newX = guides.alignX - mainW;
+                else newX = guides.alignX - mainW / 2;
+              }
+            }
+            if (guides.alignY != null) {
+              const diffTop = Math.abs(guides.alignY - mainY);
+              const diffBottom = Math.abs(guides.alignY - (mainY + mainH));
+              const diffCenter = Math.abs(guides.alignY - (mainY + mainH / 2));
+              const minDiff = Math.min(diffTop, diffBottom, diffCenter);
+              if (minDiff <= threshold) {
+                if (minDiff === diffTop) newY = guides.alignY;
+                else if (minDiff === diffBottom) newY = guides.alignY - mainH;
+                else newY = guides.alignY - mainH / 2;
+              }
+            }
+            const dx = newX - mainX;
+            const dy = newY - mainY;
+            if (dx || dy) {
+              this.getDragIds().forEach((id) => {
+                const node = this.board!.nodes[id];
+                const nodeEl = this.boardEl.querySelector(
+                  `.vtasks-node[data-id="${id}"]`
+                ) as HTMLElement;
+                const parentId = node.group;
+                const parentX = parentId ? this.board!.nodes[parentId].x : 0;
+                const parentY = parentId ? this.board!.nodes[parentId].y : 0;
+                node.x += dx;
+                node.y += dy;
+                nodeEl.style.left = node.x - parentX + 'px';
+                nodeEl.style.top = node.y - parentY + 'px';
+              });
+              mainX = newX;
+              mainY = newY;
+              guides = this.showAlignmentGuides(this.draggingId, mainX, mainY, mainW, mainH);
+            }
+          }
+        }
         this.drawEdges();
         this.drawMinimap();
       } else if (this.isBoardDragging) {
@@ -2079,6 +2175,7 @@ export class BoardView extends ItemView {
     } else {
       this.alignHLine.style.display = 'none';
     }
+    return { alignX, alignY };
   }
 
   private startEditing(nodeEl: HTMLElement, id: string) {

@@ -127,6 +127,11 @@ export default class Controller {
     await saveBoard(this.app, this.boardFile, this.board);
   }
 
+  async setSnapToGuides(enable: boolean) {
+    this.board.snapToGuides = enable;
+    await saveBoard(this.app, this.boardFile, this.board);
+  }
+
   async setLaneOrientation(
     id: string,
     orient: 'vertical' | 'horizontal'
