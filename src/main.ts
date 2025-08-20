@@ -47,6 +47,7 @@ export default class MindTaskPlugin extends Plugin {
         }
       }
     }
+    this.applyAlignLineStyles();
     this.addSettingTab(new SettingsTab(this.app, this));
     this.registerView(
       VIEW_TYPE_BOARD,
@@ -101,6 +102,16 @@ export default class MindTaskPlugin extends Plugin {
   async savePluginData() {
     const data: PluginData = { settings: this.settings };
     await this.saveData(data);
+  }
+
+  applyAlignLineStyles() {
+    const root = document.documentElement;
+    root.style.setProperty('--align-line-width', `${this.settings.alignLineWidth}px`);
+    if (this.settings.alignLineColor) {
+      root.style.setProperty('--align-line-color', this.settings.alignLineColor);
+    } else {
+      root.style.removeProperty('--align-line-color');
+    }
   }
 
   private selectBoard(): Promise<TFile | null> {

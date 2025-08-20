@@ -32,6 +32,10 @@ export interface PluginSettings {
   rearrangeSpacingX: number;
   /** Vertical spacing between nodes when rearranging */
   rearrangeSpacingY: number;
+  /** Color for alignment guide lines (empty for theme accent) */
+  alignLineColor: string;
+  /** Width of alignment guide lines in pixels */
+  alignLineWidth: number;
 }
 
 export interface PluginData {
@@ -56,6 +60,8 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   ],
   rearrangeSpacingX: 40,
   rearrangeSpacingY: 40,
+  alignLineColor: '',
+  alignLineWidth: 1,
 };
 
 export class SettingsTab extends PluginSettingTab {
@@ -220,6 +226,50 @@ export class SettingsTab extends PluginSettingTab {
             await this.plugin.savePluginData();
           });
       });
+
+    containerEl.createEl('h2', { text: 'Alignment guides' });
+
+    new Setting(containerEl)
+      .setName('Line color')
+      .setDesc('CSS color for alignment lines; leave empty for theme accent')
+      .addText((text) =>
+        text
+          .setPlaceholder('var(--color-accent)')
+          .setValue(this.plugin.settings.alignLineColor)
+          .onChange(async (value) => {
+            this.plugin.settings.alignLineColor = value.trim();
+            await this.plugin.savePluginData();
+            this.plugin.applyAlignLineStyles();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName('Line width')
+      .setDesc('Thickness of alignment lines in pixels')
+      .addText((text) => {
+        text.inputEl.type = 'number';
+        text
+          .setPlaceholder('1')
+          .setValue(this.plugin.settings.alignLineWidth.toString())
+          .onChange(async (value) => {
+            const num = parseInt(value) || 1;
+            this.plugin.settings.alignLineWidth = num;
+            await this.plugin.savePluginData();
+            this.plugin.applyAlignLineStyles();
+          });
+      });
+
+    new Setting(containerEl).addButton((btn) =>
+      btn
+        .setButtonText('Reset')
+        .onClick(async () => {
+          this.plugin.settings.alignLineColor = '';
+          this.plugin.settings.alignLineWidth = 1;
+          await this.plugin.savePluginData();
+          this.plugin.applyAlignLineStyles();
+          this.display();
+        })
+    );
 
     containerEl.createEl('h2', { text: 'Background colors' });
     const colorsEl = containerEl.createDiv();

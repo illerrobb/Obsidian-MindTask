@@ -25,6 +25,8 @@ export class BoardView extends ItemView {
   private svgEl!: SVGSVGElement;
   private alignVLine!: HTMLElement;
   private alignHLine!: HTMLElement;
+  private alignVTimeout: number | null = null;
+  private alignHTimeout: number | null = null;
   private readonly gridSize = 20;
   private readonly laneHeaderSize = 32;
   private selectedIds: Set<string> = new Set();
@@ -1455,8 +1457,8 @@ export class BoardView extends ItemView {
       } else if (this.resizingId) {
         const id = this.resizingId;
         this.resizingId = null;
-        this.alignVLine.style.display = 'none';
-        this.alignHLine.style.display = 'none';
+        this.hideAlignLine(this.alignVLine, 'V');
+        this.hideAlignLine(this.alignHLine, 'H');
         const pos = this.board!.nodes[id];
         const oldLane = pos.lane;
         const laneId = this.getLaneForNode(id);
@@ -1477,8 +1479,8 @@ export class BoardView extends ItemView {
         this.drawMinimap();
       } else if (this.draggingId) {
         this.draggingId = null;
-        this.alignVLine.style.display = 'none';
-        this.alignHLine.style.display = 'none';
+        this.hideAlignLine(this.alignVLine, 'V');
+        this.hideAlignLine(this.alignHLine, 'H');
         this.selectedIds.forEach((id) => {
           const pos = this.board!.nodes[id];
           const oldLane = pos.lane;
@@ -2206,18 +2208,58 @@ export class BoardView extends ItemView {
       }
     }
     if (checkX && alignX != null) {
-      this.alignVLine.style.left = alignX + 'px';
-      this.alignVLine.style.display = '';
+      this.showAlignLine(this.alignVLine, 'left', alignX, 'V');
     } else {
-      this.alignVLine.style.display = 'none';
+      this.hideAlignLine(this.alignVLine, 'V');
     }
     if (checkY && alignY != null) {
-      this.alignHLine.style.top = alignY + 'px';
-      this.alignHLine.style.display = '';
+      this.showAlignLine(this.alignHLine, 'top', alignY, 'H');
     } else {
-      this.alignHLine.style.display = 'none';
+      this.hideAlignLine(this.alignHLine, 'H');
     }
     return { alignX, alignY };
+  }
+
+  private showAlignLine(
+    el: HTMLElement,
+    prop: 'left' | 'top',
+    value: number,
+    type: 'V' | 'H'
+  ) {
+    el.style[prop] = value + 'px';
+    el.classList.remove('vtasks-align-fade');
+    el.style.display = '';
+    if (type === 'V' && this.alignVTimeout != null) {
+      clearTimeout(this.alignVTimeout);
+      this.alignVTimeout = null;
+    }
+    if (type === 'H' && this.alignHTimeout != null) {
+      clearTimeout(this.alignHTimeout);
+      this.alignHTimeout = null;
+    }
+  }
+
+  private hideAlignLine(el: HTMLElement, type: 'V' | 'H') {
+    el.classList.add('vtasks-align-fade');
+    const duration = this.getAlignFadeDuration(el);
+    const timeout = window.setTimeout(() => {
+      el.style.display = 'none';
+      el.classList.remove('vtasks-align-fade');
+      if (type === 'V') this.alignVTimeout = null;
+      if (type === 'H') this.alignHTimeout = null;
+    }, duration);
+    if (type === 'V') this.alignVTimeout = timeout;
+    if (type === 'H') this.alignHTimeout = timeout;
+  }
+
+  private getAlignFadeDuration(el: HTMLElement): number {
+    const val = getComputedStyle(el)
+      .getPropertyValue('--align-line-fade')
+      .trim();
+    if (val.endsWith('ms')) return parseFloat(val);
+    if (val.endsWith('s')) return parseFloat(val) * 1000;
+    const num = parseFloat(val);
+    return isNaN(num) ? 300 : num;
   }
 
   private startEditing(nodeEl: HTMLElement, id: string) {
