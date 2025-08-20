@@ -1,3 +1,9 @@
+:root {
+  --align-line-color: var(--color-accent);
+  --align-line-width: 1px;
+  --align-line-fade: 0.3s;
+}
+
 .vtasks-container {
   position: relative;
   width: 100%;
@@ -96,19 +102,25 @@
 
 .vtasks-align-line {
   position: absolute;
-  background: var(--color-accent);
+  background: var(--align-line-color);
   pointer-events: none;
   z-index: 5;
+  opacity: 1;
+  transition: opacity var(--align-line-fade);
+}
+
+.vtasks-align-line.vtasks-align-fade {
+  opacity: 0;
 }
 
 .vtasks-align-v {
-  width: 1px;
+  width: var(--align-line-width);
   top: 0;
   bottom: 0;
 }
 
 .vtasks-align-h {
-  height: 1px;
+  height: var(--align-line-width);
   left: 0;
   right: 0;
 }
