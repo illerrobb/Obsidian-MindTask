@@ -235,6 +235,7 @@ export class BoardView extends ItemView {
 
     for (const id of Object.keys(this.board.nodes)) {
       const n = this.board.nodes[id] as any;
+      if (n.notePath && !n.type) n.type = 'note';
       // Only remove nodes that correspond to tasks no longer present.
       // Preserve board, note and other special nodes which have a type set.
       if (!this.tasks.has(id) && !n.type) delete this.board.nodes[id];
@@ -245,9 +246,12 @@ export class BoardView extends ItemView {
     );
 
     const existing = this.board.edges.filter((e) => {
+      const fromNode = this.board!.nodes[e.from] as any;
+      const toNode = this.board!.nodes[e.to] as any;
       const fromTask = this.tasks.has(e.from);
       const toTask = this.tasks.has(e.to);
-      if (fromTask && toTask) {
+      const involvesNote = fromNode?.type === 'note' || toNode?.type === 'note';
+      if (fromTask && toTask && !involvesNote) {
         return deps.some(
           (d) => d.from === e.from && d.to === e.to && d.type === e.type
         );

@@ -1,0 +1,57 @@
+import { JSDOM } from 'jsdom';
+import { BoardView } from '../src/view';
+
+declare global {
+  interface Window { ResizeObserver: any; }
+}
+
+const dom = new JSDOM('<!doctype html><div id="root"></div>');
+(global as any).window = dom.window;
+(global as any).document = dom.window.document;
+(global as any).ResizeObserver = class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
+
+const file: any = { path: 'task.md', basename: 'task' };
+const boardFile: any = { path: 'board.mtask', basename: 'board' };
+
+const app: any = {
+  vault: {
+    getMarkdownFiles: () => [file],
+    read: async () => '- [ ] Task ^t1\n',
+    modify: async () => {},
+    getAbstractFileByPath: () => null,
+  },
+};
+
+const view: any = {
+  app,
+  boardFile,
+  board: {
+    nodes: {
+      t1: { x: 0, y: 0 },
+      n1: { x: 100, y: 100, notePath: 'note.md' },
+    },
+    edges: [{ from: 'n1', to: 't1', type: 'depends' }],
+    lanes: {},
+  },
+  tasks: new Map(),
+  plugin: { settings: { tagFilters: [], folderPaths: [], useBlockId: true } },
+  selectedIds: new Set(),
+  boardEl: dom.window.document.getElementById('root'),
+  render: () => {},
+};
+
+await (BoardView.prototype as any).refreshFromVault.call(view);
+
+if (view.board.nodes['n1']?.type !== 'note') {
+  throw new Error('Note node removed or type not set during refresh');
+}
+
+if (view.board.edges.length !== 1) {
+  throw new Error('Note link removed during refresh');
+}
+
+console.log('Note node and link preserved');
