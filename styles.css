@@ -247,9 +247,15 @@
 }
 
 .vtasks-text {
-  pointer-events: none;
+  pointer-events: auto;
   overflow: hidden;
   max-height: 100%;
+}
+
+.vtasks-inline-edit {
+  background: transparent;
+  border: none;
+  outline: none;
 }
 
 .vtasks-text.vtasks-fade {

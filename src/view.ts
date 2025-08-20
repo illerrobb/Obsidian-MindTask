@@ -584,6 +584,53 @@ export class BoardView extends ItemView {
       `vtasks-handle vtasks-handle-in vtasks-handle-${orientH === 'vertical' ? 'top' : 'left'}`
     );
     const textEl = nodeEl.createDiv('vtasks-text');
+    textEl.style.pointerEvents = 'auto';
+    textEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const original = textEl.textContent ?? '';
+      textEl.contentEditable = 'true';
+      textEl.classList.add('vtasks-inline-edit');
+
+      const cleanup = () => {
+        textEl.classList.remove('vtasks-inline-edit');
+        textEl.contentEditable = 'false';
+        textEl.removeEventListener('blur', onBlur);
+        textEl.removeEventListener('keydown', onKeydown);
+      };
+
+      const save = () => {
+        const val = textEl.textContent?.trim() ?? '';
+        cleanup();
+        this.controller?.renameTask(id, val).then(() => this.render());
+      };
+
+      const cancel = () => {
+        textEl.textContent = original;
+        cleanup();
+      };
+
+      const onBlur = () => save();
+      const onKeydown = (ev: KeyboardEvent) => {
+        if (ev.key === 'Enter') {
+          ev.preventDefault();
+          save();
+        } else if (ev.key === 'Escape') {
+          ev.preventDefault();
+          cancel();
+        }
+      };
+
+      textEl.addEventListener('blur', onBlur);
+      textEl.addEventListener('keydown', onKeydown);
+      textEl.focus();
+      const sel = window.getSelection();
+      if (sel) {
+        const range = document.createRange();
+        range.selectNodeContents(textEl);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+    });
     const task = this.tasks.get(id);
     let text = task?.text ?? id;
     const metas: { key: string; val: string }[] = [];
