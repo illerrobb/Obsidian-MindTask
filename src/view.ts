@@ -239,14 +239,19 @@ export class BoardView extends ItemView {
     }
 
     this.board.edges = this.board.edges.filter(
-      (e) =>
-        (this.tasks.has(e.from) || this.board!.nodes[e.from]?.type === 'group') &&
-        (this.tasks.has(e.to) || this.board!.nodes[e.to]?.type === 'group')
+      (e) => this.board!.nodes[e.from] && this.board!.nodes[e.to]
     );
 
-    const existing = this.board.edges.filter((e) =>
-      deps.some((d) => d.from === e.from && d.to === e.to && d.type === e.type)
-    );
+    const existing = this.board.edges.filter((e) => {
+      const fromTask = this.tasks.has(e.from);
+      const toTask = this.tasks.has(e.to);
+      if (fromTask && toTask) {
+        return deps.some(
+          (d) => d.from === e.from && d.to === e.to && d.type === e.type
+        );
+      }
+      return true;
+    });
 
     for (const dep of deps) {
       if (
