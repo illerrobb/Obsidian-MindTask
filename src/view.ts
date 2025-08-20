@@ -908,32 +908,34 @@ export class BoardView extends ItemView {
       }
 
       const text =
-        e.dataTransfer?.getData('text/plain') ||
-        e.dataTransfer?.getData('text/uri-list');
+        e.dataTransfer?.getData?.('text/plain') ||
+        e.dataTransfer?.getData?.('text/uri-list');
       if (text) {
         for (const line of text.split('\n')) {
           processPath(line.trim());
         }
       }
 
-      const dmFile = (this.app as any).dragManager?.getData(
-        e.dataTransfer,
-        'file'
-      );
-      if (dmFile) {
-        const files = Array.isArray(dmFile) ? dmFile : [dmFile];
-        for (const f of files) {
-          processPath(f.path || f, f.name);
+      if (e.dataTransfer?.getData) {
+        const dmFile = (this.app as any).dragManager?.getData?.(
+          e.dataTransfer,
+          'file'
+        );
+        if (dmFile) {
+          const files = Array.isArray(dmFile) ? dmFile : [dmFile];
+          for (const f of files) {
+            processPath(f.path || f, f.name);
+          }
         }
-      }
-      const dmText = (this.app as any).dragManager?.getData(
-        e.dataTransfer,
-        'text'
-      );
-      if (dmText) {
-        const texts = Array.isArray(dmText) ? dmText : [dmText];
-        for (const t of texts) {
-          processPath(t.path || t, t.name);
+        const dmText = (this.app as any).dragManager?.getData?.(
+          e.dataTransfer,
+          'text'
+        );
+        if (dmText) {
+          const texts = Array.isArray(dmText) ? dmText : [dmText];
+          for (const t of texts) {
+            processPath(t.path || t, t.name);
+          }
         }
       }
 
