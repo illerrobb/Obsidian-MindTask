@@ -606,14 +606,22 @@ export class BoardView extends ItemView {
       nodeEl.createDiv(
         `vtasks-handle vtasks-handle-in vtasks-handle-${orientH === 'vertical' ? 'top' : 'left'}`
       );
+      const header = nodeEl.createDiv('vtasks-note-header');
+      const titleEl = header.createDiv('vtasks-note-title');
+      const openEl = header.createDiv('vtasks-note-open');
+      setIcon(openEl, 'link');
+      openEl.style.display = 'none';
       const area = nodeEl.createEl('textarea', { cls: 'vtasks-note-content' });
-      const notePath = pos.notePath;
+
+      let notePath = pos.notePath;
       console.debug('createNodeElement notePath', { id, notePath });
       if (notePath) {
-        const file = this.app.vault.getAbstractFileByPath(notePath);
+        let file = this.app.vault.getAbstractFileByPath(notePath);
         const found = file instanceof TFile;
         console.debug('createNodeElement file lookup', { notePath, found });
         if (found) {
+          openEl.style.display = '';
+          titleEl.setText(file.basename);
           this.app.vault.read(file).then(
             (content) => {
               console.debug('createNodeElement content loaded', { notePath });
@@ -624,8 +632,75 @@ export class BoardView extends ItemView {
             }
           );
           area.addEventListener('blur', () => {
-            this.app.vault.modify(file, area.value);
+            this.app.vault.modify(file as TFile, area.value);
           });
+          openEl.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.app.workspace.openLinkText(notePath!, '', true);
+          });
+          titleEl.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const original = titleEl.textContent || '';
+            titleEl.contentEditable = 'true';
+            titleEl.classList.add('vtasks-inline-edit');
+
+            const cleanup = () => {
+              titleEl.classList.remove('vtasks-inline-edit');
+              titleEl.contentEditable = 'false';
+              titleEl.removeEventListener('blur', onBlur);
+              titleEl.removeEventListener('keydown', onKeydown);
+            };
+
+            const save = async () => {
+              const newTitle = titleEl.textContent?.trim() || original;
+              cleanup();
+              if (newTitle && newTitle !== (file as TFile).basename) {
+                const parent = (file as TFile).parent?.path ? (file as TFile).parent!.path + '/' : '';
+                const newPath = normalizePath(parent + newTitle + '.' + (file as TFile).extension);
+                try {
+                  await this.app.vault.rename(file as TFile, newPath);
+                  notePath = newPath;
+                  this.board!.nodes[id].notePath = newPath;
+                  await saveBoard(this.app, this.boardFile!, this.board!);
+                  titleEl.textContent = (file as TFile).basename;
+                } catch (err) {
+                  console.error('Failed to rename note', err);
+                  titleEl.textContent = original;
+                }
+              } else {
+                titleEl.textContent = original;
+              }
+            };
+
+            const cancel = () => {
+              titleEl.textContent = original;
+              cleanup();
+            };
+
+            const onBlur = () => save();
+            const onKeydown = (ev: KeyboardEvent) => {
+              if (ev.key === 'Enter') {
+                ev.preventDefault();
+                save();
+              } else if (ev.key === 'Escape') {
+                ev.preventDefault();
+                cancel();
+              }
+            };
+
+            titleEl.addEventListener('blur', onBlur);
+            titleEl.addEventListener('keydown', onKeydown);
+            titleEl.focus();
+            const sel = window.getSelection();
+            if (sel) {
+              const range = document.createRange();
+              range.selectNodeContents(titleEl);
+              sel.removeAllRanges();
+              sel.addRange(range);
+            }
+          });
+        } else {
+          titleEl.setText(notePath.split('/').pop()?.replace(/\.md$/, '') || '');
         }
       }
       nodeEl.addClass('vtasks-note');

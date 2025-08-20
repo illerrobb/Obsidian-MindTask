@@ -156,6 +156,24 @@
   text-overflow: initial;
 }
 
+.vtasks-note-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.vtasks-note-title {
+  flex: 1;
+  font-weight: bold;
+  font-size: 1.1em;
+  cursor: pointer;
+}
+
+.vtasks-note-open {
+  cursor: pointer;
+  margin-left: 4px;
+}
+
 .vtasks-note-link {
   cursor: pointer;
   margin-left: 4px;
