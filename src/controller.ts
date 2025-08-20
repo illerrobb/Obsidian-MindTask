@@ -132,6 +132,11 @@ export default class Controller {
     await saveBoard(this.app, this.boardFile, this.board);
   }
 
+  async setAlignThreshold(value: number) {
+    this.board.alignThreshold = value;
+    await saveBoard(this.app, this.boardFile, this.board);
+  }
+
   async setLaneOrientation(
     id: string,
     orient: 'vertical' | 'horizontal'
