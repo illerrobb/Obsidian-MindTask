@@ -139,6 +139,11 @@
   text-overflow: ellipsis;
 }
 
+.vtasks-desc.vtasks-inline-edit {
+  overflow: visible;
+  text-overflow: initial;
+}
+
 .vtasks-note-link {
   cursor: pointer;
   margin-left: 4px;
@@ -152,15 +157,6 @@
   background: transparent;
   border: none;
   outline: none;
-}
-
-.vtasks-desc-input {
-  width: 100%;
-  resize: none;
-  background: transparent;
-  border: none;
-  outline: none;
-  caret-color: var(--text-normal);
 }
 
 .vtasks-lane {
