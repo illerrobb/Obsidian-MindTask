@@ -544,6 +544,7 @@ export class BoardView extends ItemView {
     const defaultColor = 'var(--background-modifier-border)';
     const nodeEl = parent.createDiv('vtasks-node');
     nodeEl.setAttr('data-id', id);
+    if (this.selectedIds.has(id)) nodeEl.classList.add('selected');
     nodeEl.style.left = pos.x - offsetX + 'px';
     nodeEl.style.top = pos.y - offsetY + 'px';
     if (pos.width) nodeEl.style.width = pos.width + 'px';
