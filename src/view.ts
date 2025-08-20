@@ -1419,7 +1419,7 @@ export class BoardView extends ItemView {
       }
     };
 
-    this.boardEl.onpointerup = (e) => {
+    const handlePointerUp = (e: PointerEvent) => {
       (this.boardEl as HTMLElement).releasePointerCapture((e as PointerEvent).pointerId);
       if (this.resizingLaneId) {
         const id = this.resizingLaneId;
@@ -1439,6 +1439,8 @@ export class BoardView extends ItemView {
       } else if (this.resizingId) {
         const id = this.resizingId;
         this.resizingId = null;
+        this.alignVLine.style.display = 'none';
+        this.alignHLine.style.display = 'none';
         const pos = this.board!.nodes[id];
         const oldLane = pos.lane;
         const laneId = this.getLaneForNode(id);
@@ -1535,6 +1537,9 @@ export class BoardView extends ItemView {
         });
       }
     };
+
+    this.boardEl.onpointerup = handlePointerUp;
+    this.boardEl.onpointercancel = handlePointerUp;
 
     this.boardEl.onpointerleave = () => {
       if (this.isBoardDragging) {
