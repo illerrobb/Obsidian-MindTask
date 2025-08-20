@@ -532,9 +532,21 @@ export class BoardView extends ItemView {
       const textEl = nodeEl.createDiv('vtasks-text');
       const metaEl = nodeEl.createDiv('vtasks-meta');
       textEl.setText(pos.name || id);
-      metaEl.createSpan({ text: `${pos.taskCount ?? 0} tasks` });
+      const total = pos.taskCount ?? 0;
+      const countSpan = metaEl.createSpan({ text: `${total} tasks` });
       if (pos.lastModified) {
         metaEl.createSpan({ text: new Date(pos.lastModified).toLocaleDateString() });
+      }
+      const progressEl = nodeEl.createDiv('vtasks-progress');
+      const barEl = progressEl.createDiv('vtasks-progress-bar');
+      const done = (pos as any).completedCount ?? 0;
+      const pct = total ? (done / total) * 100 : 0;
+      barEl.style.width = `${pct}%`;
+      if ((pos as any).completedCount === undefined && (pos as any).boardPath) {
+        this.computeBoardProgress((pos as any).boardPath).then(({ total: t, done: d }) => {
+          countSpan.setText(`${t} tasks`);
+          barEl.style.width = t ? `${(d / t) * 100}%` : '0%';
+        });
       }
       nodeEl.addClass('vtasks-board-card');
       nodeEl.createDiv(
@@ -926,18 +938,29 @@ export class BoardView extends ItemView {
       for (const item of boardItems) {
         const tfile = this.app.vault.getAbstractFileByPath(item.path);
         if (!(tfile instanceof TFile)) continue;
-        let count = 0;
+        let total = 0;
+        let done = 0;
         try {
           const data = JSON.parse(await this.app.vault.read(tfile));
-          count = Object.keys(data.nodes || {}).length;
+          for (const nid of Object.keys(data.nodes || {})) {
+            if (this.tasks.has(nid)) {
+              total++;
+              if (this.tasks.get(nid)!.checked) done++;
+            }
+          }
         } catch {}
         const info = {
           name: item.name,
           lastModified: item.lastModified ?? tfile.stat.mtime,
-          taskCount: count,
+          taskCount: total,
+          completedCount: done,
           path: item.path,
         };
-        const id = await this.controller?.addBoardCard(info, pos.x + offset, pos.y + offset);
+        const id = await this.controller?.addBoardCard(
+          info,
+          pos.x + offset,
+          pos.y + offset
+        );
         if (id) {
           const laneId = this.getLaneForPosition(pos.x + offset, pos.y + offset);
           if (laneId) await this.controller?.assignNodeToLane(id, laneId);
@@ -1993,6 +2016,27 @@ export class BoardView extends ItemView {
       textEl.classList.add('vtasks-fade');
     } else {
       textEl.classList.remove('vtasks-fade');
+    }
+  }
+
+  private async computeBoardProgress(
+    path: string
+  ): Promise<{ total: number; done: number }> {
+    const file = this.app.vault.getAbstractFileByPath(path);
+    if (!(file instanceof TFile)) return { total: 0, done: 0 };
+    try {
+      const data = JSON.parse(await this.app.vault.read(file));
+      let total = 0;
+      let done = 0;
+      for (const nid of Object.keys(data.nodes || {})) {
+        if (this.tasks.has(nid)) {
+          total++;
+          if (this.tasks.get(nid)!.checked) done++;
+        }
+      }
+      return { total, done };
+    } catch {
+      return { total: 0, done: 0 };
     }
   }
 

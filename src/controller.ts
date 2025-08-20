@@ -205,7 +205,13 @@ export default class Controller {
   }
 
   async addBoardCard(
-    info: { path: string; name: string; lastModified: number; taskCount: number },
+    info: {
+      path: string;
+      name: string;
+      lastModified: number;
+      taskCount: number;
+      completedCount: number;
+    },
     x: number,
     y: number
   ) {
@@ -220,6 +226,7 @@ export default class Controller {
       name: info.name,
       lastModified: info.lastModified,
       taskCount: info.taskCount,
+      completedCount: info.completedCount,
     } as NodeData;
     await saveBoard(this.app, this.boardFile, this.board);
     return id;
