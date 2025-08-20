@@ -562,7 +562,11 @@ textarea.vtasks-edge-label-input {
 }
 
 .vtasks-board.drag-over {
-  background: #e0f7fa;
+  background: rgba(var(--interactive-accent-rgb), 0.15);
+}
+
+.theme-dark .vtasks-board.drag-over {
+  background: rgba(var(--interactive-accent-rgb), 0.3);
 }
 
 .vtasks-board-card {
@@ -573,6 +577,22 @@ textarea.vtasks-edge-label-input {
   color: var(--text-normal);
   cursor: pointer;
   transition: box-shadow 0.2s, background 0.2s;
+}
+
+.vtasks-board-card .vtasks-progress {
+  width: 100%;
+  height: 6px;
+  background: var(--background-modifier-border);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+.vtasks-board-card .vtasks-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: var(--interactive-accent);
+  transition: width 0.3s ease;
 }
 
 .vtasks-board-card:hover {
