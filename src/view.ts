@@ -665,9 +665,38 @@ export class BoardView extends ItemView {
       }
     }
     textEl.textContent = text.trim();
-    if (description) {
-      const descEl = nodeEl.createDiv('vtasks-desc');
-      descEl.setText(description);
+    let descEl: HTMLElement | null = null;
+    if (pos.type !== 'group') {
+      descEl = nodeEl.createDiv('vtasks-desc');
+      descEl.style.pointerEvents = 'auto';
+      if (description) descEl.setText(description);
+      descEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const original = descEl!.textContent ?? '';
+        const input = nodeEl.createEl('textarea', { cls: 'vtasks-desc-input' });
+        input.value = original;
+        descEl!.replaceWith(input);
+
+        const finish = () => {
+          input.removeEventListener('blur', finish);
+          input.removeEventListener('keydown', onKeydown);
+          const val = input.value;
+          input.replaceWith(descEl!);
+          descEl!.setText(val);
+          this.controller?.setDescription(id, val).then(() => this.render());
+        };
+
+        const onKeydown = (ev: KeyboardEvent) => {
+          if (ev.key === 'Enter' || ev.key === 'Escape') {
+            ev.preventDefault();
+            finish();
+          }
+        };
+
+        input.addEventListener('blur', finish);
+        input.addEventListener('keydown', onKeydown);
+        input.focus();
+      });
     }
     const metaEl = nodeEl.createDiv('vtasks-meta');
     metas.forEach((m) => {

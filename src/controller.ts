@@ -360,6 +360,37 @@ export default class Controller {
     });
   }
 
+  async setDescription(id: string, descr: string) {
+    const task = this.tasks.get(id);
+    if (!task) return;
+    if (task.notePath) {
+      const notePath = normalizePath(
+        task.notePath.replace(/^\[\[/, '').replace(/\]\]$/, ''),
+      );
+      let file = this.app.vault.getAbstractFileByPath(notePath);
+      if (!(file instanceof TFile)) {
+        file = await this.app.vault.create(notePath, descr);
+      } else {
+        await this.app.vault.modify(file, descr);
+      }
+      task.description = descr;
+    } else {
+      const clean = descr.replace(/\r?\n/g, ' ').trim();
+      await this.modifyTaskText(task, (t) => {
+        const field = `description:: ${clean}`;
+        const bracketRe = /\[description::\s*[^\]]+\]/;
+        const fieldRe = /\bdescription::\s*((?:\[\[[^\]]+\]\]|[^\n])*?)(?=\s+\w+::|\s+#|$)/;
+        if (bracketRe.test(t)) return t.replace(bracketRe, `[description:: ${clean}]`);
+        if (fieldRe.test(t)) return t.replace(fieldRe, field);
+        const idField = /\[id::\s*[^\]]+\]|\^[\w-]+$/;
+        const m = t.match(idField);
+        if (m) return t.replace(idField, `${field}  ${m[0]}`);
+        return `${t}  ${field}`;
+      });
+      task.description = descr;
+    }
+  }
+
   async deleteTask(id: string) {
     const task = this.tasks.get(id);
     if (task) {

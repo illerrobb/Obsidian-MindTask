@@ -154,6 +154,15 @@
   outline: none;
 }
 
+.vtasks-desc-input {
+  width: 100%;
+  resize: none;
+  background: transparent;
+  border: none;
+  outline: none;
+  caret-color: var(--text-normal);
+}
+
 .vtasks-lane {
   position: absolute;
   background: #e6e6e63d;
