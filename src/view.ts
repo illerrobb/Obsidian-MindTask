@@ -157,6 +157,12 @@ export class BoardView extends ItemView {
       useBlockId: this.plugin.settings.useBlockId,
     });
     const tasks = new Map(parsed.map((t) => [t.blockId, t]));
+    for (const id in board.nodes) {
+      const desc = (board.nodes[id] as any).description;
+      if (desc && tasks.has(id)) {
+        tasks.get(id)!.description = desc;
+      }
+    }
     const controller = new Controller(
       this.app,
       boardFile,
@@ -237,6 +243,9 @@ export class BoardView extends ItemView {
     for (const id of Object.keys(this.board.nodes)) {
       const n = this.board.nodes[id] as any;
       if (n.notePath && !n.type) n.type = 'note';
+      if (this.tasks.has(id) && n.description) {
+        this.tasks.get(id)!.description = n.description;
+      }
       console.debug('refreshFromVault node', {
         id,
         type: n.type,
@@ -770,7 +779,8 @@ export class BoardView extends ItemView {
     let text = task?.text ?? id;
     const metas: { key: string; val: string }[] = [];
     const tags: string[] = [];
-    let description: string | undefined = task?.description;
+    let description: string | undefined =
+      (pos as any).description ?? task?.description;
     let notePath: string | undefined = task?.notePath;
     text = text.replace(/\[(\w+)::\s*([^\]]+)\]/g, (m, key, val) => {
       if (!['dependsOn', 'subtaskOf', 'after'].includes(key)) metas.push({ key, val: val.trim() });
@@ -792,7 +802,7 @@ export class BoardView extends ItemView {
     for (let i = metas.length - 1; i >= 0; i--) {
       const k = metas[i].key.toLowerCase();
       if (k === 'description') {
-        description = metas[i].val;
+        if (description === undefined) description = metas[i].val;
         metas.splice(i, 1);
       } else if (k === 'notepath') {
         notePath = metas[i].val;
@@ -2194,12 +2204,12 @@ export class BoardView extends ItemView {
     const onBlur = () => save();
     const onKeydown = (ev: KeyboardEvent) => {
       ev.stopPropagation();
-      if (ev.key === 'Enter') {
-        ev.preventDefault();
-        save();
-      } else if (ev.key === 'Escape') {
+      if (ev.key === 'Escape') {
         ev.preventDefault();
         cancel();
+      } else if (ev.key === 'Enter' && (ev.metaKey || ev.ctrlKey)) {
+        ev.preventDefault();
+        save();
       }
     };
 
