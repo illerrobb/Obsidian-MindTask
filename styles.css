@@ -191,11 +191,12 @@
 
 .vtasks-lane {
   position: absolute;
-  background: #e6e6e63d;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  background: #e6e6e624;
+  border: 2px solid var(--background-modifier-border);
+  border-radius: 10px;
   transition: background 0.2s ease, border-color 0.2s ease;
   z-index: 1;
+  overflow: hidden;
 }
 
 .vtasks-lane-hover {
