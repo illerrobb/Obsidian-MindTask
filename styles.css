@@ -146,7 +146,7 @@
 .vtasks-desc {
   font-size: 0.9em;
   color: var(--text-muted);
-  white-space: normal;
+  white-space: pre-wrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }

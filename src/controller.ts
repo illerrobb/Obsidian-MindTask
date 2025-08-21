@@ -182,12 +182,17 @@ export default class Controller {
     const idPart = this.settings.useBlockId
       ? `^${id}`
       : `[id:: ${id}]`;
-    await this.app.vault.append(file, `- [ ] ${text}  ${idPart}\n`);
-    const content = await this.app.vault.read(file);
-    const line = content.split(/\r?\n/).length - 1;
     const descMatch =
       text.match(/\[description::\s*([^\]]+)\]/) ||
       text.match(/\bdescription::\s*((?:\[\[[^\]]+\]\]|[^\n])*?)(?=\s+\w+::|\s+#|$)/);
+    if (descMatch) {
+      const bracketRe = /\[description::\s*[^\]]+\]/;
+      const fieldRe = /\bdescription::\s*((?:\[\[[^\]]+\]\]|[^\n])*?)(?=\s+\w+::|\s+#|$)/;
+      text = text.replace(bracketRe, '').replace(fieldRe, '').trim();
+    }
+    await this.app.vault.append(file, `- [ ] ${text}  ${idPart}\n`);
+    const content = await this.app.vault.read(file);
+    const line = content.split(/\r?\n/).length - 1;
     const noteMatch =
       text.match(/\[notePath::\s*([^\]]+)\]/) ||
       text.match(/\bnotePath::\s*((?:\[\[[^\]]+\]\]|[^\n])*?)(?=\s+\w+::|\s+#|$)/);
@@ -203,7 +208,11 @@ export default class Controller {
       notePath: noteMatch ? noteMatch[1].trim() : undefined,
     };
     this.tasks.set(id, task);
-    this.board.nodes[id] = { x, y } as NodeData;
+    this.board.nodes[id] = {
+      x,
+      y,
+      ...(descMatch ? { description: descMatch[1].trim() } : {}),
+    } as NodeData;
     await saveBoard(this.app, this.boardFile, this.board);
     if (
       this.settings.defaultDescriptionMode === 'note' &&
@@ -325,6 +334,8 @@ export default class Controller {
 
     const originalText = task.text;
     const originalChecked = task.checked;
+    const originalDesc = task.description || '';
+    const originalNote = task.notePath;
 
     const result = await openTaskEditModal(
       this.app,
@@ -341,6 +352,14 @@ export default class Controller {
     }
     if (result.checked !== originalChecked) {
       await this.setCheck(id, result.checked);
+      changed = true;
+    }
+    if (
+      result.description !== originalDesc ||
+      result.notePath !== originalNote
+    ) {
+      task.notePath = result.notePath;
+      await this.setDescription(id, result.description);
       changed = true;
     }
     return changed;
@@ -390,21 +409,38 @@ export default class Controller {
       } else {
         await this.app.vault.modify(file, descr);
       }
+      await this.modifyTaskText(task, (t) =>
+        t
+          .replace(/\[description::\s*[^\]]+\]\s*/g, '')
+          .replace(
+            /\bdescription::\s*((?:\[\[[^\]]+\]\]|[^\n])*?)(?=\s+\w+::|\s+#|$)/,
+            '',
+          )
+          .trim(),
+      );
       task.description = descr;
+      const node = this.board.nodes[id] as any;
+      if (node && node.description !== undefined) {
+        delete node.description;
+        await saveBoard(this.app, this.boardFile, this.board);
+      }
     } else {
-      const clean = descr.replace(/\r?\n/g, ' ').trim();
-      await this.modifyTaskText(task, (t) => {
-        const field = `description:: ${clean}`;
-        const bracketRe = /\[description::\s*[^\]]+\]/;
-        const fieldRe = /\bdescription::\s*((?:\[\[[^\]]+\]\]|[^\n])*?)(?=\s+\w+::|\s+#|$)/;
-        if (bracketRe.test(t)) return t.replace(bracketRe, `[description:: ${clean}]`);
-        if (fieldRe.test(t)) return t.replace(fieldRe, field);
-        const idField = /\[id::\s*[^\]]+\]|\^[\w-]+$/;
-        const m = t.match(idField);
-        if (m) return t.replace(idField, `${field}  ${m[0]}`);
-        return `${t}  ${field}`;
-      });
+      await this.modifyTaskText(task, (t) =>
+        t
+          .replace(/\[description::\s*[^\]]+\]\s*/g, '')
+          .replace(
+            /\bdescription::\s*((?:\[\[[^\]]+\]\]|[^\n])*?)(?=\s+\w+::|\s+#|$)/,
+            '',
+          )
+          .trim(),
+      );
       task.description = descr;
+      const node = this.board.nodes[id] as any;
+      if (node) {
+        if (descr) node.description = descr;
+        else delete node.description;
+        await saveBoard(this.app, this.boardFile, this.board);
+      }
     }
   }
 
