@@ -41,6 +41,9 @@ export class BoardView extends ItemView {
   private edgeStart: string | null = null;
   private tempEdge: SVGPathElement | null = null;
   private edgeHoverHandle: HTMLElement | null = null;
+  private outHoverHandle: HTMLElement | null = null;
+  private dragOutHandle: HTMLElement | null = null;
+  private draggingHandle: HTMLElement | null = null;
   private edgeX = 0;
   private edgeY = 0;
   private edgeEls: Map<
@@ -1215,6 +1218,19 @@ export class BoardView extends ItemView {
         this.edgeY = (r.top - boardRect.top + r.height / 2) / this.zoom;
         path.setAttr('d', `M${this.edgeX} ${this.edgeY} C ${this.edgeX} ${this.edgeY} ${this.edgeX} ${this.edgeY} ${this.edgeX} ${this.edgeY}`);
         this.svgEl.appendChild(path);
+        if (this.outHoverHandle) {
+          this.outHoverHandle.removeClass('vtasks-handle-hover');
+          this.outHoverHandle = null;
+        }
+        this.dragOutHandle = outHandle;
+        const clone = outHandle.cloneNode(false) as HTMLElement;
+        clone.className = 'vtasks-handle vtasks-handle-dragging';
+        clone.style.left = this.edgeX + 'px';
+        clone.style.top = this.edgeY + 'px';
+        this.boardEl.appendChild(clone);
+        this.draggingHandle = clone;
+        outHandle.style.opacity = '0';
+        this.boardEl.style.cursor = 'grabbing';
       } else if (node && !inHandle) {
         let id = node.getAttribute('data-id')!;
         const parentId = this.board!.nodes[id]?.group;
@@ -1567,6 +1583,10 @@ export class BoardView extends ItemView {
           if (this.edgeHoverHandle)
             this.edgeHoverHandle.addClass('vtasks-handle-hover');
         }
+        if (this.draggingHandle) {
+          this.draggingHandle.style.left = x2 + 'px';
+          this.draggingHandle.style.top = y2 + 'px';
+        }
       } else if (this.selectionRect) {
         const x = coords.x;
         const y = coords.y;
@@ -1579,6 +1599,41 @@ export class BoardView extends ItemView {
         this.selectionRect.style.width = width + 'px';
         this.selectionRect.style.height = height + 'px';
         this.didDragSelect = true;
+      } else {
+        const el = document.elementFromPoint(
+          (e as PointerEvent).clientX,
+          (e as PointerEvent).clientY
+        );
+        let handle = el
+          ? ((el.closest('.vtasks-handle-out') as HTMLElement) || null)
+          : null;
+        if (!handle) {
+          const handles = Array.from(
+            this.boardEl.querySelectorAll('.vtasks-handle-out')
+          ) as HTMLElement[];
+          let nearest: HTMLElement | null = null;
+          let min = Infinity;
+          const px = (e as PointerEvent).clientX;
+          const py = (e as PointerEvent).clientY;
+          for (const h of handles) {
+            const r = h.getBoundingClientRect();
+            const cx = r.left + r.width / 2;
+            const cy = r.top + r.height / 2;
+            const dist = Math.hypot(cx - px, cy - py);
+            if (dist < min) {
+              min = dist;
+              nearest = h;
+            }
+          }
+          if (min < 30) handle = nearest;
+        }
+        if (handle !== this.outHoverHandle) {
+          if (this.outHoverHandle)
+            this.outHoverHandle.removeClass('vtasks-handle-hover');
+          this.outHoverHandle = handle;
+          if (this.outHoverHandle)
+            this.outHoverHandle.addClass('vtasks-handle-hover');
+        }
       }
     };
 
@@ -1665,6 +1720,15 @@ export class BoardView extends ItemView {
           this.tempEdge.remove();
           this.tempEdge = null;
         }
+        if (this.draggingHandle) {
+          this.draggingHandle.remove();
+          this.draggingHandle = null;
+        }
+        if (this.dragOutHandle) {
+          this.dragOutHandle.style.opacity = '';
+          this.dragOutHandle = null;
+        }
+        this.boardEl.style.cursor = '';
         this.drawEdges();
       } else if (this.selectionRect) {
         const rect = this.selectionRect.getBoundingClientRect();

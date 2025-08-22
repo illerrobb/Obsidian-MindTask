@@ -381,6 +381,17 @@ textarea.vtasks-edge-label-input {
   transition: opacity 0.2s ease-in-out, transform 0.1s ease-in-out;
 }
 
+.vtasks-handle-out {
+  cursor: grab;
+}
+
+.vtasks-handle-dragging {
+  cursor: grabbing;
+  opacity: 1;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(calc(var(--handle-scale, 1) * 2));
+}
+
 .vtasks-node:hover .vtasks-handle,
 .vtasks-board.show-handles .vtasks-handle {
   opacity: 1;
@@ -407,7 +418,7 @@ textarea.vtasks-edge-label-input {
 }
 
 .vtasks-vertical .vtasks-handle-bottom.vtasks-handle-hover {
-  transform: translate(-50%, 50%) scale(calc(var(--handle-scale, 1) * 1.4));
+  transform: translate(-50%, 50%) scale(calc(var(--handle-scale, 1) * 2));
 }
 
 .vtasks-horizontal .vtasks-handle-left {
@@ -427,7 +438,7 @@ textarea.vtasks-edge-label-input {
 }
 
 .vtasks-horizontal .vtasks-handle-right.vtasks-handle-hover {
-  transform: translate(50%, -50%) scale(calc(var(--handle-scale, 1) * 1.4));
+  transform: translate(50%, -50%) scale(calc(var(--handle-scale, 1) * 2));
 }
 
 .vtasks-resize {
