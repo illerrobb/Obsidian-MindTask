@@ -151,6 +151,10 @@
   text-overflow: ellipsis;
 }
 
+.vtasks-desc p {
+  margin: 0;
+}
+
 .vtasks-desc.vtasks-inline-edit {
   overflow: visible;
   text-overflow: initial;
