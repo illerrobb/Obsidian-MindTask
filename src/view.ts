@@ -264,9 +264,15 @@ export class BoardView extends ItemView {
     );
 
     // Start with dependency edges between existing nodes
-    const combined = deps.filter(
-      (d) => this.board!.nodes[d.from] && this.board!.nodes[d.to]
-    );
+    // Preserve labels from existing board edges when available
+    const combined = deps
+      .filter((d) => this.board!.nodes[d.from] && this.board!.nodes[d.to])
+      .map((d) => {
+        const match = this.board!.edges.find(
+          (e) => e.from === d.from && e.to === d.to && e.type === d.type
+        );
+        return match && match.label ? { ...d, label: match.label } : d;
+      });
 
     // Merge in existing edges that involve special nodes (type defined)
     for (const e of this.board.edges) {
