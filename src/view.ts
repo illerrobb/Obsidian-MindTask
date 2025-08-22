@@ -2225,7 +2225,10 @@ export class BoardView extends ItemView {
     descEl.textContent = original;
     descEl.contentEditable = 'true';
     descEl.classList.add('vtasks-inline-edit');
-    const suggester = new WikiLinkSuggest(this.app, descEl);
+    const suggester = new WikiLinkSuggest(
+      this.app,
+      descEl as HTMLDivElement | HTMLInputElement | HTMLTextAreaElement,
+    );
 
     const cleanup = () => {
       descEl.classList.remove('vtasks-inline-edit');
