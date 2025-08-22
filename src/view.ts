@@ -1521,12 +1521,39 @@ export class BoardView extends ItemView {
         const y2 = coords.y;
         const dx = Math.abs(x2 - this.edgeX);
         this.tempEdge.setAttr('d', `M${this.edgeX} ${this.edgeY} C ${this.edgeX + dx / 2} ${this.edgeY}, ${x2 - dx / 2} ${y2}, ${x2} ${y2}`);
-        const el = document.elementFromPoint((e as PointerEvent).clientX, (e as PointerEvent).clientY);
-        const handle = el ? (el.closest('.vtasks-handle') as HTMLElement | null) : null;
+        const el = document.elementFromPoint(
+          (e as PointerEvent).clientX,
+          (e as PointerEvent).clientY
+        );
+        let handle = el
+          ? ((el.closest('.vtasks-handle-in') as HTMLElement) || null)
+          : null;
+        if (!handle) {
+          const handles = Array.from(
+            this.boardEl.querySelectorAll('.vtasks-handle-in')
+          ) as HTMLElement[];
+          let nearest: HTMLElement | null = null;
+          let min = Infinity;
+          const px = (e as PointerEvent).clientX;
+          const py = (e as PointerEvent).clientY;
+          for (const h of handles) {
+            const r = h.getBoundingClientRect();
+            const cx = r.left + r.width / 2;
+            const cy = r.top + r.height / 2;
+            const dist = Math.hypot(cx - px, cy - py);
+            if (dist < min) {
+              min = dist;
+              nearest = h;
+            }
+          }
+          if (min < 30) handle = nearest;
+        }
         if (handle !== this.edgeHoverHandle) {
-          if (this.edgeHoverHandle) this.edgeHoverHandle.removeClass('vtasks-handle-hover');
+          if (this.edgeHoverHandle)
+            this.edgeHoverHandle.removeClass('vtasks-handle-hover');
           this.edgeHoverHandle = handle;
-          if (this.edgeHoverHandle) this.edgeHoverHandle.addClass('vtasks-handle-hover');
+          if (this.edgeHoverHandle)
+            this.edgeHoverHandle.addClass('vtasks-handle-hover');
         }
       } else if (this.selectionRect) {
         const x = coords.x;
@@ -1607,15 +1634,18 @@ export class BoardView extends ItemView {
           this.edgeHoverHandle.removeClass('vtasks-handle-hover');
           this.edgeHoverHandle = null;
         }
-        const handle = (e.target as HTMLElement).closest('.vtasks-handle-in') as HTMLElement | null;
-        const node = handle ? (handle.closest('.vtasks-node') as HTMLElement | null) : null;
+        const el = document.elementFromPoint(
+          (e as PointerEvent).clientX,
+          (e as PointerEvent).clientY
+        );
+        const node = el ? (el.closest('.vtasks-node') as HTMLElement | null) : null;
         if (node) {
           const toId = node.getAttribute('data-id')!;
-            if (toId !== this.edgeStart) {
-              this.controller!
-                .createEdge(this.edgeStart, toId, 'depends')
-                .then(() => this.render());
-            }
+          if (toId !== this.edgeStart) {
+            this.controller!
+              .createEdge(this.edgeStart, toId, 'depends')
+              .then(() => this.render());
+          }
         }
         this.edgeStart = null;
         this.boardEl.classList.remove('show-handles');
@@ -2627,6 +2657,7 @@ export class BoardView extends ItemView {
     this.boardOffsetX = anchorX - boardX * this.zoom;
     this.boardOffsetY = anchorY - boardY * this.zoom;
     this.boardEl.style.transform = `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px) scale(${this.zoom})`;
+    this.updateHandleScale();
     this.drawEdges();
     this.updateMinimapView();
   }
@@ -2703,8 +2734,19 @@ export class BoardView extends ItemView {
         (viewH - boardH * this.zoom) / 2 - minY * this.zoom;
     }
     this.boardEl.style.transform = `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px) scale(${this.zoom})`;
+    this.updateHandleScale();
     this.updateMinimapView();
     this.drawEdges();
+  }
+
+  private updateHandleScale() {
+    const desired = 10 * this.zoom;
+    const min = 8;
+    const max = 20;
+    let scale = 1;
+    if (desired < min) scale = min / desired;
+    else if (desired > max) scale = max / desired;
+    this.boardEl.style.setProperty('--handle-scale', scale.toString());
   }
 
   private editTitle(el: HTMLElement) {

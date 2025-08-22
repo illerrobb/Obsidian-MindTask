@@ -393,41 +393,41 @@ textarea.vtasks-edge-label-input {
 .vtasks-vertical .vtasks-handle-top {
   top: -5px;
   left: 50%;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%) scale(var(--handle-scale, 1));
 }
 
 .vtasks-vertical .vtasks-handle-top.vtasks-handle-hover {
-  transform: translate(-50%, -50%) scale(1.4);
+  transform: translate(-50%, -50%) scale(calc(var(--handle-scale, 1) * 1.4));
 }
 
 .vtasks-vertical .vtasks-handle-bottom {
   bottom: -5px;
   left: 50%;
-  transform: translate(-50%, 50%);
+  transform: translate(-50%, 50%) scale(var(--handle-scale, 1));
 }
 
 .vtasks-vertical .vtasks-handle-bottom.vtasks-handle-hover {
-  transform: translate(-50%, 50%) scale(1.4);
+  transform: translate(-50%, 50%) scale(calc(var(--handle-scale, 1) * 1.4));
 }
 
 .vtasks-horizontal .vtasks-handle-left {
   left: -5px;
   top: 50%;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%) scale(var(--handle-scale, 1));
 }
 
 .vtasks-horizontal .vtasks-handle-left.vtasks-handle-hover {
-  transform: translate(-50%, -50%) scale(1.4);
+  transform: translate(-50%, -50%) scale(calc(var(--handle-scale, 1) * 1.4));
 }
 
 .vtasks-horizontal .vtasks-handle-right {
   right: -5px;
   top: 50%;
-  transform: translate(50%, -50%);
+  transform: translate(50%, -50%) scale(var(--handle-scale, 1));
 }
 
 .vtasks-horizontal .vtasks-handle-right.vtasks-handle-hover {
-  transform: translate(50%, -50%) scale(1.4);
+  transform: translate(50%, -50%) scale(calc(var(--handle-scale, 1) * 1.4));
 }
 
 .vtasks-resize {
