@@ -824,7 +824,7 @@ export class BoardView extends ItemView {
       descEl.style.pointerEvents = 'auto';
       descEl.setAttr('data-raw', description || '');
       if (description) {
-        MarkdownRenderer.renderMarkdown(description, descEl, '', this.app);
+        MarkdownRenderer.renderMarkdown(description, descEl, '', this);
       }
       descEl.addEventListener('click', (e) => {
         if ((e.target as HTMLElement).tagName === 'A') return;
@@ -2245,7 +2245,7 @@ export class BoardView extends ItemView {
       cleanup();
       descEl.setAttr('data-raw', original);
       descEl.empty();
-      MarkdownRenderer.renderMarkdown(original, descEl, '', this.app);
+      MarkdownRenderer.renderMarkdown(original, descEl, '', this);
     };
 
     const onBlur = () => save();
