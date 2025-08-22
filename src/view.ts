@@ -1135,6 +1135,8 @@ export class BoardView extends ItemView {
 
     this.boardEl.onpointerdown = (e) => {
       if ((e as PointerEvent).button === 2) return;
+      const descEl = (e.target as HTMLElement).closest('.vtasks-desc') as HTMLElement | null;
+      if (descEl?.isContentEditable) return;
       this.pointerDownSelected = false;
       this.boardEl.focus();
       if (this.editingId) this.finishEditing(true);
@@ -2286,8 +2288,8 @@ export class BoardView extends ItemView {
     ) as HTMLElement | null;
     if (!descEl) return;
     const original = descEl.getAttr('data-raw') || '';
-    descEl.textContent = original;
     descEl.contentEditable = 'true';
+    descEl.textContent = original;
     descEl.classList.add('vtasks-inline-edit');
     const suggester = new WikiLinkSuggest(
       this.app,
