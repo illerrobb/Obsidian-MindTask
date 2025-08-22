@@ -9,6 +9,7 @@ import {
   normalizePath,
 } from 'obsidian';
 import { NoteSuggest } from './noteSuggest';
+import WikiLinkSuggest from './wikiLinkSuggest';
 import { ParsedTask } from './parser';
 import { PluginSettings } from './settings';
 
@@ -142,9 +143,12 @@ export async function openTaskEditModal(
         new Setting(contentEl)
           .setName('Tags')
           .addText((t) => (this.tagsInput = t.setValue(tags.join(' '))));
-          new Setting(contentEl)
-            .setName('Description')
-            .addTextArea((t) => (this.description = t.setValue(task.description || '')));
+        new Setting(contentEl)
+          .setName('Description')
+          .addTextArea((t) => {
+            this.description = t.setValue(task.description || '');
+            new WikiLinkSuggest(app, t.inputEl);
+          });
         new Setting(contentEl)
           .setName('Note Path')
           .addText((t) => {

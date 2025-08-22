@@ -25,6 +25,12 @@ export class ItemView {
   registerInterval(): void {}
 }
 
+export class MarkdownRenderer {
+  static renderMarkdown(src: string, el: HTMLElement, _path: string, _app: App) {
+    el.textContent = src;
+  }
+}
+
 export class Menu {
   addItem(cb: (item: MenuItem) => any): this {
     cb(new MenuItem());

@@ -12,10 +12,12 @@ import {
   TFile,
   TAbstractFile,
   normalizePath,
+  MarkdownRenderer,
 } from 'obsidian';
 import type MindTaskPlugin from './main';
 import Controller from './controller';
 import { BoardData, saveBoard, loadBoard, getBoardFile } from './boardStore';
+import WikiLinkSuggest from './wikiLinkSuggest';
 import { ParsedTask, scanFiles, parseDependencies } from './parser';
 
 export const VIEW_TYPE_BOARD = 'mind-task';
@@ -814,8 +816,12 @@ export class BoardView extends ItemView {
     if (pos.type !== 'group') {
       descEl = nodeEl.createDiv('vtasks-desc');
       descEl.style.pointerEvents = 'auto';
-      if (description) descEl.setText(description);
+      descEl.setAttr('data-raw', description || '');
+      if (description) {
+        MarkdownRenderer.renderMarkdown(description, descEl, '', this.app);
+      }
       descEl.addEventListener('click', (e) => {
+        if ((e.target as HTMLElement).tagName === 'A') return;
         e.stopPropagation();
         this.startDescEdit(id);
       });
@@ -2209,26 +2215,31 @@ export class BoardView extends ItemView {
       `.vtasks-node[data-id="${id}"] .vtasks-desc`
     ) as HTMLElement | null;
     if (!descEl) return;
-    const original = descEl.textContent ?? '';
+    const original = descEl.getAttr('data-raw') || '';
+    descEl.textContent = original;
     descEl.contentEditable = 'true';
     descEl.classList.add('vtasks-inline-edit');
+    const suggester = new WikiLinkSuggest(this.app, descEl);
 
     const cleanup = () => {
       descEl.classList.remove('vtasks-inline-edit');
       descEl.contentEditable = 'false';
       descEl.removeEventListener('blur', onBlur);
       descEl.removeEventListener('keydown', onKeydown);
+      suggester.close();
     };
 
     const save = () => {
-      const val = descEl.textContent ?? '';
+      const val = descEl.innerText ?? '';
       cleanup();
       this.controller?.setDescription(id, val).then(() => this.render());
     };
 
     const cancel = () => {
-      descEl.textContent = original;
       cleanup();
+      descEl.setAttr('data-raw', original);
+      descEl.empty();
+      MarkdownRenderer.renderMarkdown(original, descEl, '', this.app);
     };
 
     const onBlur = () => save();
