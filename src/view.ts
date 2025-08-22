@@ -124,7 +124,7 @@ export class BoardView extends ItemView {
   }
 
   // @ts-ignore
-  async getState() {
+  getState() {
     return { file: this.boardFile?.path };
   }
 
