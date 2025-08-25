@@ -3258,6 +3258,20 @@ export class BoardView extends ItemView {
         const li = ul.createEl('li');
         li.setAttr('data-id', node.id);
         const task = this.tasks.get(node.id);
+
+        if (node.children.length) {
+          li.addClass('has-children');
+          const toggle = li.createSpan({ cls: 'vtasks-sidebar-toggle' });
+          setIcon(toggle, 'chevron-down');
+          toggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const collapsed = li.classList.toggle('collapsed');
+            setIcon(toggle, collapsed ? 'chevron-right' : 'chevron-down');
+          });
+        } else {
+          li.createSpan({ cls: 'vtasks-sidebar-toggle' });
+        }
+
         if (task) {
           const checkbox = li.createEl('input', { type: 'checkbox' }) as HTMLInputElement;
           checkbox.checked = task.checked;

@@ -709,6 +709,18 @@ textarea.vtasks-edge-label-input {
   align-items: center;
 }
 
+.vtasks-sidebar li.collapsed > ul {
+  display: none;
+}
+
+.vtasks-sidebar-toggle {
+  width: 1em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 4px;
+}
+
 .vtasks-sidebar li:hover {
   background: var(--background-modifier-hover);
 }
