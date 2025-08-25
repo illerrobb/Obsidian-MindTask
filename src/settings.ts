@@ -36,6 +36,8 @@ export interface PluginSettings {
   alignLineColor: string;
   /** Width of alignment guide lines in pixels */
   alignLineWidth: number;
+  /** Width of the sidebar in pixels */
+  sidebarWidth: number;
 }
 
 export interface PluginData {
@@ -62,6 +64,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   rearrangeSpacingY: 40,
   alignLineColor: '',
   alignLineWidth: 1,
+  sidebarWidth: 250,
 };
 
 export class SettingsTab extends PluginSettingTab {

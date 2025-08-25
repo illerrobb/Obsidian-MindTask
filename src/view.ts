@@ -128,12 +128,15 @@ export class BoardView extends ItemView {
     this.sidebarEl.style.width = `${Math.max(100, newWidth)}px`;
   };
 
-  private handleSidebarMouseUp = () => {
+  private handleSidebarMouseUp = async () => {
     if (!this.isSidebarResizing) return;
     this.isSidebarResizing = false;
     document.body.style.cursor = '';
     if (this.sidebarEl) {
       this.sidebarEl.style.cursor = '';
+      this.sidebarStartWidth = this.sidebarEl.getBoundingClientRect().width;
+      this.plugin.settings.sidebarWidth = this.sidebarStartWidth;
+      await this.plugin.savePluginData();
     }
     document.removeEventListener('mousemove', this.handleSidebarMouseMove);
     document.removeEventListener('mouseup', this.handleSidebarMouseUp);
@@ -395,6 +398,7 @@ export class BoardView extends ItemView {
     this.svgEl.addClass('vtasks-edges');
     this.boardEl.appendChild(this.svgEl);
     this.sidebarEl = this.containerEl.createDiv('vtasks-sidebar');
+    this.sidebarEl.style.width = `${this.plugin.settings.sidebarWidth}px`;
     const searchContainer = this.sidebarEl.createDiv('vtasks-sidebar-search');
     this.sidebarSearchInput = searchContainer.createEl('input', {
       type: 'text',
