@@ -705,6 +705,10 @@ textarea.vtasks-edge-label-input {
 .vtasks-sidebar li {
   padding: 2px 4px;
   cursor: pointer;
+  display: block;
+}
+
+.vtasks-sidebar-item {
   display: flex;
   align-items: center;
 }
