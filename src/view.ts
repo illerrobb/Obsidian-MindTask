@@ -121,6 +121,7 @@ export class BoardView extends ItemView {
   private isSidebarResizing = false;
   private sidebarStartWidth = 0;
   private sidebarStartX = 0;
+  private sidebarCollapsed = false;
 
   private handleSidebarMouseMove = (e: MouseEvent) => {
     if (!this.isSidebarResizing || !this.sidebarEl) return;
@@ -145,6 +146,7 @@ export class BoardView extends ItemView {
   private toggleSidebar = () => {
     if (!this.sidebarEl || !this.sidebarToggleBtn) return;
     const collapsed = this.sidebarEl.classList.toggle('collapsed');
+    this.sidebarCollapsed = collapsed;
     setIcon(this.sidebarToggleBtn, collapsed ? 'chevron-right' : 'chevron-left');
   };
 
@@ -399,6 +401,7 @@ export class BoardView extends ItemView {
     this.boardEl.appendChild(this.svgEl);
     this.sidebarEl = this.containerEl.createDiv('vtasks-sidebar');
     this.sidebarEl.style.width = `${this.plugin.settings.sidebarWidth}px`;
+    if (this.sidebarCollapsed) this.sidebarEl.addClass('collapsed');
     const searchContainer = this.sidebarEl.createDiv('vtasks-sidebar-search');
     this.sidebarSearchInput = searchContainer.createEl('input', {
       type: 'text',
@@ -469,7 +472,10 @@ export class BoardView extends ItemView {
     const zoomSection = toolbar.createDiv('vtasks-toolbar-section');
 
     this.sidebarToggleBtn = zoomSection.createEl('button');
-    setIcon(this.sidebarToggleBtn, 'chevron-left');
+    setIcon(
+      this.sidebarToggleBtn,
+      this.sidebarCollapsed ? 'chevron-right' : 'chevron-left'
+    );
     this.sidebarToggleBtn.setAttr('title', 'Toggle sidebar');
     this.sidebarToggleBtn.onclick = () => this.toggleSidebar();
 
