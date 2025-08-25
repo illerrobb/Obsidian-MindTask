@@ -431,7 +431,12 @@ export class BoardView extends ItemView {
     this.sidebarEl.addEventListener('click', (e) => {
       const li = (e.target as HTMLElement).closest('li[data-id]');
       if (li) {
-        this.centerOnNode(li.getAttr('data-id')!);
+        const id = li.getAttr('data-id')!;
+        this.centerOnNode(id);
+        const nodeEl = this.boardEl.querySelector(
+          `.vtasks-node[data-id="${id}"]`
+        ) as HTMLElement | null;
+        if (nodeEl) this.selectNode(nodeEl, id, false);
         this.sidebarEl
           .querySelectorAll('li.active')
           .forEach((el) => el.removeClass('active'));
