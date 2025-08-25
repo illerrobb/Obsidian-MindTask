@@ -29,6 +29,7 @@ export class BoardView extends ItemView {
   private sidebarListEl!: HTMLElement;
   private sidebarSearchInput!: HTMLInputElement;
   private sidebarToggleBtn!: HTMLButtonElement;
+  private minimapToggleBtn!: HTMLButtonElement;
   private svgEl!: SVGSVGElement;
   private alignVLine!: HTMLElement;
   private alignHLine!: HTMLElement;
@@ -142,6 +143,12 @@ export class BoardView extends ItemView {
     if (!this.sidebarEl || !this.sidebarToggleBtn) return;
     const collapsed = this.sidebarEl.classList.toggle('collapsed');
     setIcon(this.sidebarToggleBtn, collapsed ? 'chevron-right' : 'chevron-left');
+  };
+
+  private toggleMinimap = () => {
+    if (!this.minimapEl || !this.minimapToggleBtn) return;
+    const collapsed = this.minimapEl.classList.toggle('collapsed');
+    setIcon(this.minimapToggleBtn, collapsed ? 'eye' : 'eye-off');
   };
 
   constructor(leaf: WorkspaceLeaf, plugin: MindTaskPlugin) {
@@ -482,6 +489,11 @@ export class BoardView extends ItemView {
     setIcon(fitBtn, 'maximize');
     fitBtn.setAttr('title', 'Zoom to fit');
     fitBtn.onclick = () => this.zoomToFit();
+
+    this.minimapToggleBtn = zoomSection.createEl('button');
+    setIcon(this.minimapToggleBtn, 'eye-off');
+    this.minimapToggleBtn.setAttr('title', 'Toggle minimap');
+    this.minimapToggleBtn.onclick = () => this.toggleMinimap();
 
     const settingsBtn = zoomSection.createEl('button');
     setIcon(settingsBtn, 'settings');

@@ -594,6 +594,10 @@ textarea.vtasks-edge-label-input {
   overflow: hidden;
 }
 
+.vtasks-minimap.collapsed {
+  display: none;
+}
+
 .vtasks-minimap svg {
   width: 100%;
   height: 100%;
