@@ -3301,13 +3301,7 @@ export class BoardView extends ItemView {
 
   private getNodeLabel(id: string): string {
     const n = this.board!.nodes[id];
-    return (
-      n.title ||
-      (n as any).name ||
-      (n as any).text ||
-      (n as any).content ||
-      id
-    );
+    return n.title!;
   }
 
   private centerOnNode(id: string) {
