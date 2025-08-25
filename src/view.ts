@@ -848,12 +848,46 @@ export class BoardView extends ItemView {
       descEl.style.pointerEvents = 'auto';
       descEl.setAttr('data-raw', description || '');
       if (description) {
-        MarkdownRenderer.renderMarkdown(description, descEl, '', this);
+        MarkdownRenderer.renderMarkdown(description, descEl, '', this).then(() => {
+          const lines = description.split(/\r?\n/);
+          let i = 0;
+          descEl.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+            for (; i < lines.length; i++) {
+              if (/^\s*[-*]\s+\[[ xX]\]\s/.test(lines[i])) {
+                (cb as HTMLInputElement).dataset.line = String(i);
+                i++;
+                break;
+              }
+            }
+          });
+        });
       }
       descEl.addEventListener('click', (e) => {
-        if ((e.target as HTMLElement).tagName === 'A') return;
-        e.stopPropagation();
-        this.startDescEdit(id);
+        const target = e.target as HTMLElement;
+        if (target.tagName === 'A') return;
+        if (
+          target instanceof HTMLInputElement &&
+          target.type === 'checkbox'
+        ) {
+          e.stopPropagation();
+          const idx = parseInt(target.dataset.line || '', 10);
+          if (!isNaN(idx)) {
+            const raw = descEl.getAttr('data-raw') || '';
+            const lines = raw.split(/\r?\n/);
+            if (lines[idx]) {
+              lines[idx] = lines[idx].replace(
+                /\[( |x)\]/,
+                target.checked ? '[x]' : '[ ]',
+              );
+              this.controller
+                ?.setDescription(id, lines.join('\n'))
+                .then(() => this.render());
+            }
+          }
+        } else {
+          e.stopPropagation();
+          this.startDescEdit(id);
+        }
       });
     }
     const metaEl = nodeEl.createDiv('vtasks-meta');
