@@ -28,6 +28,7 @@ export class BoardView extends ItemView {
   private sidebarEl!: HTMLElement;
   private sidebarListEl!: HTMLElement;
   private sidebarSearchInput!: HTMLInputElement;
+  private sidebarToggleBtn!: HTMLButtonElement;
   private svgEl!: SVGSVGElement;
   private alignVLine!: HTMLElement;
   private alignHLine!: HTMLElement;
@@ -135,6 +136,12 @@ export class BoardView extends ItemView {
     }
     document.removeEventListener('mousemove', this.handleSidebarMouseMove);
     document.removeEventListener('mouseup', this.handleSidebarMouseUp);
+  };
+
+  private toggleSidebar = () => {
+    if (!this.sidebarEl || !this.sidebarToggleBtn) return;
+    const collapsed = this.sidebarEl.classList.toggle('collapsed');
+    setIcon(this.sidebarToggleBtn, collapsed ? 'chevron-right' : 'chevron-left');
   };
 
   constructor(leaf: WorkspaceLeaf, plugin: MindTaskPlugin) {
@@ -444,6 +451,11 @@ export class BoardView extends ItemView {
 
     const toolbar = this.containerEl.createDiv('vtasks-toolbar');
     const zoomSection = toolbar.createDiv('vtasks-toolbar-section');
+
+    this.sidebarToggleBtn = zoomSection.createEl('button');
+    setIcon(this.sidebarToggleBtn, 'chevron-left');
+    this.sidebarToggleBtn.setAttr('title', 'Toggle sidebar');
+    this.sidebarToggleBtn.onclick = () => this.toggleSidebar();
 
     const zoomInBtn = zoomSection.createEl('button');
     setIcon(zoomInBtn, 'zoom-in');

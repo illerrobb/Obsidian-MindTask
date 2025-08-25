@@ -674,6 +674,10 @@ textarea.vtasks-edge-label-input {
   z-index: 15;
 }
 
+.vtasks-sidebar.collapsed {
+  display: none;
+}
+
 .vtasks-sidebar-search {
   padding: 4px;
 }
