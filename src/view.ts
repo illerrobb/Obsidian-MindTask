@@ -26,6 +26,8 @@ export const VIEW_TYPE_BOARD = 'mind-task';
 export class BoardView extends ItemView {
   private boardEl!: HTMLElement;
   private sidebarEl!: HTMLElement;
+  private sidebarListEl!: HTMLElement;
+  private sidebarSearchInput!: HTMLInputElement;
   private svgEl!: SVGSVGElement;
   private alignVLine!: HTMLElement;
   private alignHLine!: HTMLElement;
@@ -379,6 +381,15 @@ export class BoardView extends ItemView {
     this.svgEl.addClass('vtasks-edges');
     this.boardEl.appendChild(this.svgEl);
     this.sidebarEl = this.containerEl.createDiv('vtasks-sidebar');
+    const searchContainer = this.sidebarEl.createDiv('vtasks-sidebar-search');
+    this.sidebarSearchInput = searchContainer.createEl('input', {
+      type: 'text',
+    }) as HTMLInputElement;
+    this.sidebarSearchInput.placeholder = 'Search…';
+    this.sidebarListEl = this.sidebarEl.createDiv('vtasks-sidebar-list');
+    this.sidebarSearchInput.addEventListener('input', () =>
+      this.filterSidebar(this.sidebarSearchInput.value)
+    );
     this.sidebarEl.addEventListener('mousemove', (e) => {
       const rect = this.sidebarEl.getBoundingClientRect();
       if (rect.right - e.clientX < 5) {
@@ -3205,8 +3216,8 @@ export class BoardView extends ItemView {
   }
 
   private renderSidebar() {
-    if (!this.sidebarEl || !this.board) return;
-    this.sidebarEl.empty();
+    if (!this.sidebarListEl || !this.board) return;
+    this.sidebarListEl.empty();
     const tree = buildTaskTree(this.board);
     const buildList = (nodes: TaskTreeNode[], parent: HTMLElement) => {
       const ul = parent.createEl('ul');
@@ -3228,7 +3239,36 @@ export class BoardView extends ItemView {
         if (node.children.length) buildList(node.children, li);
       }
     };
-    buildList(tree, this.sidebarEl);
+    buildList(tree, this.sidebarListEl);
+    if (this.sidebarSearchInput)
+      this.filterSidebar(this.sidebarSearchInput.value);
+  }
+
+  private filterSidebar(query: string) {
+    if (!this.sidebarListEl) return;
+    const q = query.toLowerCase();
+    if (!q) {
+      this.sidebarListEl
+        .querySelectorAll('li')
+        .forEach((li) => ((li as HTMLElement).style.display = ''));
+      return;
+    }
+    const root = this.sidebarListEl.querySelector('ul');
+    if (!root) return;
+    const filter = (ul: HTMLElement): boolean => {
+      let anyVisible = false;
+      ul.querySelectorAll(':scope > li').forEach((li) => {
+        const childUl = li.querySelector(':scope > ul') as HTMLElement | null;
+        const span = li.querySelector(':scope > span');
+        const label = span?.textContent?.toLowerCase() ?? '';
+        const childVisible = childUl ? filter(childUl) : false;
+        const visible = label.includes(q) || childVisible;
+        (li as HTMLElement).style.display = visible ? '' : 'none';
+        if (visible) anyVisible = true;
+      });
+      return anyVisible;
+    };
+    filter(root as HTMLElement);
   }
 
   private getNodeLabel(id: string): string {

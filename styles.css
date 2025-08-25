@@ -674,6 +674,16 @@ textarea.vtasks-edge-label-input {
   z-index: 15;
 }
 
+.vtasks-sidebar-search {
+  padding: 4px;
+}
+
+.vtasks-sidebar-search input {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 8px;
+}
+
 .vtasks-sidebar ul {
   list-style: none;
   padding-left: 1em;
