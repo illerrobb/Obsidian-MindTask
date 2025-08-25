@@ -680,6 +680,11 @@ textarea.vtasks-edge-label-input {
   margin: 0;
 }
 
+.vtasks-sidebar ul ul {
+  padding-left: 1.5em;
+  margin-left: 0.5em;
+}
+
 .vtasks-sidebar li {
   padding: 2px 4px;
   cursor: pointer;
