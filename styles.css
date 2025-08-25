@@ -668,7 +668,6 @@ textarea.vtasks-edge-label-input {
   bottom: 0;
   width: 200px;
   overflow: auto;
-  resize: horizontal;
   background: var(--background-secondary);
   border-right: 1px solid var(--background-modifier-border);
   z-index: 15;
