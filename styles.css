@@ -663,7 +663,8 @@ textarea.vtasks-edge-label-input {
 
 .vtasks-sidebar {
   position: fixed;
-  top: 32px;
+  top: 0;
+  margin-top: 32px;
   left: 0;
   bottom: 0;
   width: 200px;
