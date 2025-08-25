@@ -693,17 +693,17 @@ textarea.vtasks-edge-label-input {
 
 .vtasks-sidebar ul {
   list-style: none;
-  padding-left: 1em;
+  padding-left: 0em;
   margin: 0;
 }
 
 .vtasks-sidebar ul ul {
-  padding-left: 1.5em;
+  padding-left: 0.5em;
   margin-left: 0.5em;
 }
 
 .vtasks-sidebar li {
-  padding: 2px 4px;
+  padding: 4px 4px;
   cursor: pointer;
   display: block;
 }
@@ -711,6 +711,7 @@ textarea.vtasks-edge-label-input {
 .vtasks-sidebar-item {
   display: flex;
   align-items: center;
+  margin-bottom: 0.5em;
 }
 
 .vtasks-sidebar li.collapsed > ul {
@@ -739,8 +740,8 @@ textarea.vtasks-edge-label-input {
 
 .vtasks-sidebar-postit-icon,
 .vtasks-sidebar-board-icon {
-  width: 10px;
-  height: 10px;
+  width: 16px;
+  height: 16px;
   display: inline-block;
   margin-right: 4px;
 }
@@ -750,6 +751,6 @@ textarea.vtasks-edge-label-input {
 }
 
 .vtasks-sidebar-board-icon {
-  border: 2px dashed currentColor;
-  border-radius: 4px;
+  border: 2px dashed rgb(0 0 0 / 38%);
+  border-radius: 1px;
 }
