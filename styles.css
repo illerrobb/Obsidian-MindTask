@@ -736,3 +736,20 @@ textarea.vtasks-edge-label-input {
 .vtasks-sidebar li input[type='checkbox'] {
   margin-right: 4px;
 }
+
+.vtasks-sidebar-postit-icon,
+.vtasks-sidebar-board-icon {
+  width: 10px;
+  height: 10px;
+  display: inline-block;
+  margin-right: 4px;
+}
+
+.vtasks-sidebar-postit-icon {
+  border-radius: 2px;
+}
+
+.vtasks-sidebar-board-icon {
+  border: 2px dashed currentColor;
+  border-radius: 4px;
+}
