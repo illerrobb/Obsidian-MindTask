@@ -856,9 +856,8 @@ export class BoardView extends ItemView {
       }
     }
     textEl.textContent = text.trim();
-    let descEl: HTMLElement | null = null;
     if (pos.type !== 'group') {
-      descEl = nodeEl.createDiv('vtasks-desc');
+      const descEl = nodeEl.createDiv('vtasks-desc');
       descEl.style.pointerEvents = 'auto';
       descEl.setAttr('data-raw', description || '');
       if (description) {
