@@ -29,7 +29,17 @@ export default class Controller {
         ny = Math.max(lane.y, Math.min(ny, lane.y + lane.height - h));
       }
     }
+    const dx = nx - node.x;
+    const dy = ny - node.y;
     this.board.nodes[id] = { ...node, x: nx, y: ny } as NodeData;
+    if (dx || dy) {
+      for (const [nid, n] of Object.entries(this.board.nodes)) {
+        if ((n as any).attachedTo === id) {
+          n.x += dx;
+          n.y += dy;
+        }
+      }
+    }
     await saveBoard(this.app, this.boardFile, this.board);
   }
 
@@ -263,6 +273,36 @@ export default class Controller {
     } as NodeData;
     await saveBoard(this.app, this.boardFile, this.board);
     return id;
+  }
+
+  async addPostIt(x: number, y: number, color = '#fff9a8') {
+    const id = 'p-' + crypto.randomBytes(4).toString('hex');
+    this.board.nodes[id] = {
+      x,
+      y,
+      width: 120,
+      height: 120,
+      type: 'postit',
+      color,
+      content: '',
+    } as NodeData;
+    await saveBoard(this.app, this.boardFile, this.board);
+    return id;
+  }
+
+  async updatePostItContent(id: string, content: string) {
+    const node = this.board.nodes[id];
+    if (!node || node.type !== 'postit') return;
+    (node as any).content = content;
+    await saveBoard(this.app, this.boardFile, this.board);
+  }
+
+  async attachNode(id: string, target: string | null) {
+    const node = this.board.nodes[id];
+    if (!node) return;
+    if (target) (node as any).attachedTo = target;
+    else delete (node as any).attachedTo;
+    await saveBoard(this.app, this.boardFile, this.board);
   }
 
   async addExistingTask(id: string, x: number, y: number) {

@@ -17,6 +17,9 @@ export interface NodeData {
   height?: number;
   color?: string;
   lane?: string;
+  type?: string;
+  content?: string;
+  attachedTo?: string;
   [key: string]: any;
 }
 
