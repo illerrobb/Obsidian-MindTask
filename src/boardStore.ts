@@ -18,6 +18,7 @@ export interface NodeData {
   color?: string;
   lane?: string;
   type?: string;
+  title?: string;
   content?: string;
   attachedTo?: string;
   [key: string]: any;
@@ -50,6 +51,11 @@ export async function loadBoard(app: App, file: TFile): Promise<BoardData> {
     if (data.snapToGrid === undefined) data.snapToGrid = true;
     if (data.snapToGuides === undefined) data.snapToGuides = false;
     if (data.alignThreshold === undefined) data.alignThreshold = 5;
+    for (const node of Object.values(data.nodes)) {
+      if (!node.title) {
+        node.title = (node as any).name || (node as any).text || (node as any).content;
+      }
+    }
     return data;
   } catch (e) {
     return {

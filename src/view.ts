@@ -191,6 +191,19 @@ export class BoardView extends ItemView {
     this.tasks = tasks;
     this.controller = controller;
     this.boardFile = boardFile;
+    let changed = false;
+    for (const [id, node] of Object.entries(this.board.nodes)) {
+      if (!node.title) {
+        if (tasks.has(id)) {
+          node.title = tasks.get(id)!.text;
+        } else {
+          const anyNode = node as any;
+          node.title = anyNode.name || anyNode.text || anyNode.content;
+        }
+        if (node.title) changed = true;
+      }
+    }
+    if (changed) void saveBoard(this.app, boardFile, this.board);
     this.app.workspace.trigger('layout-change');
 
     if (!this.vaultEventsRegistered) {
@@ -3180,7 +3193,13 @@ export class BoardView extends ItemView {
 
   private getNodeLabel(id: string): string {
     const n = this.board!.nodes[id];
-    return (n as any).name || (n as any).text || (n as any).content || id;
+    return (
+      n.title ||
+      (n as any).name ||
+      (n as any).text ||
+      (n as any).content ||
+      id
+    );
   }
 
   private centerOnNode(id: string) {

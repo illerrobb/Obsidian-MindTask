@@ -221,6 +221,7 @@ export default class Controller {
     this.board.nodes[id] = {
       x,
       y,
+      title: text,
       ...(descMatch ? { description: descMatch[1].trim() } : {}),
     } as NodeData;
     await saveBoard(this.app, this.boardFile, this.board);
@@ -252,6 +253,7 @@ export default class Controller {
       height: 80,
       type: 'board',
       boardPath: info.path,
+      title: info.name,
       name: info.name,
       lastModified: info.lastModified,
       taskCount: info.taskCount,
@@ -270,6 +272,7 @@ export default class Controller {
       height: 200,
       type: 'note',
       notePath: path,
+      title: path.split('/').pop()?.replace(/\.md$/, ''),
     } as NodeData;
     await saveBoard(this.app, this.boardFile, this.board);
     return id;
@@ -307,7 +310,11 @@ export default class Controller {
 
   async addExistingTask(id: string, x: number, y: number) {
     if (!this.tasks.has(id)) return;
-    this.board.nodes[id] = { x, y } as NodeData;
+    this.board.nodes[id] = {
+      x,
+      y,
+      title: this.tasks.get(id)!.text,
+    } as NodeData;
     await saveBoard(this.app, this.boardFile, this.board);
   }
 
@@ -434,6 +441,10 @@ export default class Controller {
       const metaFormatted = tokens.join('  ');
       return text.trim() + (metaFormatted ? `  ${metaFormatted}` : '');
     });
+    if (this.board.nodes[id]) {
+      this.board.nodes[id].title = text.trim();
+      await saveBoard(this.app, this.boardFile, this.board);
+    }
   }
 
   async setDescription(id: string, descr: string) {
