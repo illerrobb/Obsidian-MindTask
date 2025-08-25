@@ -193,6 +193,21 @@
   outline: none;
 }
 
+.vtasks-postit {
+  box-shadow: 2px 2px 2px rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  padding: 4px;
+}
+
+.vtasks-postit-content {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  border: none;
+  resize: none;
+  outline: none;
+}
+
 .vtasks-lane {
   position: absolute;
   background: #e6e6e600;

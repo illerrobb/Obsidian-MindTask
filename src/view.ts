@@ -735,6 +735,27 @@ export class BoardView extends ItemView {
       return nodeEl;
     }
 
+    if (pos.type === 'postit') {
+      nodeEl.createDiv(
+        `vtasks-handle vtasks-handle-in vtasks-handle-${orientH === 'vertical' ? 'top' : 'left'}`
+      );
+      const area = nodeEl.createEl('textarea', { cls: 'vtasks-postit-content' });
+      area.value = (pos as any).content || '';
+      area.addEventListener('blur', () => {
+        this.controller?.updatePostItContent(id, area.value);
+      });
+      nodeEl.addClass('vtasks-postit');
+      nodeEl.createDiv(
+        `vtasks-handle vtasks-handle-out vtasks-handle-${orientH === 'vertical' ? 'bottom' : 'right'}`
+      );
+      const dirs = ['n', 'e', 's', 'w', 'ne', 'nw', 'se', 'sw'];
+      dirs.forEach((d) => nodeEl.createDiv(`vtasks-resize vtasks-resize-${d}`));
+      new ResizeObserver(() => {
+        this.drawEdges();
+      }).observe(nodeEl);
+      return nodeEl;
+    }
+
     nodeEl.createDiv(
       `vtasks-handle vtasks-handle-in vtasks-handle-${orientH === 'vertical' ? 'top' : 'left'}`
     );
@@ -1692,6 +1713,10 @@ export class BoardView extends ItemView {
           }
           this.controller!.assignNodeToLane(id, laneId ?? null);
           this.controller!.moveNode(id, pos.x, pos.y);
+          if (this.board!.nodes[id].type === 'postit') {
+            const target = this.findAttachmentTarget(id);
+            this.controller!.attachNode(id, target);
+          }
         });
         this.drawEdges();
         this.drawMinimap();
@@ -1897,6 +1922,22 @@ export class BoardView extends ItemView {
         );
         menu.addItem((item) =>
           item.setTitle('Add existing task').onClick(() => this.openExistingTaskModal(pos))
+        );
+        menu.addItem((item) =>
+          item.setTitle('Add post-it').onClick(() => {
+            this.controller!
+              .addPostIt(pos.x, pos.y)
+              .then((id) => {
+                const laneId = this.getLaneForPosition(pos.x, pos.y);
+                if (laneId) {
+                  this.controller!
+                    .assignNodeToLane(id, laneId)
+                    .then(() => this.render());
+                } else {
+                  this.render();
+                }
+              });
+          })
         );
         menu.showAtMouseEvent(e as MouseEvent);
         return;
@@ -2156,8 +2197,13 @@ export class BoardView extends ItemView {
       if (ids.has(id)) return;
       ids.add(id);
       const n = this.board!.nodes[id];
-      if (n && n.type === 'group' && n.members) {
-        n.members.forEach((mid: string) => add(mid));
+      if (n) {
+        if (n.type === 'group' && n.members) {
+          n.members.forEach((mid: string) => add(mid));
+        }
+        for (const [nid, nn] of Object.entries(this.board!.nodes)) {
+          if ((nn as any).attachedTo === id) add(nid);
+        }
       }
     };
     this.selectedIds.forEach((sid) => add(sid));
@@ -3065,6 +3111,22 @@ export class BoardView extends ItemView {
         return lid;
       }
     }
+    return null;
+  }
+
+  private findAttachmentTarget(id: string): string | null {
+    const nodeEl = this.boardEl.querySelector(`.vtasks-node[data-id="${id}"]`) as HTMLElement | null;
+    if (!nodeEl) return null;
+    const rect = nodeEl.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const el = document.elementFromPoint(cx, cy);
+    const target = el ? (el.closest('.vtasks-node') as HTMLElement | null) : null;
+    if (!target) return null;
+    const tid = target.getAttribute('data-id');
+    if (!tid || tid === id) return null;
+    const n = this.board!.nodes[tid];
+    if (n && n.type !== 'postit') return tid;
     return null;
   }
 
