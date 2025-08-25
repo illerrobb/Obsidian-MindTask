@@ -683,6 +683,8 @@ textarea.vtasks-edge-label-input {
 .vtasks-sidebar li {
   padding: 2px 4px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
 }
 
 .vtasks-sidebar li:hover {
@@ -691,4 +693,8 @@ textarea.vtasks-edge-label-input {
 
 .vtasks-sidebar li.active {
   background: var(--background-modifier-active);
+}
+
+.vtasks-sidebar li input[type='checkbox'] {
+  margin-right: 4px;
 }
