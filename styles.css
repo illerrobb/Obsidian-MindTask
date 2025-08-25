@@ -206,6 +206,7 @@
   border: none;
   resize: none;
   outline: none;
+  color: black;
 }
 
 .vtasks-lane {
