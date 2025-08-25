@@ -19,11 +19,13 @@ import Controller from './controller';
 import { BoardData, saveBoard, loadBoard, getBoardFile } from './boardStore';
 import WikiLinkSuggest from './wikiLinkSuggest';
 import { ParsedTask, scanFiles, parseDependencies } from './parser';
+import { buildTaskTree, TaskTreeNode } from './sidebar';
 
 export const VIEW_TYPE_BOARD = 'mind-task';
 
 export class BoardView extends ItemView {
   private boardEl!: HTMLElement;
+  private sidebarEl!: HTMLElement;
   private svgEl!: SVGSVGElement;
   private alignVLine!: HTMLElement;
   private alignHLine!: HTMLElement;
@@ -343,6 +345,17 @@ export class BoardView extends ItemView {
     this.svgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     this.svgEl.addClass('vtasks-edges');
     this.boardEl.appendChild(this.svgEl);
+    this.sidebarEl = this.containerEl.createDiv('vtasks-sidebar');
+    this.sidebarEl.addEventListener('click', (e) => {
+      const li = (e.target as HTMLElement).closest('li[data-id]');
+      if (li) {
+        this.centerOnNode(li.getAttr('data-id')!);
+        this.sidebarEl
+          .querySelectorAll('li.active')
+          .forEach((el) => el.removeClass('active'));
+        li.addClass('active');
+      }
+    });
     this.edgeEls = new Map();
     this.svgEl.empty();
     this.svgEl.style.position = 'absolute';
@@ -357,6 +370,7 @@ export class BoardView extends ItemView {
       nodeElements[id] = el;
     }
     this.drawEdges();
+    this.renderSidebar();
     this.minimapEl = this.containerEl.createDiv('vtasks-minimap');
     this.minimapSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     this.minimapEl.appendChild(this.minimapSvg);
@@ -3136,6 +3150,42 @@ export class BoardView extends ItemView {
       nodeEl.style.left = node.x - parentX + 'px';
       nodeEl.style.top = node.y - parentY + 'px';
     }
+  }
+
+  private renderSidebar() {
+    if (!this.sidebarEl || !this.board) return;
+    this.sidebarEl.empty();
+    const tree = buildTaskTree(this.board);
+    const buildList = (nodes: TaskTreeNode[], parent: HTMLElement) => {
+      const ul = parent.createEl('ul');
+      for (const node of nodes) {
+        const li = ul.createEl('li');
+        li.setAttr('data-id', node.id);
+        li.setText(this.getNodeLabel(node.id));
+        if (node.children.length) buildList(node.children, li);
+      }
+    };
+    buildList(tree, this.sidebarEl);
+  }
+
+  private getNodeLabel(id: string): string {
+    const n = this.board!.nodes[id];
+    return (n as any).name || (n as any).text || (n as any).content || id;
+  }
+
+  private centerOnNode(id: string) {
+    if (!this.board) return;
+    const n = this.board.nodes[id];
+    if (!n) return;
+    const rect = this.containerEl.getBoundingClientRect();
+    const centerX = n.x + (n.width ?? 120) / 2;
+    const centerY = n.y + (n.height ?? 40) / 2;
+    this.boardOffsetX = rect.width / 2 - centerX * this.zoom;
+    this.boardOffsetY = rect.height / 2 - centerY * this.zoom;
+    this.boardEl.style.transform = `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px) scale(${this.zoom})`;
+    this.updateHandleScale();
+    this.updateMinimapView();
+    this.drawEdges();
   }
 
   private getLaneForPosition(x: number, y: number): string | null {

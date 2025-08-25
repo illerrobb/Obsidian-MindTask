@@ -660,3 +660,35 @@ textarea.vtasks-edge-label-input {
   background: var(--background-modifier-hover);
   box-shadow: 0 2px 8px var(--background-modifier-border);
 }
+
+.vtasks-sidebar {
+  position: fixed;
+  top: 32px;
+  left: 0;
+  bottom: 0;
+  width: 200px;
+  overflow: auto;
+  resize: horizontal;
+  background: var(--background-secondary);
+  border-right: 1px solid var(--background-modifier-border);
+  z-index: 15;
+}
+
+.vtasks-sidebar ul {
+  list-style: none;
+  padding-left: 1em;
+  margin: 0;
+}
+
+.vtasks-sidebar li {
+  padding: 2px 4px;
+  cursor: pointer;
+}
+
+.vtasks-sidebar li:hover {
+  background: var(--background-modifier-hover);
+}
+
+.vtasks-sidebar li.active {
+  background: var(--background-modifier-active);
+}
