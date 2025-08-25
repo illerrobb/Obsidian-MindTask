@@ -584,6 +584,22 @@ textarea.vtasks-edge-label-input {
   outline: 2px solid var(--color-green);
 }
 
+.vtasks-node.standby .vtasks-check {
+  color: var(--color-yellow);
+}
+
+.vtasks-node.standby {
+  outline: 2px solid var(--color-yellow);
+}
+
+.vtasks-node.progress .vtasks-check {
+  color: var(--color-blue);
+}
+
+.vtasks-node.progress {
+  outline: 2px solid var(--color-blue);
+}
+
 .vtasks-minimap {
   position: fixed;
   right: 10px;

@@ -21,6 +21,7 @@ export interface NodeData {
   title?: string;
   content?: string;
   attachedTo?: string;
+  status?: 'standby' | 'progress';
   [key: string]: any;
 }
 

@@ -1046,10 +1046,31 @@ export class BoardView extends ItemView {
     if (pos.type !== 'group') {
       nodeEl.addClass('vtasks-task');
       const checked = task?.checked ?? false;
+      const status = (pos as any).status as string | undefined;
       const checkEl = nodeEl.createDiv('vtasks-check');
-      setIcon(checkEl, checked ? 'check-circle' : 'circle');
+      if (checked) {
+        setIcon(checkEl, 'check-circle');
+        nodeEl.addClass('done');
+      } else if (status === 'standby') {
+        setIcon(checkEl, 'pause-circle');
+        nodeEl.addClass('standby');
+      } else if (status === 'progress') {
+        setIcon(checkEl, 'loader');
+        nodeEl.addClass('progress');
+      } else {
+        setIcon(checkEl, 'circle');
+      }
       checkEl.addEventListener('click', (e) => {
         e.stopPropagation();
+        const nodeStatus = this.board!.nodes[id].status;
+        if (nodeStatus) {
+          delete this.board!.nodes[id].status;
+          this.controller!.setCheck(id, true).then(async () => {
+            await saveBoard(this.app, this.boardFile!, this.board!);
+            this.render();
+          });
+          return;
+        }
         const newVal = !this.tasks.get(id)?.checked;
         if (newVal) {
           nodeEl.addClass('done');
@@ -1060,7 +1081,34 @@ export class BoardView extends ItemView {
         }
         this.controller!.setCheck(id, newVal).then(() => this.render());
       });
-      if (checked) nodeEl.addClass('done');
+      checkEl.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const menu = new Menu();
+        menu.addItem((item) =>
+          item
+            .setTitle('Standby')
+            .setIcon('pause-circle')
+            .onClick(async () => {
+              this.board!.nodes[id].status = 'standby';
+              await this.controller!.setCheck(id, false);
+              await saveBoard(this.app, this.boardFile!, this.board!);
+              this.render();
+            })
+        );
+        menu.addItem((item) =>
+          item
+            .setTitle('In progress')
+            .setIcon('loader')
+            .onClick(async () => {
+              this.board!.nodes[id].status = 'progress';
+              await this.controller!.setCheck(id, false);
+              await saveBoard(this.app, this.boardFile!, this.board!);
+              this.render();
+            })
+        );
+        menu.showAtPosition({ x: e.pageX, y: e.pageY });
+      });
     }
     const outHandle = nodeEl.createDiv(
       `vtasks-handle vtasks-handle-out vtasks-handle-${orientH === 'vertical' ? 'bottom' : 'right'}`
