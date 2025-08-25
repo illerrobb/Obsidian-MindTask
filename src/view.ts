@@ -3289,6 +3289,13 @@ export class BoardView extends ItemView {
               .then(() => this.render());
           });
         }
+        const nodeData = this.board!.nodes[node.id];
+        if (nodeData?.type === 'postit') {
+          const icon = row.createSpan({ cls: 'vtasks-sidebar-postit-icon' });
+          if (nodeData.color) icon.style.backgroundColor = nodeData.color;
+        } else if (nodeData?.type === 'board') {
+          row.createSpan({ cls: 'vtasks-sidebar-board-icon' });
+        }
         row.createSpan({ text: this.getNodeLabel(node.id) });
         if (node.children.length) buildList(node.children, li);
       }
