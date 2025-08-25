@@ -114,6 +114,26 @@ export class BoardView extends ItemView {
   private skipNextRename = false;
   private plugin: MindTaskPlugin;
   private containerEventsRegistered = false;
+  private isSidebarResizing = false;
+  private sidebarStartWidth = 0;
+  private sidebarStartX = 0;
+
+  private handleSidebarMouseMove = (e: MouseEvent) => {
+    if (!this.isSidebarResizing || !this.sidebarEl) return;
+    const newWidth = this.sidebarStartWidth + e.clientX - this.sidebarStartX;
+    this.sidebarEl.style.width = `${Math.max(100, newWidth)}px`;
+  };
+
+  private handleSidebarMouseUp = () => {
+    if (!this.isSidebarResizing) return;
+    this.isSidebarResizing = false;
+    document.body.style.cursor = '';
+    if (this.sidebarEl) {
+      this.sidebarEl.style.cursor = '';
+    }
+    document.removeEventListener('mousemove', this.handleSidebarMouseMove);
+    document.removeEventListener('mouseup', this.handleSidebarMouseUp);
+  };
 
   constructor(leaf: WorkspaceLeaf, plugin: MindTaskPlugin) {
     super(leaf);
@@ -359,6 +379,26 @@ export class BoardView extends ItemView {
     this.svgEl.addClass('vtasks-edges');
     this.boardEl.appendChild(this.svgEl);
     this.sidebarEl = this.containerEl.createDiv('vtasks-sidebar');
+    this.sidebarEl.addEventListener('mousemove', (e) => {
+      const rect = this.sidebarEl.getBoundingClientRect();
+      if (rect.right - e.clientX < 5) {
+        this.sidebarEl.style.cursor = 'ew-resize';
+      } else {
+        this.sidebarEl.style.cursor = '';
+      }
+    });
+    this.sidebarEl.addEventListener('mousedown', (e) => {
+      const rect = this.sidebarEl.getBoundingClientRect();
+      if (rect.right - e.clientX < 5) {
+        this.isSidebarResizing = true;
+        this.sidebarStartWidth = rect.width;
+        this.sidebarStartX = e.clientX;
+        document.body.style.cursor = 'ew-resize';
+        document.addEventListener('mousemove', this.handleSidebarMouseMove);
+        document.addEventListener('mouseup', this.handleSidebarMouseUp);
+        e.preventDefault();
+      }
+    });
     this.sidebarEl.addEventListener('click', (e) => {
       const li = (e.target as HTMLElement).closest('li[data-id]');
       if (li) {
