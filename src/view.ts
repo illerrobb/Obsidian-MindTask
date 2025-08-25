@@ -3160,7 +3160,18 @@ export class BoardView extends ItemView {
       for (const node of nodes) {
         const li = ul.createEl('li');
         li.setAttr('data-id', node.id);
-        li.setText(this.getNodeLabel(node.id));
+        const task = this.tasks.get(node.id);
+        if (task) {
+          const checkbox = li.createEl('input', { type: 'checkbox' }) as HTMLInputElement;
+          checkbox.checked = task.checked;
+          checkbox.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.controller!
+              .setCheck(node.id, checkbox.checked)
+              .then(() => this.render());
+          });
+        }
+        li.createSpan({ text: this.getNodeLabel(node.id) });
         if (node.children.length) buildList(node.children, li);
       }
     };
