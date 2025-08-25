@@ -664,14 +664,13 @@ textarea.vtasks-edge-label-input {
 .vtasks-sidebar {
   position: fixed;
   top: 0;
-  margin-top: 32px;
   left: 0;
   bottom: 0;
-  width: 200px;
   overflow: auto;
   background: var(--background-secondary);
   border-right: 1px solid var(--background-modifier-border);
   z-index: 15;
+  padding-right: 10px;
 }
 
 .vtasks-sidebar.collapsed {
