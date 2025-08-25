@@ -3257,11 +3257,12 @@ export class BoardView extends ItemView {
       for (const node of nodes) {
         const li = ul.createEl('li');
         li.setAttr('data-id', node.id);
+        const row = li.createDiv({ cls: 'vtasks-sidebar-item' });
         const task = this.tasks.get(node.id);
 
         if (node.children.length) {
           li.addClass('has-children');
-          const toggle = li.createSpan({ cls: 'vtasks-sidebar-toggle' });
+          const toggle = row.createSpan({ cls: 'vtasks-sidebar-toggle' });
           setIcon(toggle, 'chevron-down');
           toggle.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -3269,11 +3270,11 @@ export class BoardView extends ItemView {
             setIcon(toggle, collapsed ? 'chevron-right' : 'chevron-down');
           });
         } else {
-          li.createSpan({ cls: 'vtasks-sidebar-toggle' });
+          row.createSpan({ cls: 'vtasks-sidebar-toggle' });
         }
 
         if (task) {
-          const checkbox = li.createEl('input', { type: 'checkbox' }) as HTMLInputElement;
+          const checkbox = row.createEl('input', { type: 'checkbox' }) as HTMLInputElement;
           checkbox.checked = task.checked;
           checkbox.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -3282,7 +3283,7 @@ export class BoardView extends ItemView {
               .then(() => this.render());
           });
         }
-        li.createSpan({ text: this.getNodeLabel(node.id) });
+        row.createSpan({ text: this.getNodeLabel(node.id) });
         if (node.children.length) buildList(node.children, li);
       }
     };
