@@ -5,6 +5,7 @@ import { BoardData, NodeData, LaneData, saveBoard } from './boardStore';
 import { ParsedTask } from './parser';
 import { PluginSettings } from './settings';
 import { openTaskEditModal } from './taskEditModal';
+import { parseTaskContent } from './taskContent';
 
 export default class Controller {
   constructor(
@@ -218,10 +219,11 @@ export default class Controller {
       notePath: noteMatch ? noteMatch[1].trim() : undefined,
     };
     this.tasks.set(id, task);
+    const parsed = parseTaskContent(text);
     this.board.nodes[id] = {
       x,
       y,
-      title: text,
+      title: parsed.title,
       ...(descMatch ? { description: descMatch[1].trim() } : {}),
     } as NodeData;
     await saveBoard(this.app, this.boardFile, this.board);
@@ -310,10 +312,12 @@ export default class Controller {
 
   async addExistingTask(id: string, x: number, y: number) {
     if (!this.tasks.has(id)) return;
+    const taskText = this.tasks.get(id)!.text;
+    const { title } = parseTaskContent(taskText);
     this.board.nodes[id] = {
       x,
       y,
-      title: this.tasks.get(id)!.text,
+      title,
     } as NodeData;
     await saveBoard(this.app, this.boardFile, this.board);
   }
