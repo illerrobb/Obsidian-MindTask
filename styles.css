@@ -318,9 +318,6 @@
   -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 calc(100% - 1.2em), transparent 100%);
           mask-image: linear-gradient(180deg, #000 0%, #000 calc(100% - 1.2em), transparent 100%);
 }
-.vtasks-node.selected {
-  outline: 2px solid var(--color-accent);
-}
 
 .vtasks-edges {
   /* Allow lanes beneath to receive drag events while edges remain clickable */
@@ -598,6 +595,10 @@ textarea.vtasks-edge-label-input {
 
 .vtasks-node.progress {
   outline: 2px solid var(--color-blue);
+}
+
+.vtasks-node.selected {
+  outline: 2px solid var(--color-accent);
 }
 
 .vtasks-minimap {

@@ -1,11 +1,22 @@
 import { JSDOM } from 'jsdom';
 import { BoardView } from '../src/view';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 declare global {
   interface Window { ResizeObserver: any; }
 }
 
 const dom = new JSDOM('<!doctype html><div id="root"></div>');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const css = fs.readFileSync(path.join(__dirname, '..', 'styles.css'), 'utf8');
+const styleEl = dom.window.document.createElement('style');
+styleEl.textContent = css;
+dom.window.document.head.appendChild(styleEl);
+dom.window.document.documentElement.style.setProperty('--color-accent', 'rgb(255, 0, 0)');
+dom.window.document.documentElement.style.setProperty('--color-green', 'rgb(0, 255, 0)');
 (global as any).window = dom.window;
 (global as any).document = dom.window.document;
 
@@ -67,3 +78,13 @@ if (!node?.classList.contains('selected')) {
 }
 
 console.log('Selected node remains highlighted after render');
+
+root.innerHTML = '';
+view.tasks.set('t1', { checked: true });
+(BoardView.prototype as any).createNodeElement.call(view, 't1', root);
+const doneNode = root.querySelector('.vtasks-node[data-id="t1"]') as HTMLElement;
+const outline = dom.window.getComputedStyle(doneNode).outline;
+if (!outline.includes('var(--color-accent)')) {
+  throw new Error('Selected done node should use accent outline color');
+}
+console.log('Selected done node uses accent outline color');
