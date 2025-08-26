@@ -250,12 +250,12 @@ export class BoardView extends ItemView {
     if (!this.vaultEventsRegistered) {
       const onVaultChange = (file: TAbstractFile) => {
         if (!this.boardFile || !(file instanceof TFile)) return;
-        if (
-          file.path === this.boardFile.path ||
-          file.path.endsWith('.mtask') ||
-          !file.path.endsWith('.md')
-        )
+        if (file.path === this.boardFile.path) return;
+        if (file.path.endsWith('.mtask')) {
+          void this.updateBoardCardData(file.path);
           return;
+        }
+        if (!file.path.endsWith('.md')) return;
         void this.refreshFromVault();
       };
       const onVaultRename = async (file: TAbstractFile, oldPath: string) => {
@@ -271,6 +271,8 @@ export class BoardView extends ItemView {
             this.app.workspace.trigger('layout-change');
             this.render();
           }
+        } else if (file.path.endsWith('.mtask') || oldPath.endsWith('.mtask')) {
+          await this.updateBoardCardData(oldPath, file.path);
         } else if (file.path.endsWith('.md') || oldPath.endsWith('.md')) {
           void this.refreshFromVault();
         }
@@ -348,6 +350,28 @@ export class BoardView extends ItemView {
     }
 
     this.board.edges = combined;
+
+    // Refresh board card summaries
+    for (const node of Object.values(this.board.nodes)) {
+      const b = node as any;
+      if (!b.boardPath) continue;
+      const file = this.app.vault.getAbstractFileByPath(b.boardPath);
+      if (!(file instanceof TFile)) continue;
+      try {
+        const data = JSON.parse(await this.app.vault.read(file));
+        let total = 0;
+        let done = 0;
+        for (const nid of Object.keys(data.nodes || {})) {
+          if (this.tasks.has(nid)) {
+            total++;
+            if (this.tasks.get(nid)!.checked) done++;
+          }
+        }
+        b.taskCount = total;
+        b.completedCount = done;
+        b.lastModified = file.stat.mtime;
+      } catch {}
+    }
 
     await saveBoard(this.app, this.boardFile, this.board);
 
@@ -2602,6 +2626,37 @@ export class BoardView extends ItemView {
     } else {
       textEl.classList.remove('vtasks-fade');
     }
+  }
+
+  private async updateBoardCardData(path: string, newPath?: string) {
+    if (!this.board || !this.boardFile) return;
+    const target = newPath ?? path;
+    const file = this.app.vault.getAbstractFileByPath(target);
+    if (!(file instanceof TFile)) return;
+    try {
+      const data = JSON.parse(await this.app.vault.read(file));
+      let total = 0;
+      let done = 0;
+      for (const nid of Object.keys(data.nodes || {})) {
+        if (this.tasks.has(nid)) {
+          total++;
+          if (this.tasks.get(nid)!.checked) done++;
+        }
+      }
+      for (const node of Object.values(this.board.nodes)) {
+        const n = node as any;
+        if (n.boardPath === path) {
+          n.boardPath = target;
+          n.title = file.basename;
+          n.name = file.basename;
+          n.taskCount = total;
+          n.completedCount = done;
+          n.lastModified = file.stat.mtime;
+        }
+      }
+      await saveBoard(this.app, this.boardFile, this.board);
+      this.render();
+    } catch {}
   }
 
   private async computeBoardProgress(
