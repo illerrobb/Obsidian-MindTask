@@ -1378,6 +1378,11 @@ export class BoardView extends ItemView {
 
     this.boardEl.onpointerdown = (e) => {
       if ((e as PointerEvent).button === 2) return;
+      const pointerEvent = e as PointerEvent;
+      const isTouchPointer = pointerEvent.pointerType === 'touch';
+      if (isTouchPointer) {
+        this.boardEl.classList.remove('touch-handles');
+      }
       const descEl = (e.target as HTMLElement).closest('.vtasks-desc') as HTMLElement | null;
       if (descEl?.isContentEditable) return;
       this.pointerDownSelected = false;
@@ -1391,6 +1396,14 @@ export class BoardView extends ItemView {
       const outHandle = (e.target as HTMLElement).closest('.vtasks-handle-out') as HTMLElement | null;
       const inHandle = (e.target as HTMLElement).closest('.vtasks-handle-in') as HTMLElement | null;
       let node = (e.target as HTMLElement).closest('.vtasks-node') as HTMLElement | null;
+      const maybeEnableTouchHandles = (target: HTMLElement | null) => {
+        if (!isTouchPointer || !target) return;
+        const nodeId = target.getAttribute('data-id');
+        if (nodeId && this.selectedIds.has(nodeId)) {
+          this.boardEl.classList.add('touch-handles');
+        }
+      };
+
       if (laneResize && lane) {
         const id = lane.getAttribute('data-id')!;
         this.resizingLaneId = id;
@@ -1448,10 +1461,12 @@ export class BoardView extends ItemView {
             }
           });
         }
+        maybeEnableTouchHandles(node);
       } else if (outHandle && node) {
         const id = node.getAttribute('data-id')!;
         this.edgeStart = id;
         this.boardEl.classList.add('show-handles');
+        maybeEnableTouchHandles(node);
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         // Display the temporary connection line while dragging
         path.addClass('vtasks-edge-line');
@@ -1504,6 +1519,7 @@ export class BoardView extends ItemView {
         }
         this.pointerDownSelected = true;
         this.draggingId = id;
+        maybeEnableTouchHandles(node);
         const coords = this.getBoardCoords(e as PointerEvent);
         this.dragStartX = coords.x;
         this.dragStartY = coords.y;
@@ -1884,6 +1900,9 @@ export class BoardView extends ItemView {
 
     const handlePointerUp = (e: PointerEvent) => {
       (this.boardEl as HTMLElement).releasePointerCapture((e as PointerEvent).pointerId);
+      if (e.pointerType === 'touch') {
+        this.boardEl.classList.remove('touch-handles');
+      }
       if (this.resizingLaneId) {
         const id = this.resizingLaneId;
         this.resizingLaneId = null;
