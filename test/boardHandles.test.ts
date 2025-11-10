@@ -1,6 +1,9 @@
 import { JSDOM } from 'jsdom';
 import { readFileSync } from 'node:fs';
 import { BoardView } from '../src/view';
+import Controller from '../src/controller';
+import { BoardData } from '../src/boardStore';
+import { App, TFile } from 'obsidian';
 
 declare global {
   interface Window {
@@ -51,6 +54,19 @@ proto.createDiv = function(arg: any) {
   this.appendChild(el);
   return el;
 };
+proto.createEl = function(tag: string, opts: any = {}) {
+  const el = dom.window.document.createElement(tag);
+  if (opts.cls) el.className = opts.cls;
+  if (opts.text) el.textContent = opts.text;
+  if (opts.type) (el as any).type = opts.type;
+  if (opts.attr) {
+    for (const [name, value] of Object.entries(opts.attr)) {
+      el.setAttribute(name, value as string);
+    }
+  }
+  this.appendChild(el);
+  return el;
+};
 proto.createSpan = function(arg: any) {
   const el = dom.window.document.createElement('span');
   if (arg?.cls) el.className = arg.cls;
@@ -82,6 +98,10 @@ const view: any = {
   drawEdges: () => {},
   updateOverflow: () => {},
 };
+
+view.createHandleWithMerge = BoardView.prototype['createHandleWithMerge'];
+view.findMergeSource = BoardView.prototype['findMergeSource'];
+view.handleMergeClick = BoardView.prototype['handleMergeClick'];
 
 const nodeEl = (BoardView.prototype as any).createNodeElement.call(view, 'b1', root);
 
@@ -191,6 +211,10 @@ const touchView: any = {
   drawEdgesQueued: () => {},
 };
 
+touchView.createHandleWithMerge = BoardView.prototype['createHandleWithMerge'];
+touchView.findMergeSource = BoardView.prototype['findMergeSource'];
+touchView.handleMergeClick = BoardView.prototype['handleMergeClick'];
+
 const touchNode = (BoardView.prototype as any).createNodeElement.call(touchView, 'b1', root);
 (BoardView.prototype as any).registerEvents.call(touchView);
 
@@ -221,3 +245,124 @@ if (opacity !== '1') {
 }
 
 console.log('Touch pointer interaction reveals selected node handles');
+
+(async () => {
+  const stored: Record<string, string> = {};
+  const app = new App();
+  app.vault.read = async (file: TFile) => stored[file.path] || '';
+  app.vault.modify = async (file: TFile, data: string) => {
+    stored[file.path] = data;
+  };
+  app.vault.getAbstractFileByPath = (path: string) => {
+    const file = new TFile();
+    file.path = path;
+    file.basename = path.replace(/\.mtask$/, '');
+    file.stat = { mtime: Date.now() } as any;
+    return file;
+  };
+
+  const boardFile = app.vault.getAbstractFileByPath('merge.mtask') as TFile;
+  const board: BoardData = {
+    version: 1,
+    nodes: {
+      source: { x: 0, y: 0, title: 'Source task', description: 'Orig desc' },
+      target: { x: 160, y: 0, title: 'Target task', description: 'Base desc' },
+      child: { x: 80, y: 40, attachedTo: 'source' } as any,
+    },
+    edges: [
+      { from: 'source', to: 'target', type: 'depends', label: 'forward' },
+      { from: 'target', to: 'source', type: 'depends', label: 'back' },
+    ],
+    lanes: {},
+    title: 'merge',
+    orientation: 'vertical',
+    snapToGrid: true,
+    snapToGuides: false,
+    alignThreshold: 5,
+  };
+  stored[boardFile.path] = JSON.stringify(board);
+
+  const taskFile = new TFile();
+  taskFile.path = 'tasks.md';
+  taskFile.basename = 'tasks';
+
+  const tasks = new Map<string, any>();
+  tasks.set('source', {
+    file: taskFile,
+    line: 0,
+    text: '- [ ] Source task',
+    checked: false,
+    blockId: 'source',
+    indent: 0,
+    dependsOn: [],
+    description: 'Task description',
+    notePath: 'docs/source.md',
+  });
+
+  const controller = new Controller(app as any, boardFile, board, tasks, {} as any);
+
+  const mergeRoot = document.createElement('div');
+  mergeRoot.className = 'vtasks-board vtasks-vertical';
+  const mergeView: any = {
+    board,
+    boardEl: mergeRoot,
+    controller,
+    selectedIds: new Set(['source']),
+    plugin: { openBoardFile: () => {} },
+    tasks,
+    drawEdges: () => {},
+    updateOverflow: () => {},
+    app,
+    renderCalled: 0,
+    render() {
+      this.renderCalled++;
+    },
+  };
+
+  mergeView.createHandleWithMerge = BoardView.prototype['createHandleWithMerge'];
+  mergeView.findMergeSource = BoardView.prototype['findMergeSource'];
+  mergeView.handleMergeClick = BoardView.prototype['handleMergeClick'];
+
+  const targetEl = (BoardView.prototype as any).createNodeElement.call(
+    mergeView,
+    'target',
+    mergeRoot,
+  );
+  const mergeBtn = targetEl.querySelector('button.vtasks-merge') as HTMLButtonElement | null;
+  if (!mergeBtn) {
+    throw new Error('Merge button not rendered on node handles');
+  }
+
+  mergeBtn.click();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  if (!mergeView.renderCalled) {
+    throw new Error('Merge action should trigger a rerender');
+  }
+  if (board.nodes.source) {
+    throw new Error('Source node should be removed after merge');
+  }
+  if ((board.nodes.child as any).attachedTo !== 'target') {
+    throw new Error('Attached nodes should retarget the merge destination');
+  }
+  if (board.edges.some((e) => e.from === 'source' || e.to === 'source')) {
+    throw new Error('Edges should be rewired away from the removed node');
+  }
+  const targetNode = board.nodes.target as any;
+  if (!targetNode.mergedFrom || !targetNode.mergedFrom.includes('source')) {
+    throw new Error('Merged IDs should be tracked on the destination node');
+  }
+  if (!targetNode.description || !targetNode.description.includes('Task description')) {
+    throw new Error('Merged description should be appended to the destination');
+  }
+
+  const saved = JSON.parse(stored[boardFile.path]);
+  if (saved.nodes.source) {
+    throw new Error('Merged board state should not persist the removed node');
+  }
+  if (!(saved.nodes.target as any).mergedFrom?.includes('source')) {
+    throw new Error('Persisted board should record merged IDs');
+  }
+
+  console.log('Merge button merges nodes and persists board');
+})();

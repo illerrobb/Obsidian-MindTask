@@ -39,6 +39,19 @@ hProto.createSpan = function(arg: any) {
   this.appendChild(el);
   return el;
 };
+hProto.createEl = function(tag: string, opts: any = {}) {
+  const el = dom.window.document.createElement(tag);
+  if (opts.cls) el.className = opts.cls;
+  if (opts.text) el.textContent = opts.text;
+  if (opts.type) (el as any).type = opts.type;
+  if (opts.attr) {
+    for (const [name, value] of Object.entries(opts.attr)) {
+      el.setAttribute(name, value as string);
+    }
+  }
+  this.appendChild(el);
+  return el;
+};
 hProto.setAttr = function(name: string, value: string) {
   this.setAttribute(name, value);
 };
@@ -84,6 +97,10 @@ const view: any = {
   drawMinimap: () => {},
   updateOverflow: () => {},
 };
+
+view.createHandleWithMerge = BoardView.prototype['createHandleWithMerge'];
+view.findMergeSource = BoardView.prototype['findMergeSource'];
+view.handleMergeClick = BoardView.prototype['handleMergeClick'];
 
 (BoardView.prototype as any).createNodeElement.call(view, 'b1', root);
 (BoardView.prototype as any).createNodeElement.call(view, 'b2', root);

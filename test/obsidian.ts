@@ -28,6 +28,7 @@ export class ItemView {
 export class MarkdownRenderer {
   static renderMarkdown(src: string, el: HTMLElement, _path: string, _app: App) {
     el.textContent = src;
+    return Promise.resolve();
   }
 }
 

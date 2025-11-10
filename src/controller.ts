@@ -72,6 +72,92 @@ export default class Controller {
     await saveBoard(this.app, this.boardFile, this.board);
   }
 
+  async mergeNodes(sourceId: string, targetId: string) {
+    if (!sourceId || !targetId || sourceId === targetId) return;
+    const sourceNode = this.board.nodes[sourceId];
+    const targetNode = this.board.nodes[targetId];
+    if (!sourceNode || !targetNode) return;
+
+    const sourceTask = this.tasks.get(sourceId);
+    const targetTask = this.tasks.get(targetId);
+
+    const parsed = sourceTask ? parseTaskContent(sourceTask.text) : null;
+    const rawTitle =
+      sourceNode.title ||
+      parsed?.title ||
+      (sourceNode as any).name ||
+      (sourceNode as any).text ||
+      sourceId;
+    const title = rawTitle ? rawTitle.trim() : sourceId;
+
+    const fragments: string[] = [];
+    if (title) fragments.push(`**${title}**`);
+
+    const descriptionFragments = new Set<string>();
+    const nodeDescription = (sourceNode as any).description as string | undefined;
+    if (nodeDescription && nodeDescription.trim()) {
+      descriptionFragments.add(nodeDescription.trim());
+    }
+    const taskDescription = sourceTask?.description;
+    if (taskDescription && taskDescription.trim()) {
+      descriptionFragments.add(taskDescription.trim());
+    }
+    descriptionFragments.forEach((desc) => fragments.push(desc));
+
+    const notePath = (sourceNode as any).notePath || sourceTask?.notePath;
+    if (notePath) {
+      const normalized = notePath.replace(/^\[\[/, '').replace(/\]\]$/, '');
+      fragments.push(`[[${normalized}]]`);
+    }
+
+    const status = (sourceNode as any).status as string | undefined;
+    if (status) {
+      fragments.push(`_Status_: ${status}`);
+    }
+
+    const mergedText = fragments.map((f) => f.trim()).filter(Boolean).join('\n\n');
+    const existingDesc =
+      ((targetNode as any).description as string | undefined) ??
+      targetTask?.description ??
+      '';
+    if (mergedText) {
+      (targetNode as any).description = existingDesc
+        ? `${existingDesc}\n\n---\n${mergedText}`
+        : mergedText;
+    }
+
+    const mergedFrom = Array.isArray((targetNode as any).mergedFrom)
+      ? [...(targetNode as any).mergedFrom]
+      : [];
+    if (!mergedFrom.includes(sourceId)) {
+      mergedFrom.push(sourceId);
+      (targetNode as any).mergedFrom = mergedFrom;
+    }
+
+    for (const node of Object.values(this.board.nodes)) {
+      if ((node as any).attachedTo === sourceId) {
+        (node as any).attachedTo = targetId;
+      }
+    }
+
+    const dedupe = new Set<string>();
+    const updatedEdges: { from: string; to: string; type: string; label?: string }[] = [];
+    for (const edge of this.board.edges) {
+      let from = edge.from === sourceId ? targetId : edge.from;
+      let to = edge.to === sourceId ? targetId : edge.to;
+      if (from === to) continue;
+      const key = `${from}|${to}|${edge.type}|${edge.label ?? ''}`;
+      if (dedupe.has(key)) continue;
+      dedupe.add(key);
+      updatedEdges.push({ ...edge, from, to });
+    }
+    this.board.edges = updatedEdges;
+
+    delete this.board.nodes[sourceId];
+
+    await saveBoard(this.app, this.boardFile, this.board);
+  }
+
   async groupNodes(ids: string[], name = '') {}
 
   async ungroupNode(id: string) {}
