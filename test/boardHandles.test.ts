@@ -1,4 +1,5 @@
 import { JSDOM } from 'jsdom';
+import { readFileSync } from 'node:fs';
 import { BoardView } from '../src/view';
 
 declare global {
@@ -10,6 +11,22 @@ declare global {
 const dom = new JSDOM('<!doctype html><div id="root"></div>');
 (global as any).window = dom.window;
 (global as any).document = dom.window.document;
+
+if (!dom.window.PointerEvent) {
+  class PEvent extends dom.window.MouseEvent {
+    pointerType: string;
+    constructor(type: string, init: any = {}) {
+      super(type, init);
+      this.pointerType = init.pointerType || '';
+    }
+  }
+  (dom.window as any).PointerEvent = PEvent as any;
+}
+(global as any).PointerEvent = dom.window.PointerEvent;
+
+const styleEl = dom.window.document.createElement('style');
+styleEl.textContent = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+dom.window.document.head.appendChild(styleEl);
 
 // Basic ResizeObserver stub
 class RO {
@@ -76,3 +93,131 @@ if (!hasIn || !hasOut) {
 }
 
 console.log('Board node has in/out handles');
+
+root.innerHTML = '';
+root.className = 'vtasks-board';
+(root as any).focus = () => {};
+(root as any).blur = () => {};
+(root as any).setPointerCapture = () => {};
+(root as any).releasePointerCapture = () => {};
+
+const svgEl = dom.window.document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+root.appendChild(svgEl);
+const alignV = root.createDiv('vtasks-align-line');
+const alignH = root.createDiv('vtasks-align-line');
+const minimapEl = root.createDiv('vtasks-minimap');
+const minimapSvg = dom.window.document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+const minimapView = root.createDiv('vtasks-mini-view');
+minimapEl.appendChild(minimapSvg);
+minimapEl.appendChild(minimapView);
+
+const touchView: any = {
+  board: {
+    orientation: 'vertical',
+    snapToGrid: true,
+    snapToGuides: false,
+    lanes: {},
+    nodes: {
+      b1: { x: 0, y: 0, type: 'board', name: 'B1', taskCount: 0 },
+    },
+    edges: [],
+  },
+  tasks: new Map(),
+  boardEl: root,
+  containerEl: root,
+  svgEl,
+  alignVLine: alignV,
+  alignHLine: alignH,
+  minimapEl,
+  minimapSvg,
+  minimapView,
+  selectedIds: new Set(['b1']),
+  plugin: { openBoardFile: () => {} },
+  drawEdges: () => {},
+  drawMinimap: () => {},
+  updateMinimapView: () => {},
+  moveBoardFromMinimap: () => {},
+  updateOverflow: () => {},
+  controller: {
+    moveLane: () => {},
+    assignNodeToLane: () => {},
+    moveNode: () => {},
+    resizeNode: () => {},
+    setNodeColor: () => {},
+    attachNode: () => {},
+    createEdge: async () => {},
+    setCheck: () => {},
+  },
+  app: {
+    vault: {
+      getAbstractFileByPath: () => null,
+      adapter: {},
+      read: async () => '{}',
+      modify: async () => {},
+      rename: async () => {},
+    },
+    workspace: { openLinkText: () => {} },
+    dragManager: { getData: () => null },
+  },
+  boardOffsetX: 0,
+  boardOffsetY: 0,
+  zoom: 1,
+  minimapScale: 1,
+  minimapOffsetX: 0,
+  minimapOffsetY: 0,
+  pointerDownSelected: false,
+  draggingId: null,
+  isMinimapDragging: false,
+  dragStartPositions: new Map(),
+  memberResizeStart: new Map(),
+  laneDragNodeIds: [],
+  groupId: null,
+  finishEditing: () => {},
+  finishEditingEdgeLabel: () => {},
+  registerDomEvent: () => {},
+  getBoardCoords: () => ({ x: 0, y: 0 }),
+  getLaneForPosition: () => null,
+  snapNodeToLane: () => {},
+  selectNode: () => {},
+  addToSelection: () => {},
+  updateLaneElement: () => {},
+  showAlignmentGuides: () => new Set(),
+  hideAlignLine: () => {},
+  findAttachmentTarget: () => null,
+  computeBoardProgress: async () => ({ total: 0, done: 0 }),
+  getDragIds() {
+    return new Set(this.selectedIds);
+  },
+  drawEdgesQueued: () => {},
+};
+
+const touchNode = (BoardView.prototype as any).createNodeElement.call(touchView, 'b1', root);
+(BoardView.prototype as any).registerEvents.call(touchView);
+
+const touchEvent = new dom.window.PointerEvent('pointerdown', {
+  pointerType: 'touch',
+  bubbles: true,
+  button: 0,
+});
+
+Object.defineProperty(touchEvent, 'target', { value: touchNode, configurable: true });
+(touchView.boardEl.onpointerdown as any)?.call(touchView.boardEl, touchEvent);
+if (!root.classList.contains('touch-handles')) {
+  throw new Error('Touch interaction should enable touch-handles class');
+}
+
+if (!touchView.pointerDownSelected) {
+  throw new Error('Pointer down handler did not execute');
+}
+
+const touchHandle = touchNode.querySelector('.vtasks-handle') as HTMLElement | null;
+if (!touchHandle) {
+  throw new Error('Touch node is missing handle');
+}
+
+const opacity = dom.window.getComputedStyle(touchHandle).opacity;
+if (opacity !== '1') {
+  throw new Error('Touch pointer should reveal selected node handles');
+}
+
+console.log('Touch pointer interaction reveals selected node handles');

@@ -410,7 +410,8 @@ textarea.vtasks-edge-label-input {
 }
 
 .vtasks-node:hover .vtasks-handle,
-.vtasks-board.show-handles .vtasks-handle {
+.vtasks-board.show-handles .vtasks-handle,
+.vtasks-board.touch-handles .vtasks-node.selected .vtasks-handle {
   opacity: 1;
 }
 
@@ -513,6 +514,67 @@ textarea.vtasks-edge-label-input {
   bottom: -4px;
   left: -4px;
   cursor: nesw-resize;
+}
+
+@media (hover: none) {
+  .vtasks-node.selected .vtasks-handle,
+  .vtasks-board.touch-handles .vtasks-node.selected .vtasks-handle {
+    opacity: 1;
+  }
+
+  .vtasks-resize-n,
+  .vtasks-resize-s {
+    height: 12px;
+  }
+
+  .vtasks-resize-n {
+    top: -6px;
+  }
+
+  .vtasks-resize-s {
+    bottom: -6px;
+  }
+
+  .vtasks-resize-e,
+  .vtasks-resize-w {
+    width: 12px;
+  }
+
+  .vtasks-resize-e {
+    right: -6px;
+  }
+
+  .vtasks-resize-w {
+    left: -6px;
+  }
+
+  .vtasks-resize-ne,
+  .vtasks-resize-nw,
+  .vtasks-resize-se,
+  .vtasks-resize-sw {
+    width: 16px;
+    height: 16px;
+  }
+
+  .vtasks-resize-ne {
+    top: -8px;
+    right: -8px;
+  }
+
+  .vtasks-resize-nw {
+    top: -8px;
+    left: -8px;
+  }
+
+  .vtasks-resize-se {
+    bottom: -8px;
+    right: -8px;
+  }
+
+  .vtasks-resize-sw {
+    bottom: -8px;
+    left: -8px;
+  }
 }
 
 .vtasks-selection {
