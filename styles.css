@@ -398,6 +398,57 @@ textarea.vtasks-edge-label-input {
   transition: opacity 0.2s ease-in-out, transform 0.1s ease-in-out;
 }
 
+.vtasks-handle-wrapper {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.vtasks-handle-wrapper .vtasks-handle {
+  pointer-events: auto;
+}
+
+.vtasks-handle-wrapper .vtasks-merge {
+  pointer-events: auto;
+  position: absolute;
+  opacity: 0;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  padding: 2px 6px;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--text-muted);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition:
+    opacity 0.2s ease-in-out,
+    background 0.2s ease-in-out,
+    color 0.2s ease-in-out,
+    transform 0.1s ease-in-out;
+  --merge-translate-x: 0px;
+  --merge-translate-y: 0px;
+  transform: translate(var(--merge-translate-x), var(--merge-translate-y));
+}
+
+.vtasks-handle-wrapper .vtasks-merge:hover,
+.vtasks-handle-wrapper .vtasks-merge:focus-visible {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover);
+}
+
+.vtasks-handle-wrapper .vtasks-merge:active {
+  transform: translate(var(--merge-translate-x), var(--merge-translate-y)) scale(0.96);
+}
+
+.vtasks-node:hover .vtasks-handle-wrapper .vtasks-merge,
+.vtasks-board.show-handles .vtasks-handle-wrapper .vtasks-merge,
+.vtasks-board.touch-handles .vtasks-node.selected .vtasks-handle-wrapper .vtasks-merge {
+  opacity: 1;
+}
+
 .vtasks-handle-out {
   cursor: grab;
 }
@@ -457,6 +508,34 @@ textarea.vtasks-edge-label-input {
 
 .vtasks-horizontal .vtasks-handle-right.vtasks-handle-hover {
   transform: translate(50%, -50%) scale(calc(var(--handle-scale, 1) * 2));
+}
+
+.vtasks-vertical .vtasks-handle-wrapper-top .vtasks-merge {
+  top: -24px;
+  left: 50%;
+  --merge-translate-x: 16px;
+  --merge-translate-y: 0px;
+}
+
+.vtasks-vertical .vtasks-handle-wrapper-bottom .vtasks-merge {
+  bottom: -24px;
+  left: 50%;
+  --merge-translate-x: 16px;
+  --merge-translate-y: 0px;
+}
+
+.vtasks-horizontal .vtasks-handle-wrapper-left .vtasks-merge {
+  top: 50%;
+  left: 0;
+  --merge-translate-x: -100%;
+  --merge-translate-y: -16px;
+}
+
+.vtasks-horizontal .vtasks-handle-wrapper-right .vtasks-merge {
+  top: 50%;
+  right: 0;
+  --merge-translate-x: 100%;
+  --merge-translate-y: -16px;
 }
 
 .vtasks-resize {

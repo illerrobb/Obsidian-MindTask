@@ -74,6 +74,18 @@ the task description. Editing the task saves the description text back to the
 linked note, creating the file if needed. The legacy `description` field is no
 longer used.
 
+### Merge dei nodi
+
+In accordo con il product owner, l'azione **Merge** serve per unire due nodi
+senza perdere il contesto di partenza. Il nodo sorgente viene rimosso dalla
+board e le sue informazioni principali (titolo, descrizione, eventuale nota
+collegata e stato) vengono riportate dentro al nodo di destinazione. Il
+contenuto confluisce nella descrizione del nodo target, separato da una riga di
+divisione, e l'elenco `mergedFrom` del nodo traccia gli ID già accorpati. Le
+connessioni e gli allegati vengono riassegnati automaticamente al nodo di
+destinazione, evitando duplicati o loop. Il risultato viene salvato
+immediatamente nel file `.mtask` associato alla board.
+
 ## Settings
 
 * **Task identifiers**:

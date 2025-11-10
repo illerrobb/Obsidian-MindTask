@@ -719,10 +719,11 @@ export class BoardView extends ItemView {
 
     const orientH = this.board?.orientation ?? 'vertical';
 
+    const incomingOrientation = orientH === 'vertical' ? 'top' : 'left';
+    const outgoingOrientation = orientH === 'vertical' ? 'bottom' : 'right';
+
     if (pos.type === 'board') {
-      nodeEl.createDiv(
-        `vtasks-handle vtasks-handle-in vtasks-handle-${orientH === 'vertical' ? 'top' : 'left'}`
-      );
+      this.createHandleWithMerge(nodeEl, id, 'in', incomingOrientation);
       const textEl = nodeEl.createDiv('vtasks-text');
       const metaEl = nodeEl.createDiv('vtasks-meta');
       textEl.setText(pos.name || id);
@@ -743,9 +744,7 @@ export class BoardView extends ItemView {
         });
       }
       nodeEl.addClass('vtasks-board-card');
-      nodeEl.createDiv(
-        `vtasks-handle vtasks-handle-out vtasks-handle-${orientH === 'vertical' ? 'bottom' : 'right'}`
-      );
+      this.createHandleWithMerge(nodeEl, id, 'out', outgoingOrientation);
       const dirs = ['n', 'e', 's', 'w', 'ne', 'nw', 'se', 'sw'];
       dirs.forEach((d) => nodeEl.createDiv(`vtasks-resize vtasks-resize-${d}`));
       new ResizeObserver(() => {
@@ -764,9 +763,7 @@ export class BoardView extends ItemView {
 
     if (pos.type === 'note' || pos.notePath) {
       if (pos.notePath && pos.type !== 'note') pos.type = 'note';
-      nodeEl.createDiv(
-        `vtasks-handle vtasks-handle-in vtasks-handle-${orientH === 'vertical' ? 'top' : 'left'}`
-      );
+      this.createHandleWithMerge(nodeEl, id, 'in', incomingOrientation);
       const header = nodeEl.createDiv('vtasks-note-header');
       const titleEl = header.createDiv('vtasks-note-title');
       const openEl = header.createDiv('vtasks-note-open');
@@ -865,9 +862,7 @@ export class BoardView extends ItemView {
         }
       }
       nodeEl.addClass('vtasks-note');
-      nodeEl.createDiv(
-        `vtasks-handle vtasks-handle-out vtasks-handle-${orientH === 'vertical' ? 'bottom' : 'right'}`
-      );
+      this.createHandleWithMerge(nodeEl, id, 'out', outgoingOrientation);
       const dirs = ['n', 'e', 's', 'w', 'ne', 'nw', 'se', 'sw'];
       dirs.forEach((d) => nodeEl.createDiv(`vtasks-resize vtasks-resize-${d}`));
       new ResizeObserver(() => {
@@ -877,18 +872,14 @@ export class BoardView extends ItemView {
     }
 
     if (pos.type === 'postit') {
-      nodeEl.createDiv(
-        `vtasks-handle vtasks-handle-in vtasks-handle-${orientH === 'vertical' ? 'top' : 'left'}`
-      );
+      this.createHandleWithMerge(nodeEl, id, 'in', incomingOrientation);
       const area = nodeEl.createEl('textarea', { cls: 'vtasks-postit-content' });
       area.value = (pos as any).content || '';
       area.addEventListener('blur', () => {
         this.controller?.updatePostItContent(id, area.value);
       });
       nodeEl.addClass('vtasks-postit');
-      nodeEl.createDiv(
-        `vtasks-handle vtasks-handle-out vtasks-handle-${orientH === 'vertical' ? 'bottom' : 'right'}`
-      );
+      this.createHandleWithMerge(nodeEl, id, 'out', outgoingOrientation);
       const dirs = ['n', 'e', 's', 'w', 'ne', 'nw', 'se', 'sw'];
       dirs.forEach((d) => nodeEl.createDiv(`vtasks-resize vtasks-resize-${d}`));
       new ResizeObserver(() => {
@@ -897,9 +888,7 @@ export class BoardView extends ItemView {
       return nodeEl;
     }
 
-    nodeEl.createDiv(
-      `vtasks-handle vtasks-handle-in vtasks-handle-${orientH === 'vertical' ? 'top' : 'left'}`
-    );
+    this.createHandleWithMerge(nodeEl, id, 'in', incomingOrientation);
     const textEl = nodeEl.createDiv('vtasks-text');
     textEl.style.pointerEvents = 'auto';
     textEl.addEventListener('click', (e) => {
@@ -1134,9 +1123,7 @@ export class BoardView extends ItemView {
         menu.showAtPosition({ x: e.pageX, y: e.pageY });
       });
     }
-    const outHandle = nodeEl.createDiv(
-      `vtasks-handle vtasks-handle-out vtasks-handle-${orientH === 'vertical' ? 'bottom' : 'right'}`
-    );
+    const outHandle = this.createHandleWithMerge(nodeEl, id, 'out', outgoingOrientation);
 
     const dirs = ['n', 'e', 's', 'w', 'ne', 'nw', 'se', 'sw'];
     dirs.forEach((d) => nodeEl.createDiv(`vtasks-resize vtasks-resize-${d}`));
@@ -1170,6 +1157,52 @@ export class BoardView extends ItemView {
     });
 
     return nodeEl;
+  }
+
+  private createHandleWithMerge(
+    parent: HTMLElement,
+    nodeId: string,
+    direction: 'in' | 'out',
+    orientation: 'top' | 'bottom' | 'left' | 'right'
+  ): HTMLElement {
+    const wrapper = parent.createDiv(
+      `vtasks-handle-wrapper vtasks-handle-wrapper-${orientation}`
+    );
+    const handle = wrapper.createDiv(
+      `vtasks-handle vtasks-handle-${direction} vtasks-handle-${orientation}`
+    );
+    const mergeBtn = wrapper.createEl('button', {
+      cls: 'vtasks-merge',
+      text: 'Merge',
+    }) as HTMLButtonElement;
+    mergeBtn.type = 'button';
+    mergeBtn.setAttr('aria-label', 'Merge nodes');
+    mergeBtn.addEventListener('click', (event) => this.handleMergeClick(event, nodeId));
+    return handle as HTMLElement;
+  }
+
+  private findMergeSource(targetId: string): string | null {
+    for (const id of this.selectedIds) {
+      if (id !== targetId) return id;
+    }
+    if (this.draggingId && this.draggingId !== targetId) return this.draggingId;
+    if (this.edgeStart && this.edgeStart !== targetId) return this.edgeStart;
+    return null;
+  }
+
+  private handleMergeClick(event: MouseEvent, targetId: string) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!this.controller) return;
+    const sourceId = this.findMergeSource(targetId);
+    if (!sourceId) return;
+    this.controller
+      .mergeNodes(sourceId, targetId)
+      .then(() => {
+        this.selectedIds = new Set([targetId]);
+        this.render();
+      })
+      .catch((err) => console.error('Failed to merge nodes', err));
   }
 
   private registerEvents() {
