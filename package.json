@@ -25,5 +25,8 @@
     "tsx": "^4.7.1",
     "typescript": "^5.3.3"
   },
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "exceljs": "^4.4.0"
+  }
 }

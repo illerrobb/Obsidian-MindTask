@@ -38,6 +38,8 @@ export interface PluginSettings {
   alignLineWidth: number;
   /** Width of the sidebar in pixels */
   sidebarWidth: number;
+  /** Enable styled XLSX export */
+  enableStyledExcelExport: boolean;
 }
 
 export interface PluginData {
@@ -65,6 +67,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   alignLineColor: '',
   alignLineWidth: 1,
   sidebarWidth: 250,
+  enableStyledExcelExport: true,
 };
 
 export class SettingsTab extends PluginSettingTab {
@@ -196,6 +199,18 @@ export class SettingsTab extends PluginSettingTab {
           .setValue(this.plugin.settings.deletePermanently)
           .onChange(async (value) => {
             this.plugin.settings.deletePermanently = value;
+            await this.plugin.savePluginData();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName('Enable styled XLSX export')
+      .setDesc('Allows exporting the current board to a styled Excel workbook.')
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.enableStyledExcelExport)
+          .onChange(async (value) => {
+            this.plugin.settings.enableStyledExcelExport = value;
             await this.plugin.savePluginData();
           })
       );

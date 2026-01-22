@@ -13,6 +13,7 @@
 * **Smooth pan and zoom** with mouse and keyboard shortcuts.
 * **Automatic node coloring** based on tags or metadata.
 * **Customizations** through a dedicated settings panel.
+* **Styled XLSX export** for sharing board data in spreadsheet form.
 
 <!-- TODO: add demo GIFs for each feature -->
 
@@ -94,6 +95,7 @@ immediatamente nel file `.mtask` associato alla board.
   * `[id:: id]` as an inline field.
 * **Board path**: choose where to save the `.mtask` file; missing folders will be created automatically.
 * **Colors and labels**: assign colors to tags or metadata to automatically highlight nodes.
+* **Styled XLSX export**: toggle to enable exporting the current board to Excel.
 
 ![Settings](docs/img/settings.png) <!-- TODO: settings screenshot -->
 
