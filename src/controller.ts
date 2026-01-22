@@ -1,4 +1,4 @@
-import { App, normalizePath, TFile, WorkspaceLeaf } from 'obsidian';
+import { App, Notice, normalizePath, TFile, WorkspaceLeaf } from 'obsidian';
 import type { TFolder } from 'obsidian';
 import crypto from 'crypto';
 import { BoardData, NodeData, LaneData, saveBoard } from './boardStore';
@@ -6,6 +6,7 @@ import { ParsedTask } from './parser';
 import { PluginSettings } from './settings';
 import { openTaskEditModal } from './taskEditModal';
 import { parseTaskContent } from './taskContent';
+import { buildStyledWorkbookBuffer, XLSX_MIME_TYPE } from './export/excel';
 
 export default class Controller {
   constructor(
@@ -865,6 +866,51 @@ export default class Controller {
     });
 
     await saveBoard(this.app, this.boardFile, this.board);
+  }
+
+  async exportStyledExcel(): Promise<string> {
+    const boardTitle = this.board.title || this.boardFile.basename;
+    const buffer = await buildStyledWorkbookBuffer(
+      this.board,
+      this.tasks,
+      boardTitle
+    );
+    const baseName = boardTitle
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+    const fileName = `${baseName || 'mindtask-board'}.xlsx`;
+    const folder = this.boardFile.parent?.path ?? '';
+    const exportPath = this.getUniqueExportPath(folder, fileName);
+    const blob = new Blob([buffer], { type: XLSX_MIME_TYPE });
+    const data = new Uint8Array(await blob.arrayBuffer());
+    const existing = this.app.vault.getAbstractFileByPath(exportPath);
+    if (existing instanceof TFile) {
+      await this.app.vault.modifyBinary(existing, data);
+    } else {
+      await this.app.vault.createBinary(exportPath, data);
+    }
+    new Notice(`Styled XLSX export saved to ${exportPath}`);
+    return exportPath;
+  }
+
+  private getUniqueExportPath(folder: string, fileName: string): string {
+    const cleanedFolder = folder.trim().replace(/\/$/, '');
+    const basePath = cleanedFolder ? `${cleanedFolder}/${fileName}` : fileName;
+    let candidate = normalizePath(basePath);
+    if (!this.app.vault.getAbstractFileByPath(candidate)) return candidate;
+    const match = fileName.match(/^(.*?)(\.xlsx)$/i);
+    const base = match ? match[1] : fileName;
+    const ext = match ? match[2] : '.xlsx';
+    let counter = 1;
+    while (this.app.vault.getAbstractFileByPath(candidate)) {
+      const nextName = `${base}-${counter}${ext}`;
+      candidate = normalizePath(
+        cleanedFolder ? `${cleanedFolder}/${nextName}` : nextName
+      );
+      counter += 1;
+    }
+    return candidate;
   }
 
   async alignNodes(

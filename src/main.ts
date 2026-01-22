@@ -61,6 +61,19 @@ export default class MindTaskPlugin extends Plugin {
       callback: () => this.openBoard(),
     });
 
+    this.addCommand({
+      id: 'export-board-xlsx',
+      name: 'Export board to styled XLSX',
+      callback: async () => {
+        const view = this.app.workspace.getActiveViewOfType(BoardView);
+        if (!view) {
+          new Notice('Open a MindTask board to export.');
+          return;
+        }
+        await view.exportStyledExcel();
+      },
+    });
+
     this.addRibbonIcon('plus-square', 'New board', async () => {
       const name = await promptBoardName(this.app);
       if (!name) return;
@@ -181,4 +194,3 @@ async function promptBoardName(app: App): Promise<string | null> {
     new NewBoardModal(app).open();
   });
 }
-

@@ -9,6 +9,7 @@ import {
   TextComponent,
   App,
   setIcon,
+  Notice,
   TFile,
   TAbstractFile,
   normalizePath,
@@ -155,6 +156,23 @@ export class BoardView extends ItemView {
     const collapsed = this.minimapEl.classList.toggle('collapsed');
     setIcon(this.minimapToggleBtn, collapsed ? 'eye' : 'eye-off');
   };
+
+  async exportStyledExcel() {
+    if (!this.plugin.settings.enableStyledExcelExport) {
+      new Notice('Styled XLSX export is disabled in settings.');
+      return;
+    }
+    if (!this.controller) {
+      new Notice('No board is available to export.');
+      return;
+    }
+    try {
+      await this.controller.exportStyledExcel();
+    } catch (error) {
+      console.error('Failed to export styled XLSX', error);
+      new Notice('Failed to export styled XLSX. Check console for details.');
+    }
+  }
 
   constructor(leaf: WorkspaceLeaf, plugin: MindTaskPlugin) {
     super(leaf);
@@ -2213,6 +2231,16 @@ export class BoardView extends ItemView {
               });
           })
         );
+        if (this.plugin.settings.enableStyledExcelExport) {
+          menu.addItem((item) =>
+            item
+              .setTitle('Export styled XLSX')
+              .setIcon('download')
+              .onClick(() => {
+                void this.exportStyledExcel();
+              })
+          );
+        }
         menu.showAtMouseEvent(e as MouseEvent);
         return;
       }
